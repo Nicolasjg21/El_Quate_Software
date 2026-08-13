@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ElQuateSoftware.Models;
-using System.ComponentModel.DataAnnotations.Schema;
+
 
 namespace ElQuateSoftwareSoftware.Context
 {

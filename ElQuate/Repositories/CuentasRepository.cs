@@ -1,6 +1,6 @@
 ﻿namespace ElQuateSoftware.Repositories
 {
-    public class PermisosRepository
+    public class CuentasRepository
     {
     }
 }
