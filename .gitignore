@@ -1,0 +1,33 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Compilación
+bin/
+obj/
+
+# Archivos temporales
+*.tmp
+*.temp
+*.log
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Archivos de sistema
+Thumbs.db
+Desktop.ini
+
+# Archivos de publicación
+publish/
+*.PublishSettings
+
+# Azure / secretos locales
+appsettings.Development.json

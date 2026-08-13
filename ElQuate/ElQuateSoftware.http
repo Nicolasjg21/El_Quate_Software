@@ -1,0 +1,6 @@
+@ElQuateSoftwareSoftware_HostAddress = http://localhost:5153
+
+GET {{ElQuateSoftwareSoftware_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
