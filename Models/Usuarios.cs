@@ -34,5 +34,8 @@ namespace ElQuateDePatty.Models
 
         [Required(ErrorMessage = "Campo requerido")]
         public int idRol { get; set; }
+        [Required(ErrorMessage = "Campo requerido")]
+        [EmailAddress(ErrorMessage = "Correo electrónico no válido")]
+        public string email { get; set; }
     }
 }
