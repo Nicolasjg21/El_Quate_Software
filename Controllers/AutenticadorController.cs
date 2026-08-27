@@ -71,7 +71,7 @@ namespace ElQuateDePatty.Controllers
                 expires: DateTime.Now.AddMinutes(30),
                 signingCredentials: signinCredentials
             );
-
+            // nuevo cambio
             var tokenString =
                 new JwtSecurityTokenHandler().WriteToken(tokenOptions);
 
