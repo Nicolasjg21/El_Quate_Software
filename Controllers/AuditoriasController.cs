@@ -235,7 +235,14 @@ namespace ElQuateDePatty.Controllers
                         message = "La auditoría que se desea actualizar no existe."
                     });
 
-                var response = await _auditoriasRepository.PutAuditorias(auditoria);
+                existente.tabla = auditoria.tabla;
+                existente.accion = auditoria.accion;
+                existente.idUsuario = auditoria.idUsuario;
+                existente.fecha = auditoria.fecha;
+                existente.datosAnteriores = auditoria.datosAnteriores;
+                existente.datosNuevos = auditoria.datosNuevos;
+
+                var response = await _auditoriasRepository.PutAuditorias(existente);
 
                 if (!response)
                     return BadRequest(new
@@ -266,12 +273,13 @@ namespace ElQuateDePatty.Controllers
                     message = ex.Message
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
                 });
             }
         }

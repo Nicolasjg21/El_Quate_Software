@@ -213,7 +213,9 @@ namespace ElQuateDePatty.Controllers
                         message = "La categoría que se desea actualizar no existe."
                     });
 
-                var response = await _categoriasRepository.PutCategorias(categorias);
+                existente.nombreCategoria = categorias.nombreCategoria;
+
+                var response = await _categoriasRepository.PutCategorias(existente);
 
                 if (!response)
                     return BadRequest(new
@@ -236,12 +238,13 @@ namespace ElQuateDePatty.Controllers
             {
                 return Unauthorized(new { statusCode = 401, message = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
                 });
             }
         }

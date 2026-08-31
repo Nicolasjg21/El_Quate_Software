@@ -139,31 +139,67 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || comprobantes == null || comprobantes.idComprobante <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del comprobante no son válidos." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos del comprobante no son válidos."
+                    });
 
-                var existente = await _comprobantesRepository.GetComprobantesById(comprobantes.idComprobante);
+                var existente = await _comprobantesRepository
+                    .GetComprobantesById(comprobantes.idComprobante);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El comprobante que se desea actualizar no existe." });
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "El comprobante que se desea actualizar no existe."
+                    });
 
-                var response = await _comprobantesRepository.PutComprobantes(comprobantes);
+                existente.idCuenta = comprobantes.idCuenta;
+                existente.fecha = comprobantes.fecha;
+                existente.total = comprobantes.total;
+                existente.idMetodo = comprobantes.idMetodo;
+
+                var response = await _comprobantesRepository
+                    .PutComprobantes(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el comprobante." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el comprobante."
+                    });
 
-                return Ok(new { statusCode = 200, message = "Comprobante actualizado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Comprobante actualizado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
             }
         }
 

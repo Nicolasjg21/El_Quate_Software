@@ -121,26 +121,51 @@ namespace ElQuateDePatty.Controllers
                     return BadRequest(ModelState);
 
                 if (compras == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos de la compra son obligatorios." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos de la compra son obligatorios."
+                    });
 
                 var response = await _comprasRepository.PostCompras(compras);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar la compra." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar la compra."
+                    });
 
-                return Ok(new { statusCode = 200, message = "Compra registrada correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Compra registrada correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
             }
         }
 
@@ -155,31 +180,64 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || compras == null || compras.idCompra <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos de la compra no son válidos." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos de la compra no son válidos."
+                    });
 
                 var existente = await _comprasRepository.GetComprasById(compras.idCompra);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "La compra que se desea actualizar no existe." });
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "La compra que se desea actualizar no existe."
+                    });
 
-                var response = await _comprasRepository.PutCompras(compras);
+                existente.idProveedor = compras.idProveedor;
+                existente.fecha = compras.fecha;
+                existente.total = compras.total;
+
+                var response = await _comprasRepository.PutCompras(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar la compra." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar la compra."
+                    });
 
-                return Ok(new { statusCode = 200, message = "Compra actualizada correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Compra actualizada correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
             }
         }
 
