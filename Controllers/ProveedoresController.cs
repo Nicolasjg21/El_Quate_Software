@@ -134,31 +134,63 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || proveedores == null || proveedores.idProveedor <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del proveedor no son válidos." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos del proveedor no son válidos."
+                    });
 
                 var existente = await _proveedoresRepository.GetProveedoresById(proveedores.idProveedor);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El proveedor que se desea actualizar no existe." });
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "El proveedor que se desea actualizar no existe."
+                    });
 
-                var response = await _proveedoresRepository.PutProveedores(proveedores);
+                existente.nombreProveedor = proveedores.nombreProveedor;
+                existente.telefono = proveedores.telefono;
+                existente.direccion = proveedores.direccion;
+
+                var response = await _proveedoresRepository.PutProveedores(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el proveedor." });
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el proveedor."
+                    });
 
-                return Ok(new { statusCode = 200, message = "Proveedor actualizado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Proveedor actualizado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
             }
         }
 

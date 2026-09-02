@@ -131,7 +131,7 @@ namespace ElQuateDePatty.Context
 
             modelBuilder.Entity<Proveedores>().ToTable("Proveedores");
             modelBuilder.Entity<Proveedores>().HasKey(u => u.idProveedor);
-            modelBuilder.Entity<Proveedores>().Property(u => u.idProveedor).HasColumnName("idProvedor");
+            modelBuilder.Entity<Proveedores>().Property(u => u.idProveedor).HasColumnName("idProveedor");
             modelBuilder.Entity<Proveedores>().Property(u => u.nombreProveedor).HasColumnName("nombreProveedor");
             modelBuilder.Entity<Proveedores>().Property(u => u.telefono).HasColumnName("telefono");
             modelBuilder.Entity<Proveedores>().Property(u => u.direccion).HasColumnName("direccion");
