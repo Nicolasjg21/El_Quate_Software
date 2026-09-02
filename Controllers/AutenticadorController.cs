@@ -13,7 +13,7 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+
     public class AutenticadorController : ControllerBase
     {
         private readonly ElQuateDePattyContext context;
