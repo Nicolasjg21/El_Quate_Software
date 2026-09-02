@@ -1,5 +1,6 @@
 ﻿using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,8 @@ namespace ElQuateDePatty.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [RequireHttps]
+    [Authorize]
+
     public class DetallePedidosController : ControllerBase
     {
         private readonly IDetallePedidosRepository _detallePedidosRepository;

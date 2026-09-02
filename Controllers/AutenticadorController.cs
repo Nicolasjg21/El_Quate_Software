@@ -1,6 +1,7 @@
 ﻿using ElQuateDePatty.Context;
 using ElQuateDePatty.Models;
 using ElQuateSoftware.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +13,7 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AutenticadorController : ControllerBase
     {
         private readonly ElQuateDePattyContext context;
