@@ -8,7 +8,6 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class AuditoriasController : ControllerBase
     {

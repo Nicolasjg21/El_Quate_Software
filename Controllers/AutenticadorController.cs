@@ -13,7 +13,6 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-
     public class AutenticadorController : ControllerBase
     {
         private readonly ElQuateDePattyContext context;
@@ -37,7 +36,7 @@ namespace ElQuateDePatty.Controllers
                 return BadRequest("Los datos de inicio de sesión son obligatorios.");
             }
 
-            
+
             var usuario = await context.Usuarios
                 .FirstOrDefaultAsync(u => u.email == login.Email);
 
@@ -46,13 +45,13 @@ namespace ElQuateDePatty.Controllers
                 return Unauthorized("Usuario o contraseña incorrectos.");
             }
 
-            
+
             if (usuario.passwordHash != login.Password)
             {
                 return Unauthorized("Usuario o contraseña incorrectos.");
             }
 
-           
+
             var secretKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!)
             );
