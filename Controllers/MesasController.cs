@@ -137,31 +137,70 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || mesas == null || mesas.idMesa <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos de la mesa no son válidos." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos de la mesa no son válidos."
+                    });
+                }
 
-                var existente = await _mesasRepository.GetMesasById(mesas.idMesa);
+                var existente = await _mesasRepository
+                    .GetMesasById(mesas.idMesa);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "La mesa que se desea actualizar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "La mesa que se desea actualizar no existe."
+                    });
+                }
 
-                var response = await _mesasRepository.PutMesas(mesas);
+                // Aquí copiamos los campos de Mesas.
+                // Necesito tu modelo Mesas para ponerlos exactamente.
+
+                var response = await _mesasRepository
+                    .PutMesas(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar la mesa." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar la mesa."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Mesa actualizada correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Mesa actualizada correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
             }
         }
 

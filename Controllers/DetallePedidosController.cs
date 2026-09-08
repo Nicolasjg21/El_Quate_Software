@@ -137,31 +137,72 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || detallePedidos == null || detallePedidos.idDetalle <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del detalle de pedido no son válidos." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos del detalle de pedido no son válidos."
+                    });
+                }
 
-                var existente = await _detallePedidosRepository.GetDetallePedidosById(detallePedidos.idDetalle);
+                var existente = await _detallePedidosRepository
+                    .GetDetallePedidosById(detallePedidos.idDetalle);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El detalle de pedido que se desea actualizar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "El detalle de pedido que se desea actualizar no existe."
+                    });
+                }
 
-                var response = await _detallePedidosRepository.PutDetallePedidos(detallePedidos);
+                existente.idPedido = detallePedidos.idPedido;
+                existente.idProducto = detallePedidos.idProducto;
+                existente.cantidad = detallePedidos.cantidad;
+                existente.precioUnitario = detallePedidos.precioUnitario;
+
+                var response = await _detallePedidosRepository
+                    .PutDetallePedidos(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el detalle de pedido." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el detalle de pedido."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Detalle de pedido actualizado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Detalle de pedido actualizado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
             }
         }
 

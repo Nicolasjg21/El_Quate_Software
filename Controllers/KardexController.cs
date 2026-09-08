@@ -137,31 +137,76 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || kardex == null || kardex.idMovimiento <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del movimiento no son válidos." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos del movimiento no son válidos."
+                    });
+                }
 
-                var existente = await _kardexRepository.GetKardexById(kardex.idMovimiento);
+                var existente = await _kardexRepository
+                    .GetKardexById(kardex.idMovimiento);
 
                 if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El movimiento que se desea actualizar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "El movimiento que se desea actualizar no existe."
+                    });
+                }
 
-                var response = await _kardexRepository.PutKardex(kardex);
+                existente.idProducto = kardex.idProducto;
+                existente.tipoMovimiento = kardex.tipoMovimiento;
+                existente.cantidad = kardex.cantidad;
+                existente.stockAnterior = kardex.stockAnterior;
+                existente.stockNuevo = kardex.stockNuevo;
+                existente.motivo = kardex.motivo;
+                existente.fecha = kardex.fecha;
+                existente.idUsuario = kardex.idUsuario;
+
+                var response = await _kardexRepository
+                    .PutKardex(existente);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el movimiento." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el movimiento."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Movimiento actualizado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Movimiento actualizado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
             }
         }
 
