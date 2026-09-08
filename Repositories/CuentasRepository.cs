@@ -28,8 +28,13 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<bool> PostCuentas(Cuentas cuentas)
         {
-            Console.WriteLine("fechaApertura: " + cuentas.fechaApertura);
-            Console.WriteLine("fechaCierre: " + cuentas.fechaCierre);
+            Console.WriteLine("================================");
+            Console.WriteLine("idMesa: " + cuentas.idMesa);
+            Console.WriteLine("estado: " + cuentas.estado);
+            Console.WriteLine("fechaApertura: " + cuentas.fechaApertura.ToString("yyyy-MM-dd HH:mm:ss"));
+            Console.WriteLine("fechaCierre: " + (cuentas.fechaCierre?.ToString("yyyy-MM-dd HH:mm:ss") ?? "NULL"));
+            Console.WriteLine("total: " + cuentas.total);
+            Console.WriteLine("================================");
 
             await context.Cuentas.AddAsync(cuentas);
             await context.BoolAsync();
