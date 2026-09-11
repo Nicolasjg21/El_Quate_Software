@@ -1,7 +1,7 @@
 ﻿using ElQuateDePatty.Models;
+using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,166 +9,199 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class UsuariosController : ControllerBase
     {
-        private readonly IUsuariosRepository _usuariosRepository;
+        private readonly IUsuariosRepository _repository;
         private readonly PasswordHasher<Usuarios> _passwordHasher;
 
-        public UsuariosController(IUsuariosRepository usuariosRepository)
+        public UsuariosController(
+            IUsuariosRepository repository,
+            PasswordHasher<Usuarios> passwordHasher)
         {
-            _usuariosRepository = usuariosRepository;
-            _passwordHasher = new PasswordHasher<Usuarios>();
+            _repository = repository;
+            _passwordHasher = passwordHasher;
         }
 
         [HttpGet("GetUsuarios")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUsuarios()
         {
             try
             {
-                var response = await _usuariosRepository.GetUsuarios();
+                var usuarios = await _repository.GetUsuarios();
 
-                if (response == null || response.Count == 0)
+                if (usuarios == null || !usuarios.Any())
+                {
                     return NotFound(new
                     {
                         statusCode = 404,
-                        message = "No se encontró información de usuarios."
+                        message = "No se encontraron usuarios."
                     });
+                }
 
-                foreach (var usuario in response)
-                    usuario.passwordHash = string.Empty;
+                foreach (var usuario in usuarios)
+                {
+                    usuario.passwordHash = null;
+                }
 
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Consulta de usuarios realizada correctamente.",
-                    data = response
+                    message = "Usuarios obtenidos correctamente.",
+                    data = usuarios
                 });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { statusCode = 404, message = ex.Message });
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = "Ocurrió un error interno al obtener los usuarios."
                 });
             }
         }
 
-        [HttpGet("GetUsuarioById/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> GetUsuarioById(int id)
+        [HttpGet("GetUsuariosById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetUsuariosById(int id)
         {
             try
             {
                 if (id <= 0)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
-                        message = "El identificador debe ser mayor que cero."
+                        message = "El ID debe ser mayor que cero."
                     });
+                }
 
-                var response = await _usuariosRepository.GetUsuariosById(id);
+                var usuario = await _repository.GetUsuariosById(id);
 
-                if (response == null)
+                if (usuario == null)
+                {
                     return NotFound(new
                     {
                         statusCode = 404,
-                        message = "El usuario solicitado no existe."
+                        message = "No se encontró el usuario."
                     });
+                }
 
-                response.passwordHash = string.Empty;
+                usuario.passwordHash = null;
 
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Usuario encontrado correctamente.",
-                    data = response
+                    message = "Usuario obtenido correctamente.",
+                    data = usuario
                 });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { statusCode = 404, message = ex.Message });
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = "Ocurrió un error interno al obtener el usuario."
                 });
             }
         }
 
-        [HttpPost("PostUsuario")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PostUsuario([FromBody] Usuarios usuarios)
+        [HttpPost("PostUsuarios")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostUsuarios([FromBody] Usuarios usuario)
         {
             try
             {
-                if (!ModelState.IsValid || usuarios == null)
+                if (!ModelState.IsValid)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
-                        message = "Los datos del usuario no son válidos."
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
                     });
+                }
 
-                if (string.IsNullOrWhiteSpace(usuarios.passwordHash))
-                    return BadRequest(new
-                    {
-                        statusCode = 400,
-                        message = "La contraseña es obligatoria."
-                    });
+                usuario.passwordHash =
+                    _passwordHasher.HashPassword(usuario, usuario.passwordHash);
 
-                usuarios.passwordHash =
-                    _passwordHasher.HashPassword(usuarios, usuarios.passwordHash);
-
-                var response = await _usuariosRepository.PostUsuarios(usuarios);
+                var response = await _repository.PostUsuarios(usuario);
 
                 if (!response)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
                         message = "No fue posible registrar el usuario."
                     });
+                }
 
-                return Ok(new
+                usuario.passwordHash = null;
+
+                return StatusCode(201, new
                 {
-                    statusCode = 200,
-                    message = "Usuario registrado correctamente."
+                    statusCode = 201,
+                    message = "Usuario registrado correctamente.",
+                    data = usuario
                 });
             }
             catch (ArgumentException ex)
@@ -192,60 +225,86 @@ namespace ElQuateDePatty.Controllers
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = "Ocurrió un error interno al registrar el usuario."
                 });
             }
         }
 
-        [HttpPut("PutUsuario")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PutUsuario([FromBody] Usuarios usuarios)
+        [HttpPut("PutUsuarios")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutUsuarios([FromBody] Usuarios usuario)
         {
             try
             {
-                if (!ModelState.IsValid || usuarios == null || usuarios.idUsuario <= 0)
+                if (!ModelState.IsValid)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
-                        message = "Los datos del usuario no son válidos."
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
                     });
+                }
 
-                var existente = await _usuariosRepository.GetUsuariosById(usuarios.idUsuario);
+                if (usuario.idUsuario <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var existente = await _repository.GetUsuariosById(usuario.idUsuario);
 
                 if (existente == null)
+                {
                     return NotFound(new
                     {
                         statusCode = 404,
-                        message = "El usuario que se desea actualizar no existe."
+                        message = "No se encontró el usuario que desea actualizar."
                     });
-
-                if (!string.IsNullOrWhiteSpace(usuarios.passwordHash))
-                {
-                    usuarios.passwordHash =
-                        _passwordHasher.HashPassword(usuarios, usuarios.passwordHash);
-                }
-                else
-                {
-                    usuarios.passwordHash = existente.passwordHash;
                 }
 
-                var response = await _usuariosRepository.PutUsuarios(usuarios);
+                existente.nombres = usuario.nombres;
+                existente.apellidos = usuario.apellidos;
+                existente.documento = usuario.documento;
+                existente.idTipoDocumento = usuario.idTipoDocumento;
+                existente.telefono = usuario.telefono;
+                existente.estado = usuario.estado;
+                existente.idRol = usuario.idRol;
+                existente.email = usuario.email;
+
+                if (!string.IsNullOrWhiteSpace(usuario.passwordHash))
+                {
+                    existente.passwordHash =
+                        _passwordHasher.HashPassword(
+                            existente,
+                            usuario.passwordHash);
+                }
+
+                var response = await _repository.PutUsuarios(existente);
 
                 if (!response)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
                         message = "No fue posible actualizar el usuario."
                     });
+                }
+
+                existente.passwordHash = null;
 
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Usuario actualizado correctamente."
+                    message = "Usuario actualizado correctamente.",
+                    data = existente
                 });
             }
             catch (ArgumentException ex)
@@ -264,50 +323,65 @@ namespace ElQuateDePatty.Controllers
                     message = ex.Message
                 });
             }
-            catch (Exception)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
                 });
             }
         }
 
-        [HttpDelete("DeleteUsuario/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> DeleteUsuario(int id)
+        [HttpDelete("DeleteUsuarios/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteUsuarios(int id)
         {
             try
             {
                 if (id <= 0)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
-                        message = "El identificador debe ser mayor que cero."
+                        message = "El ID debe ser mayor que cero."
                     });
+                }
 
-                var usuario = await _usuariosRepository.GetUsuariosById(id);
+                var usuario = await _repository.GetUsuariosById(id);
 
                 if (usuario == null)
+                {
                     return NotFound(new
                     {
                         statusCode = 404,
-                        message = "El usuario que se desea eliminar no existe."
+                        message = "No se encontró el usuario."
                     });
+                }
 
-                var response = await _usuariosRepository.DeleteUsuarios(usuario);
+                var response = await _repository.DeleteUsuarios(usuario);
 
                 if (!response)
+                {
                     return BadRequest(new
                     {
                         statusCode = 400,
                         message = "No fue posible eliminar el usuario."
                     });
+                }
 
                 return Ok(new
                 {
@@ -331,12 +405,20 @@ namespace ElQuateDePatty.Controllers
                     message = ex.Message
                 });
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
             catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = "Ocurrió un error interno al eliminar el usuario."
                 });
             }
         }

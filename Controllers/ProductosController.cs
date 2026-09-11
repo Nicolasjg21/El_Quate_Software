@@ -1,205 +1,395 @@
 ﻿using ElQuateDePatty.Models;
+using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class ProductosController : ControllerBase
     {
-        private readonly IProductosRepository _productosRepository;
+        private readonly IProductosRepository _repository;
 
-        public ProductosController(IProductosRepository productosRepository)
+        public ProductosController(IProductosRepository repository)
         {
-            _productosRepository = productosRepository;
+            _repository = repository;
         }
 
         [HttpGet("GetProductos")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProductos()
         {
             try
             {
-                var response = await _productosRepository.GetProductos();
+                var productos = await _repository.GetProductos();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de productos." });
+                if (productos == null || !productos.Any())
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontraron productos."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Consulta de productos realizada correctamente.", data = response });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Productos obtenidos correctamente.",
+                    data = productos
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { statusCode = 404, message = ex.Message });
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener los productos."
+                });
             }
         }
 
-        [HttpGet("GetProductoById/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> GetProductoById(int id)
+        [HttpGet("GetProductosById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProductosById(int id)
         {
             try
             {
                 if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
 
-                var response = await _productosRepository.GetProductosById(id);
-
-                if (response == null)
-                    return NotFound(new { statusCode = 404, message = "El producto solicitado no existe." });
-
-                return Ok(new { statusCode = 200, message = "Producto encontrado correctamente.", data = response });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPost("PostProducto")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PostProducto([FromBody] Productos productos)
-        {
-            try
-            {
-                if (!ModelState.IsValid || productos == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del producto no son válidos." });
-
-                var response = await _productosRepository.PostProductos(productos);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el producto." });
-
-                return Ok(new { statusCode = 200, message = "Producto registrado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPut("PutProducto")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PutProducto([FromBody] Productos productos)
-        {
-            try
-            {
-                if (!ModelState.IsValid || productos == null || productos.idProducto <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del producto no son válidos." });
-
-                var existente = await _productosRepository.GetProductosById(productos.idProducto);
-
-                if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El producto que se desea actualizar no existe." });
-
-                var response = await _productosRepository.PutProductos(productos);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el producto." });
-
-                return Ok(new { statusCode = 200, message = "Producto actualizado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpDelete("DeleteProducto/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> DeleteProducto(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
-
-                var producto = await _productosRepository.GetProductosById(id);
+                var producto = await _repository.GetProductosById(id);
 
                 if (producto == null)
-                    return NotFound(new { statusCode = 404, message = "El producto que se desea eliminar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el producto."
+                    });
+                }
 
-                var response = await _productosRepository.DeleteProductos(producto);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el producto." });
-
-                return Ok(new { statusCode = 200, message = "Producto eliminado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Producto obtenido correctamente.",
+                    data = producto
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener el producto."
+                });
+            }
+        }
+
+        [HttpPost("PostProductos")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostProductos([FromBody] Productos producto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                var response = await _repository.PostProductos(producto);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar el producto."
+                    });
+                }
+
+                return StatusCode(201, new
+                {
+                    statusCode = 201,
+                    message = "Producto registrado correctamente.",
+                    data = producto
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al registrar el producto."
+                });
+            }
+        }
+
+        [HttpPut("PutProductos")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutProductos([FromBody] Productos producto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                if (producto.idProducto <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var existente = await _repository.GetProductosById(producto.idProducto);
+
+                if (existente == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el producto que desea actualizar."
+                    });
+                }
+
+                existente.nombreProducto = producto.nombreProducto;
+                existente.precioVenta = producto.precioVenta;
+                existente.cantidadMinima = producto.cantidadMinima;
+                existente.estado = producto.estado;
+                existente.idCategoria = producto.idCategoria;
+
+                var response = await _repository.PutProductos(existente);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el producto."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Producto actualizado correctamente.",
+                    data = existente
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
+            }
+        }
+
+        [HttpDelete("DeleteProductos/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteProductos(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var producto = await _repository.GetProductosById(id);
+
+                if (producto == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el producto."
+                    });
+                }
+
+                var response = await _repository.DeleteProductos(producto);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible eliminar el producto."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Producto eliminado correctamente."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al eliminar el producto."
+                });
             }
         }
     }

@@ -1,205 +1,394 @@
 ﻿using ElQuateDePatty.Models;
+using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class PedidosController : ControllerBase
     {
-        private readonly IPedidosRepository _pedidosRepository;
+        private readonly IPedidosRepository _repository;
 
-        public PedidosController(IPedidosRepository pedidosRepository)
+        public PedidosController(IPedidosRepository repository)
         {
-            _pedidosRepository = pedidosRepository;
+            _repository = repository;
         }
 
         [HttpGet("GetPedidos")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPedidos()
         {
             try
             {
-                var response = await _pedidosRepository.GetPedidos();
+                var pedidos = await _repository.GetPedidos();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de pedidos." });
+                if (pedidos == null || !pedidos.Any())
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontraron pedidos."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Consulta de pedidos realizada correctamente.", data = response });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Pedidos obtenidos correctamente.",
+                    data = pedidos
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { statusCode = 404, message = ex.Message });
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener los pedidos."
+                });
             }
         }
 
-        [HttpGet("GetPedidoById/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> GetPedidoById(int id)
+        [HttpGet("GetPedidosById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPedidosById(int id)
         {
             try
             {
                 if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
 
-                var response = await _pedidosRepository.GetPedidosById(id);
-
-                if (response == null)
-                    return NotFound(new { statusCode = 404, message = "El pedido solicitado no existe." });
-
-                return Ok(new { statusCode = 200, message = "Pedido encontrado correctamente.", data = response });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPost("PostPedido")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PostPedido([FromBody] Pedidos pedidos)
-        {
-            try
-            {
-                if (!ModelState.IsValid || pedidos == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del pedido no son válidos." });
-
-                var response = await _pedidosRepository.PostPedidos(pedidos);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el pedido." });
-
-                return Ok(new { statusCode = 200, message = "Pedido registrado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPut("PutPedido")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PutPedido([FromBody] Pedidos pedidos)
-        {
-            try
-            {
-                if (!ModelState.IsValid || pedidos == null || pedidos.idPedido <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del pedido no son válidos." });
-
-                var existente = await _pedidosRepository.GetPedidosById(pedidos.idPedido);
-
-                if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El pedido que se desea actualizar no existe." });
-
-                var response = await _pedidosRepository.PutPedidos(pedidos);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el pedido." });
-
-                return Ok(new { statusCode = 200, message = "Pedido actualizado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpDelete("DeletePedido/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> DeletePedido(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
-
-                var pedido = await _pedidosRepository.GetPedidosById(id);
+                var pedido = await _repository.GetPedidosById(id);
 
                 if (pedido == null)
-                    return NotFound(new { statusCode = 404, message = "El pedido que se desea eliminar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el pedido."
+                    });
+                }
 
-                var response = await _pedidosRepository.DeletePedidos(pedido);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el pedido." });
-
-                return Ok(new { statusCode = 200, message = "Pedido eliminado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Pedido obtenido correctamente.",
+                    data = pedido
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener el pedido."
+                });
+            }
+        }
+
+        [HttpPost("PostPedidos")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostPedidos([FromBody] Pedidos pedido)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                var response = await _repository.PostPedidos(pedido);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar el pedido."
+                    });
+                }
+
+                return StatusCode(201, new
+                {
+                    statusCode = 201,
+                    message = "Pedido registrado correctamente.",
+                    data = pedido
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al registrar el pedido."
+                });
+            }
+        }
+
+        [HttpPut("PutPedidos")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutPedidos([FromBody] Pedidos pedido)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                if (pedido.idPedido <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var existente = await _repository.GetPedidosById(pedido.idPedido);
+
+                if (existente == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el pedido que desea actualizar."
+                    });
+                }
+
+                existente.idCuenta = pedido.idCuenta;
+                existente.idUsuario = pedido.idUsuario;
+                existente.fecha = pedido.fecha;
+                existente.estadoPedido = pedido.estadoPedido;
+
+                var response = await _repository.PutPedidos(existente);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el pedido."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Pedido actualizado correctamente.",
+                    data = existente
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
+            }
+        }
+
+        [HttpDelete("DeletePedidos/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeletePedidos(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var pedido = await _repository.GetPedidosById(id);
+
+                if (pedido == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el pedido."
+                    });
+                }
+
+                var response = await _repository.DeletePedidos(pedido);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible eliminar el pedido."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Pedido eliminado correctamente."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al eliminar el pedido."
+                });
             }
         }
     }

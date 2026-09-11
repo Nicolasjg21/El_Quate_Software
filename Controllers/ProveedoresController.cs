@@ -1,173 +1,190 @@
 ﻿using ElQuateDePatty.Models;
+using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class ProveedoresController : ControllerBase
     {
-        private readonly IProveedoresRepository _proveedoresRepository;
+        private readonly IProveedoresRepository _repository;
 
-        public ProveedoresController(IProveedoresRepository proveedoresRepository)
+        public ProveedoresController(IProveedoresRepository repository)
         {
-            _proveedoresRepository = proveedoresRepository;
+            _repository = repository;
         }
 
         [HttpGet("GetProveedores")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProveedores()
         {
             try
             {
-                var response = await _proveedoresRepository.GetProveedores();
+                var proveedores = await _repository.GetProveedores();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de proveedores." });
-
-                return Ok(new { statusCode = 200, message = "Consulta de proveedores realizada correctamente.", data = response });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpGet("GetProveedorById/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> GetProveedorById(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
-
-                var response = await _proveedoresRepository.GetProveedoresById(id);
-
-                if (response == null)
-                    return NotFound(new { statusCode = 404, message = "El proveedor solicitado no existe." });
-
-                return Ok(new { statusCode = 200, message = "Proveedor encontrado correctamente.", data = response });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPost("PostProveedor")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PostProveedor([FromBody] Proveedores proveedores)
-        {
-            try
-            {
-                if (!ModelState.IsValid || proveedores == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del proveedor no son válidos." });
-
-                var response = await _proveedoresRepository.PostProveedores(proveedores);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el proveedor." });
-
-                return Ok(new { statusCode = 200, message = "Proveedor registrado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPut("PutProveedor")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PutProveedor([FromBody] Proveedores proveedores)
-        {
-            try
-            {
-                if (!ModelState.IsValid || proveedores == null || proveedores.idProveedor <= 0)
-                    return BadRequest(new
-                    {
-                        statusCode = 400,
-                        message = "Los datos del proveedor no son válidos."
-                    });
-
-                var existente = await _proveedoresRepository.GetProveedoresById(proveedores.idProveedor);
-
-                if (existente == null)
+                if (proveedores == null || !proveedores.Any())
+                {
                     return NotFound(new
                     {
                         statusCode = 404,
-                        message = "El proveedor que se desea actualizar no existe."
+                        message = "No se encontraron proveedores."
                     });
-
-                existente.nombreProveedor = proveedores.nombreProveedor;
-                existente.telefono = proveedores.telefono;
-                existente.direccion = proveedores.direccion;
-
-                var response = await _proveedoresRepository.PutProveedores(existente);
-
-                if (!response)
-                    return BadRequest(new
-                    {
-                        statusCode = 400,
-                        message = "No fue posible actualizar el proveedor."
-                    });
+                }
 
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Proveedor actualizado correctamente."
+                    message = "Proveedores obtenidos correctamente.",
+                    data = proveedores
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener los proveedores."
+                });
+            }
+        }
+
+        [HttpGet("GetProveedoresById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProveedoresById(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var proveedor = await _repository.GetProveedoresById(id);
+
+                if (proveedor == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el proveedor."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Proveedor obtenido correctamente.",
+                    data = proveedor
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener el proveedor."
+                });
+            }
+        }
+
+        [HttpPost("PostProveedores")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostProveedores([FromBody] Proveedores proveedor)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                var response = await _repository.PostProveedores(proveedor);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar el proveedor."
+                    });
+                }
+
+                return StatusCode(201, new
+                {
+                    statusCode = 201,
+                    message = "Proveedor registrado correctamente.",
+                    data = proveedor
                 });
             }
             catch (ArgumentException ex)
@@ -191,47 +208,186 @@ namespace ElQuateDePatty.Controllers
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "Ocurrió un error interno en el servidor."
+                    message = "Ocurrió un error interno al registrar el proveedor."
                 });
             }
         }
 
-        [HttpDelete("DeleteProveedor/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> DeleteProveedor(int id)
+        [HttpPut("PutProveedores")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutProveedores([FromBody] Proveedores proveedor)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                if (proveedor.idProveedor <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var existente = await _repository.GetProveedoresById(proveedor.idProveedor);
+
+                if (existente == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el proveedor que desea actualizar."
+                    });
+                }
+
+                existente.nombreProveedor = proveedor.nombreProveedor;
+                existente.telefono = proveedor.telefono;
+                existente.direccion = proveedor.direccion;
+
+                var response = await _repository.PutProveedores(existente);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el proveedor."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Proveedor actualizado correctamente.",
+                    data = existente
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
+            }
+        }
+
+        [HttpDelete("DeleteProveedores/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteProveedores(int id)
         {
             try
             {
                 if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
 
-                var proveedor = await _proveedoresRepository.GetProveedoresById(id);
+                var proveedor = await _repository.GetProveedoresById(id);
 
                 if (proveedor == null)
-                    return NotFound(new { statusCode = 404, message = "El proveedor que se desea eliminar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el proveedor."
+                    });
+                }
 
-                var response = await _proveedoresRepository.DeleteProveedores(proveedor);
+                var response = await _repository.DeleteProveedores(proveedor);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el proveedor." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible eliminar el proveedor."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Proveedor eliminado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Proveedor eliminado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al eliminar el proveedor."
+                });
             }
         }
     }

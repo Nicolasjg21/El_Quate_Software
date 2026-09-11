@@ -1,205 +1,391 @@
 ﻿using ElQuateDePatty.Models;
+using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
     public class RolesController : ControllerBase
     {
-        private readonly IRolesRepository _rolesRepository;
+        private readonly IRolesRepository _repository;
 
-        public RolesController(IRolesRepository rolesRepository)
+        public RolesController(IRolesRepository repository)
         {
-            _rolesRepository = rolesRepository;
+            _repository = repository;
         }
 
         [HttpGet("GetRoles")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetRoles()
         {
             try
             {
-                var response = await _rolesRepository.GetRoles();
+                var roles = await _repository.GetRoles();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de roles." });
+                if (roles == null || !roles.Any())
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontraron roles."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Consulta de roles realizada correctamente.", data = response });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Roles obtenidos correctamente.",
+                    data = roles
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { statusCode = 404, message = ex.Message });
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener los roles."
+                });
             }
         }
 
-        [HttpGet("GetRolById/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> GetRolById(int id)
+        [HttpGet("GetRolesById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetRolesById(int id)
         {
             try
             {
                 if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
 
-                var response = await _rolesRepository.GetRolesById(id);
-
-                if (response == null)
-                    return NotFound(new { statusCode = 404, message = "El rol solicitado no existe." });
-
-                return Ok(new { statusCode = 200, message = "Rol encontrado correctamente.", data = response });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPost("PostRol")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PostRol([FromBody] Roles roles)
-        {
-            try
-            {
-                if (!ModelState.IsValid || roles == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del rol no son válidos." });
-
-                var response = await _rolesRepository.PostRoles(roles);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el rol." });
-
-                return Ok(new { statusCode = 200, message = "Rol registrado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpPut("PutRol")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> PutRol([FromBody] Roles roles)
-        {
-            try
-            {
-                if (!ModelState.IsValid || roles == null || roles.idRol <= 0)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del rol no son válidos." });
-
-                var existente = await _rolesRepository.GetRolesById(roles.idRol);
-
-                if (existente == null)
-                    return NotFound(new { statusCode = 404, message = "El rol que se desea actualizar no existe." });
-
-                var response = await _rolesRepository.PutRoles(roles);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible actualizar el rol." });
-
-                return Ok(new { statusCode = 200, message = "Rol actualizado correctamente." });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
-            }
-        }
-
-        [HttpDelete("DeleteRol/{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> DeleteRol(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                    return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
-
-                var rol = await _rolesRepository.GetRolesById(id);
+                var rol = await _repository.GetRolesById(id);
 
                 if (rol == null)
-                    return NotFound(new { statusCode = 404, message = "El rol que se desea eliminar no existe." });
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el rol."
+                    });
+                }
 
-                var response = await _rolesRepository.DeleteRoles(rol);
-
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el rol." });
-
-                return Ok(new { statusCode = 200, message = "Rol eliminado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Rol obtenido correctamente.",
+                    data = rol
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al obtener el rol."
+                });
+            }
+        }
+
+        [HttpPost("PostRoles")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostRoles([FromBody] Roles rol)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                var response = await _repository.PostRoles(rol);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar el rol."
+                    });
+                }
+
+                return StatusCode(201, new
+                {
+                    statusCode = 201,
+                    message = "Rol registrado correctamente.",
+                    data = rol
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al registrar el rol."
+                });
+            }
+        }
+
+        [HttpPut("PutRoles")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutRoles([FromBody] Roles rol)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                if (rol.idRol <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var existente = await _repository.GetRolesById(rol.idRol);
+
+                if (existente == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el rol que desea actualizar."
+                    });
+                }
+
+                existente.nombreRol = rol.nombreRol;
+
+                var response = await _repository.PutRoles(existente);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar el rol."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Rol actualizado correctamente.",
+                    data = existente
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
+            }
+        }
+
+        [HttpDelete("DeleteRoles/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteRoles(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var rol = await _repository.GetRolesById(id);
+
+                if (rol == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el rol."
+                    });
+                }
+
+                var response = await _repository.DeleteRoles(rol);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible eliminar el rol."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Rol eliminado correctamente."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al eliminar el rol."
+                });
             }
         }
     }
