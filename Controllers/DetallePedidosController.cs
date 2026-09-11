@@ -103,26 +103,56 @@ namespace ElQuateDePatty.Controllers
             try
             {
                 if (!ModelState.IsValid || detallePedidos == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos del detalle de pedido no son válidos." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos del detalle de pedido no son válidos."
+                    });
+                }
 
-                var response = await _detallePedidosRepository.PostDetallePedidos(detallePedidos);
+                var response = await _detallePedidosRepository
+                    .PostDetallePedidos(detallePedidos);
 
                 if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el detalle de pedido." });
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar el detalle de pedido."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Detalle de pedido registrado correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Detalle de pedido registrado correctamente."
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = ex.Message,
+                    detalle = ex.InnerException?.Message
+                });
             }
         }
 
