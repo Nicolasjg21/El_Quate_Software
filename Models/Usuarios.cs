@@ -8,26 +8,26 @@ namespace ElQuateDePatty.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int idUsuario { get; set; }
+        public int idUsuario { get; set; } 
 
         [Required(ErrorMessage = "Campo requerido")]
-        public string nombres { get; set; }
+        public string nombres { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Campo requerido")]
-        public string apellidos { get; set; }
+        public string apellidos { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Campo requerido")]
-        public string documento { get; set; }
+        public string documento { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Campo requerido")]
         [ForeignKey(nameof(idTipoDocumento))]
         public int idTipoDocumento { get; set; }
 
         [Required(ErrorMessage = "Campo requerido")]
-        public string telefono { get; set; }
+        public string telefono { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Campo requerido")]
-        public string passwordHash { get; set; }
+        public string? passwordHash { get; set; }
 
         [Required(ErrorMessage = "Campo requerido")]
         public bool estado { get; set; }
@@ -36,6 +36,6 @@ namespace ElQuateDePatty.Models
         public int idRol { get; set; }
         [Required(ErrorMessage = "Campo requerido")]
         [EmailAddress(ErrorMessage = "Correo electrónico no válido")]
-        public string email { get; set; }
+        public string email { get; set; } = string.Empty;
     }
 }

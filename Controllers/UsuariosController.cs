@@ -181,8 +181,16 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                usuario.passwordHash =
-                    _passwordHasher.HashPassword(usuario, usuario.passwordHash);
+                if (string.IsNullOrWhiteSpace(usuario.passwordHash))
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "La contraseña es obligatoria."
+                    });
+                }
+
+                usuario.passwordHash = _passwordHasher.HashPassword(usuario, usuario.passwordHash);
 
                 var response = await _repository.PostUsuarios(usuario);
 
