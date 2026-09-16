@@ -26,24 +26,33 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
+        public async Task<List<Mesas>> GetMesasByEstado(string estado)
+        {
+            var data = await context.Mesas
+                .Where(x => x.estado == estado)
+                .ToListAsync();
+
+            return data;
+        }
+
         public async Task<bool> PostMesas(Mesas mesas)
         {
             await context.Mesas.AddAsync(mesas);
-            await context.BoolAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> PutMesas(Mesas mesas)
         {
             context.Mesas.Update(mesas);
-            await context.BoolAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> DeleteMesas(Mesas mesas)
         {
             context.Mesas.Remove(mesas);
-            await context.BoolAsync();
+            await context.SaveChangesAsync();
             return true;
         }
     }

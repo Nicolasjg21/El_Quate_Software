@@ -9,16 +9,22 @@ namespace ElQuateDePatty.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idDetalle { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idPedido))]
         public int idPedido { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idProducto))]
         public int idProducto { get; set; }
+
         [Required]
         public int cantidad { get; set; }
+
         [Required]
         [Precision(10, 2)]
         public decimal precioUnitario { get; set; }
+
+        public Pedidos pedido { get; set; } = null!;
+
+        public Productos producto { get; set; } = null!;
     }
 }

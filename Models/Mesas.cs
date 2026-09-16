@@ -8,10 +8,15 @@ namespace ElQuateDePatty.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idMesa { get; set; }
+
         [Required]
         public int numeroMesa { get; set; }
+
         [Required]
-        [StringLength(20, ErrorMessage = "El estado de la mesa no puede exceder los 20 caracteres.")]
-        public string estado { get; set; }
+        [StringLength(20)]
+        public string estado { get; set; } = string.Empty;
+
+        public ICollection<Cuentas> cuentas { get; set; }
+            = new List<Cuentas>();
     }
 }

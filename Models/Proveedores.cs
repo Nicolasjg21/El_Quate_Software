@@ -9,14 +9,18 @@ namespace ElQuateDePatty.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idProveedor { get; set; }
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string nombreProveedor { get; set; }
+        [Required]
+        public string nombreProveedor { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
-        [StringLength(20, ErrorMessage = "El nombre de la acción no puede exceder los 50 caracteres")]
-        public string telefono { get; set; }
-        [Required(ErrorMessage = "Campo requerido")]
-        [StringLength(150, ErrorMessage = "El nombre de la acción no puede exceder los 150 caracteres")]
-        public string direccion { get; set; }
+        [Required]
+        [StringLength(20)]
+        public string telefono { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(150)]
+        public string direccion { get; set; } = string.Empty;
+
+        public ICollection<Compras> compras { get; set; }
+            = new List<Compras>();
     }
 }

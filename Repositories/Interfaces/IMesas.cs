@@ -8,6 +8,8 @@ namespace ElQuateDePatty.Repositories.Interfaces
 
         Task<Mesas> GetMesasById(int id);
 
+        Task<List<Mesas>> GetMesasByEstado(string estado);
+
         Task<bool> PostMesas(Mesas mesas);
 
         Task<bool> PutMesas(Mesas mesas);

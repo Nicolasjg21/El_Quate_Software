@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.Models;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ElQuateDePatty.Context
 {
@@ -29,137 +28,573 @@ namespace ElQuateDePatty.Context
         public DbSet<TipoDocumento> TipoDocumento { get; set; }
         public DbSet<Usuarios> Usuarios { get; set; }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-
         {
             base.OnModelCreating(modelBuilder);
+
             EntityConfiguration(modelBuilder);
         }
 
         private void EntityConfiguration(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Auditorias>().ToTable("Auditorias");
-            modelBuilder.Entity<Auditorias>().HasKey(u => u.idAuditoria);
-            modelBuilder.Entity<Auditorias>().Property(u => u.idAuditoria).HasColumnName("idAuditoria");
-            modelBuilder.Entity<Auditorias>().Property(u => u.tabla).HasColumnName("tabla");
-            modelBuilder.Entity<Auditorias>().Property(u => u.accion).HasColumnName("accion");
-            modelBuilder.Entity<Auditorias>().Property(u => u.fecha).HasColumnName("fecha");
-            modelBuilder.Entity<Auditorias>().Property(u => u.datosAnteriores).HasColumnName("datosAnteriores");
-            modelBuilder.Entity<Auditorias>().Property(u => u.datosNuevos).HasColumnName("datosNuevos");
+            // =========================================================
+            // Auditorias
+            // =========================================================
 
-            modelBuilder.Entity<Categorias>().ToTable("Categorias");
-            modelBuilder.Entity<Categorias>().HasKey(u => u.idCategoria);
-            modelBuilder.Entity<Categorias>().Property(u => u.idCategoria).HasColumnName("idCategoria");
-            modelBuilder.Entity<Categorias>().Property(u => u.nombreCategoria).HasColumnName("nombreCategoria");
+            modelBuilder.Entity<Auditorias>(entity =>
+            {
+                entity.ToTable("Auditorias");
 
-            modelBuilder.Entity<Compras>().ToTable("Compras");
-            modelBuilder.Entity<Compras>().HasKey(u => u.idCompra);
-            modelBuilder.Entity<Compras>().Property(u => u.idCompra).HasColumnName("idCompra");
-            modelBuilder.Entity<Compras>().Property(u => u.idProveedor).HasColumnName("idProveedor");
-            modelBuilder.Entity<Compras>().Property(u => u.fecha).HasColumnName("fecha");
-            modelBuilder.Entity<Compras>().Property(u => u.total).HasColumnName("total");
+                entity.HasKey(x => x.idAuditoria);
 
-            modelBuilder.Entity<Comprobantes>().ToTable("Comprobantes");
-            modelBuilder.Entity<Comprobantes>().HasKey(u => u.idComprobante);
-            modelBuilder.Entity<Comprobantes>().Property(u => u.idComprobante).HasColumnName("idComprobante");
-            modelBuilder.Entity<Comprobantes>().Property(u => u.idCuenta).HasColumnName("idCuenta");
-            modelBuilder.Entity<Comprobantes>().Property(u => u.fecha).HasColumnName("fecha");
-            modelBuilder.Entity<Comprobantes>().Property(u => u.total).HasColumnName("total");
-            modelBuilder.Entity<Comprobantes>().Property(u => u.idMetodo).HasColumnName("idMetodo");
+                entity.Property(x => x.idAuditoria)
+                    .HasColumnName("idAuditoria");
 
-            modelBuilder.Entity<Cuentas>().ToTable("Cuentas");
-            modelBuilder.Entity<Cuentas>().HasKey(u => u.idCuenta);
-            modelBuilder.Entity<Cuentas>().Property(u => u.idCuenta).HasColumnName("idCuenta");
-            modelBuilder.Entity<Cuentas>().Property(u => u.idMesa).HasColumnName("idMesa");
-            modelBuilder.Entity<Cuentas>().Property(u => u.estado).HasColumnName("estado");
-            modelBuilder.Entity<Cuentas>().Property(u => u.fechaApertura).HasColumnName("fechaApertura");
-            modelBuilder.Entity<Cuentas>().Property(u => u.fechaCierre).HasColumnName("fechaCierre");
-            modelBuilder.Entity<Cuentas>().Property(u => u.total).HasColumnName("total");
+                entity.Property(x => x.tabla)
+                    .HasColumnName("tabla");
 
-            modelBuilder.Entity<DetalleCompras>().ToTable("DetalleCompras");
-            modelBuilder.Entity<DetalleCompras>().HasKey(u => u.idDetalleCompra);
-            modelBuilder.Entity<DetalleCompras>().Property(u => u.idDetalleCompra).HasColumnName("idDetalleCompra");
-            modelBuilder.Entity<DetalleCompras>().Property(u => u.idCompra).HasColumnName("idCompra");
-            modelBuilder.Entity<DetalleCompras>().Property(u => u.idProducto).HasColumnName("idProducto");
-            modelBuilder.Entity<DetalleCompras>().Property(u => u.cantidad).HasColumnName("cantidad");
-            modelBuilder.Entity<DetalleCompras>().Property(u => u.precioCompra).HasColumnName("precioCompra");
+                entity.Property(x => x.accion)
+                    .HasColumnName("accion");
 
-            modelBuilder.Entity<DetallePedidos>().ToTable("DetallePedidos");
-            modelBuilder.Entity<DetallePedidos>().HasKey(u => u.idDetalle);
-            modelBuilder.Entity<DetallePedidos>().Property(u => u.idDetalle).HasColumnName("idDetalle");
-            modelBuilder.Entity<DetallePedidos>().Property(u => u.idPedido).HasColumnName("idPedido");
-            modelBuilder.Entity<DetallePedidos>().Property(u => u.idProducto).HasColumnName("idProducto");
-            modelBuilder.Entity<DetallePedidos>().Property(u => u.cantidad).HasColumnName("cantidad");
-            modelBuilder.Entity<DetallePedidos>().Property(u => u.precioUnitario).HasColumnName("precioUnitario");
+                entity.Property(x => x.idUsuario)
+                    .HasColumnName("idUsuario");
 
-            modelBuilder.Entity<Kardex>().ToTable("Kardex");
-            modelBuilder.Entity<Kardex>().HasKey(u => u.idMovimiento);
-            modelBuilder.Entity<Kardex>().Property(u => u.idMovimiento).HasColumnName("idMovimiento");
-            modelBuilder.Entity<Kardex>().Property(u => u.idProducto).HasColumnName("idProducto");
-            modelBuilder.Entity<Kardex>().Property(u => u.tipoMovimiento).HasColumnName("tipoMovimiento");
-            modelBuilder.Entity<Kardex>().Property(u => u.cantidad).HasColumnName("cantidad");
-            modelBuilder.Entity<Kardex>().Property(u => u.stockAnterior).HasColumnName("stockAnterior");
-            modelBuilder.Entity<Kardex>().Property(u => u.stockNuevo).HasColumnName("stockNuevo");
-            modelBuilder.Entity<Kardex>().Property(u => u.motivo).HasColumnName("motivo");
-            modelBuilder.Entity<Kardex>().Property(u => u.fecha).HasColumnName("fecha");
-            modelBuilder.Entity<Kardex>().Property(u => u.idUsuario).HasColumnName("idUsuario");
+                entity.Property(x => x.fecha)
+                    .HasColumnName("fecha");
 
-            modelBuilder.Entity<MetodosPago>().ToTable("MetodosPago");
-            modelBuilder.Entity<MetodosPago>().HasKey(u => u.idMetodo);
-            modelBuilder.Entity<MetodosPago>().Property(u => u.idMetodo).HasColumnName("idMetodo");
-            modelBuilder.Entity<MetodosPago>().Property(u => u.nombreMetodo).HasColumnName("nombreMetodo");
+                entity.Property(x => x.datosAnteriores)
+                    .HasColumnName("datosAnteriores");
 
-            modelBuilder.Entity<Pedidos>().ToTable("Pedidos");
-            modelBuilder.Entity<Pedidos>().HasKey(u => u.idPedido);
-            modelBuilder.Entity<Pedidos>().Property(u => u.idPedido).HasColumnName("idPedido");
-            modelBuilder.Entity<Pedidos>().Property(u => u.fecha).HasColumnName("fecha");
-            modelBuilder.Entity<Pedidos>().Property(u => u.estadoPedido).HasColumnName("estadoPedido");
+                entity.Property(x => x.datosNuevos)
+                    .HasColumnName("datosNuevos");
 
-            modelBuilder.Entity<Permisos>().ToTable("Permisos");
-            modelBuilder.Entity<Permisos>().HasKey(u => u.idPermiso);
-            modelBuilder.Entity<Permisos>().Property(u => u.idPermiso).HasColumnName("idPermiso");
-            modelBuilder.Entity<Permisos>().Property(u => u.nombrePermiso).HasColumnName("nombrePermiso");
-
-            modelBuilder.Entity<Productos>().ToTable("Productos");
-            modelBuilder.Entity<Productos>().HasKey(u => u.idProducto);
-            modelBuilder.Entity<Productos>().Property(u => u.idProducto).HasColumnName("idProducto");
-            modelBuilder.Entity<Productos>().Property(u => u.precioVenta).HasColumnName("precioVenta");
-            modelBuilder.Entity<Productos>().Property(u => u.cantidadMinima).HasColumnName("cantidadMinima");
-            modelBuilder.Entity<Productos>().Property(u => u.estado).HasColumnName("estado");
+                entity.HasOne(x => x.usuario)
+                    .WithMany(x => x.auditorias)
+                    .HasForeignKey(x => x.idUsuario)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
 
 
-            modelBuilder.Entity<Proveedores>().ToTable("Proveedores");
-            modelBuilder.Entity<Proveedores>().HasKey(u => u.idProveedor);
-            modelBuilder.Entity<Proveedores>().Property(u => u.idProveedor).HasColumnName("idProveedor");
-            modelBuilder.Entity<Proveedores>().Property(u => u.nombreProveedor).HasColumnName("nombreProveedor");
-            modelBuilder.Entity<Proveedores>().Property(u => u.telefono).HasColumnName("telefono");
-            modelBuilder.Entity<Proveedores>().Property(u => u.direccion).HasColumnName("direccion");
+            // =========================================================
+            // Categorias
+            // =========================================================
 
-            modelBuilder.Entity<Roles>().ToTable("Roles");
-            modelBuilder.Entity<Roles>().HasKey(u => u.idRol);
-            modelBuilder.Entity<Roles>().Property(u => u.idRol).HasColumnName("idRol");
-            modelBuilder.Entity<Roles>().Property(u => u.nombreRol).HasColumnName("nombreRol");
+            modelBuilder.Entity<Categorias>(entity =>
+            {
+                entity.ToTable("Categorias");
 
-            modelBuilder.Entity<RolesPermisos>().ToTable("RolesPermisos");
-            modelBuilder.Entity<RolesPermisos>().HasKey(u => new { u.idRol, u.idPermiso });
-            modelBuilder.Entity<RolesPermisos>().Property(u => u.idRol).HasColumnName("idRol");
-            modelBuilder.Entity<RolesPermisos>().Property(u => u.idPermiso).HasColumnName("idPermiso");
+                entity.HasKey(x => x.idCategoria);
 
-            modelBuilder.Entity<TipoDocumento>().ToTable("TipoDocumento");
-            modelBuilder.Entity<TipoDocumento>().HasKey(u => u.idTipoDocumento);
-            modelBuilder.Entity<TipoDocumento>().Property(u => u.idTipoDocumento).HasColumnName("idTipoDocumento");
-            modelBuilder.Entity<TipoDocumento>().Property(u => u.nombreTipo).HasColumnName("nombreTipo");
+                entity.Property(x => x.idCategoria)
+                    .HasColumnName("idCategoria");
 
-            modelBuilder.Entity<Usuarios>().ToTable("Usuarios");
-            modelBuilder.Entity<Usuarios>().HasKey(u => u.idUsuario);
-            modelBuilder.Entity<Usuarios>().Property(u => u.idUsuario).HasColumnName("idUsuario");
-            modelBuilder.Entity<Usuarios>().Property(u => u.nombres).HasColumnName("nombres");
-            modelBuilder.Entity<Usuarios>().Property(u => u.apellidos).HasColumnName("apellidos");
-            modelBuilder.Entity<Usuarios>().Property(u => u.documento).HasColumnName("documento");
-            modelBuilder.Entity<Usuarios>().Property(u => u.telefono).HasColumnName("telefono");
-            modelBuilder.Entity<Usuarios>().Property(u => u.passwordHash).HasColumnName("passwordHash");
-            modelBuilder.Entity<Usuarios>().Property(u => u.estado).HasColumnName("estado");
+                entity.Property(x => x.nombreCategoria)
+                    .HasColumnName("nombreCategoria");
+            });
+
+
+            // =========================================================
+            // Proveedores
+            // =========================================================
+
+            modelBuilder.Entity<Proveedores>(entity =>
+            {
+                entity.ToTable("Proveedores");
+
+                entity.HasKey(x => x.idProveedor);
+
+                entity.Property(x => x.idProveedor)
+                    .HasColumnName("idProveedor");
+
+                entity.Property(x => x.nombreProveedor)
+                    .HasColumnName("nombreProveedor");
+
+                entity.Property(x => x.telefono)
+                    .HasColumnName("telefono");
+
+                entity.Property(x => x.direccion)
+                    .HasColumnName("direccion");
+            });
+
+
+            // =========================================================
+            // Compras
+            // =========================================================
+
+            modelBuilder.Entity<Compras>(entity =>
+            {
+                entity.ToTable("Compras");
+
+                entity.HasKey(x => x.idCompra);
+
+                entity.Property(x => x.idCompra)
+                    .HasColumnName("idCompra");
+
+                entity.Property(x => x.idProveedor)
+                    .HasColumnName("idProveedor");
+
+                entity.Property(x => x.fecha)
+                    .HasColumnName("fecha");
+
+                entity.Property(x => x.total)
+                    .HasColumnName("total")
+                    .HasPrecision(10, 2);
+
+                entity.HasOne(x => x.proveedor)
+                    .WithMany(x => x.compras)
+                    .HasForeignKey(x => x.idProveedor)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // Mesas
+            // =========================================================
+
+            modelBuilder.Entity<Mesas>(entity =>
+            {
+                entity.ToTable("Mesas");
+
+                entity.HasKey(x => x.idMesa);
+
+                entity.Property(x => x.idMesa)
+                    .HasColumnName("idMesa");
+
+                entity.Property(x => x.numeroMesa)
+                    .HasColumnName("numeroMesa");
+
+                entity.Property(x => x.estado)
+                    .HasColumnName("estado");
+            });
+
+
+            // =========================================================
+            // Cuentas
+            // =========================================================
+
+            modelBuilder.Entity<Cuentas>(entity =>
+            {
+                entity.ToTable("Cuentas");
+
+                entity.HasKey(x => x.idCuenta);
+
+                entity.Property(x => x.idCuenta)
+                    .HasColumnName("idCuenta");
+
+                entity.Property(x => x.idMesa)
+                    .HasColumnName("idMesa");
+
+                entity.Property(x => x.estado)
+                    .HasColumnName("estado");
+
+                entity.Property(x => x.fechaApertura)
+                    .HasColumnName("fechaApertura");
+
+                entity.Property(x => x.fechaCierre)
+                    .HasColumnName("fechaCierre");
+
+                entity.Property(x => x.total)
+                    .HasColumnName("total")
+                    .HasPrecision(10, 2);
+
+                entity.HasOne(x => x.mesa)
+                    .WithMany(x => x.cuentas)
+                    .HasForeignKey(x => x.idMesa)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // MetodosPago
+            // =========================================================
+
+            modelBuilder.Entity<MetodosPago>(entity =>
+            {
+                entity.ToTable("MetodosPago");
+
+                entity.HasKey(x => x.idMetodo);
+
+                entity.Property(x => x.idMetodo)
+                    .HasColumnName("idMetodo");
+
+                entity.Property(x => x.nombreMetodo)
+                    .HasColumnName("nombreMetodo");
+            });
+
+
+            // =========================================================
+            // Comprobantes
+            // =========================================================
+
+            modelBuilder.Entity<Comprobantes>(entity =>
+            {
+                entity.ToTable("Comprobantes");
+
+                entity.HasKey(x => x.idComprobante);
+
+                entity.Property(x => x.idComprobante)
+                    .HasColumnName("idComprobante");
+
+                entity.Property(x => x.idCuenta)
+                    .HasColumnName("idCuenta");
+
+                entity.Property(x => x.fecha)
+                    .HasColumnName("fecha");
+
+                entity.Property(x => x.total)
+                    .HasColumnName("total")
+                    .HasPrecision(10, 2);
+
+                entity.Property(x => x.idMetodo)
+                    .HasColumnName("idMetodo");
+
+                entity.HasOne(x => x.cuenta)
+                    .WithMany(x => x.comprobantes)
+                    .HasForeignKey(x => x.idCuenta)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.metodoPago)
+                    .WithMany(x => x.comprobantes)
+                    .HasForeignKey(x => x.idMetodo)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // DetalleCompras
+            // =========================================================
+
+            modelBuilder.Entity<DetalleCompras>(entity =>
+            {
+                entity.ToTable("DetalleCompras");
+
+                entity.HasKey(x => x.idDetalleCompra);
+
+                entity.Property(x => x.idDetalleCompra)
+                    .HasColumnName("idDetalleCompra");
+
+                entity.Property(x => x.idCompra)
+                    .HasColumnName("idCompra");
+
+                entity.Property(x => x.idProducto)
+                    .HasColumnName("idProducto");
+
+                entity.Property(x => x.cantidad)
+                    .HasColumnName("cantidad");
+
+                entity.Property(x => x.precioCompra)
+                    .HasColumnName("precioCompra")
+                    .HasPrecision(10, 2);
+
+                entity.HasOne(x => x.compra)
+                    .WithMany(x => x.detalles)
+                    .HasForeignKey(x => x.idCompra)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.producto)
+                    .WithMany(x => x.detallesCompras)
+                    .HasForeignKey(x => x.idProducto)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // Pedidos
+            // =========================================================
+
+            modelBuilder.Entity<Pedidos>(entity =>
+            {
+                entity.ToTable("Pedidos");
+
+                entity.HasKey(x => x.idPedido);
+
+                entity.Property(x => x.idPedido)
+                    .HasColumnName("idPedido");
+
+                entity.Property(x => x.idCuenta)
+                    .HasColumnName("idCuenta");
+
+                entity.Property(x => x.idUsuario)
+                    .HasColumnName("idUsuario");
+
+                entity.Property(x => x.fecha)
+                    .HasColumnName("fecha");
+
+                entity.Property(x => x.estadoPedido)
+                    .HasColumnName("estadoPedido");
+
+                entity.HasOne(x => x.cuenta)
+                    .WithMany(x => x.pedidos)
+                    .HasForeignKey(x => x.idCuenta)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.usuario)
+                    .WithMany(x => x.pedidos)
+                    .HasForeignKey(x => x.idUsuario)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // DetallePedidos
+            // =========================================================
+
+            modelBuilder.Entity<DetallePedidos>(entity =>
+            {
+                entity.ToTable("DetallePedidos");
+
+                entity.HasKey(x => x.idDetalle);
+
+                entity.Property(x => x.idDetalle)
+                    .HasColumnName("idDetalle");
+
+                entity.Property(x => x.idPedido)
+                    .HasColumnName("idPedido");
+
+                entity.Property(x => x.idProducto)
+                    .HasColumnName("idProducto");
+
+                entity.Property(x => x.cantidad)
+                    .HasColumnName("cantidad");
+
+                entity.Property(x => x.precioUnitario)
+                    .HasColumnName("precioUnitario")
+                    .HasPrecision(10, 2);
+
+                entity.HasOne(x => x.pedido)
+                    .WithMany(x => x.detalles)
+                    .HasForeignKey(x => x.idPedido)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.producto)
+                    .WithMany(x => x.detallesPedidos)
+                    .HasForeignKey(x => x.idProducto)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // Productos
+            // =========================================================
+
+            modelBuilder.Entity<Productos>(entity =>
+            {
+                entity.ToTable("Productos");
+
+                entity.HasKey(x => x.idProducto);
+
+                entity.Property(x => x.idProducto)
+                    .HasColumnName("idProducto");
+
+                entity.Property(x => x.nombreProducto)
+                    .HasColumnName("nombreProducto");
+
+                entity.Property(x => x.precioVenta)
+                    .HasColumnName("precioVenta")
+                    .HasPrecision(10, 2);
+
+                entity.Property(x => x.cantidadMinima)
+                    .HasColumnName("cantidadMinima");
+
+                entity.Property(x => x.estado)
+                    .HasColumnName("estado");
+
+                entity.Property(x => x.idCategoria)
+                    .HasColumnName("idCategoria");
+
+                entity.HasOne(x => x.categoria)
+                    .WithMany(x => x.productos)
+                    .HasForeignKey(x => x.idCategoria)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // Kardex
+            // =========================================================
+
+            modelBuilder.Entity<Kardex>(entity =>
+            {
+                entity.ToTable("Kardex");
+
+                entity.HasKey(x => x.idMovimiento);
+
+                entity.Property(x => x.idMovimiento)
+                    .HasColumnName("idMovimiento");
+
+                entity.Property(x => x.idProducto)
+                    .HasColumnName("idProducto");
+
+                entity.Property(x => x.tipoMovimiento)
+                    .HasColumnName("tipoMovimiento");
+
+                entity.Property(x => x.cantidad)
+                    .HasColumnName("cantidad");
+
+                entity.Property(x => x.stockAnterior)
+                    .HasColumnName("stockAnterior");
+
+                entity.Property(x => x.stockNuevo)
+                    .HasColumnName("stockNuevo");
+
+                entity.Property(x => x.motivo)
+                    .HasColumnName("motivo");
+
+                entity.Property(x => x.fecha)
+                    .HasColumnName("fecha");
+
+                entity.Property(x => x.idUsuario)
+                    .HasColumnName("idUsuario");
+
+                entity.HasOne(x => x.producto)
+                    .WithMany(x => x.movimientosKardex)
+                    .HasForeignKey(x => x.idProducto)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.usuario)
+                    .WithMany(x => x.movimientosKardex)
+                    .HasForeignKey(x => x.idUsuario)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // Roles
+            // =========================================================
+
+            modelBuilder.Entity<Roles>(entity =>
+            {
+                entity.ToTable("Roles");
+
+                entity.HasKey(x => x.idRol);
+
+                entity.Property(x => x.idRol)
+                    .HasColumnName("idRol");
+
+                entity.Property(x => x.nombreRol)
+                    .HasColumnName("nombreRol");
+            });
+
+
+            // =========================================================
+            // Permisos
+            // =========================================================
+
+            modelBuilder.Entity<Permisos>(entity =>
+            {
+                entity.ToTable("Permisos");
+
+                entity.HasKey(x => x.idPermiso);
+
+                entity.Property(x => x.idPermiso)
+                    .HasColumnName("idPermiso");
+
+                entity.Property(x => x.nombrePermiso)
+                    .HasColumnName("nombrePermiso");
+            });
+
+
+            // =========================================================
+            // RolesPermisos
+            // PK COMPUESTA: idRol + idPermiso
+            // =========================================================
+
+            modelBuilder.Entity<RolesPermisos>(entity =>
+            {
+                entity.ToTable("RolesPermisos");
+
+                entity.HasKey(x => new
+                {
+                    x.idRol,
+                    x.idPermiso
+                });
+
+                entity.Property(x => x.idRol)
+                    .HasColumnName("idRol");
+
+                entity.Property(x => x.idPermiso)
+                    .HasColumnName("idPermiso");
+
+                entity.HasOne(x => x.rol)
+                    .WithMany(x => x.rolesPermisos)
+                    .HasForeignKey(x => x.idRol)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.permiso)
+                    .WithMany(x => x.rolesPermisos)
+                    .HasForeignKey(x => x.idPermiso)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+
+            // =========================================================
+            // TipoDocumento
+            // =========================================================
+
+            modelBuilder.Entity<TipoDocumento>(entity =>
+            {
+                entity.ToTable("TipoDocumento");
+
+                entity.HasKey(x => x.idTipoDocumento);
+
+                entity.Property(x => x.idTipoDocumento)
+                    .HasColumnName("idTipoDocumento");
+
+                entity.Property(x => x.nombreTipo)
+                    .HasColumnName("nombreTipo");
+            });
+
+
+            // =========================================================
+            // Usuarios
+            // =========================================================
+
+            modelBuilder.Entity<Usuarios>(entity =>
+            {
+                entity.ToTable("Usuarios");
+
+                entity.HasKey(x => x.idUsuario);
+
+                entity.Property(x => x.idUsuario)
+                    .HasColumnName("idUsuario");
+
+                entity.Property(x => x.nombres)
+                    .HasColumnName("nombres");
+
+                entity.Property(x => x.apellidos)
+                    .HasColumnName("apellidos");
+
+                entity.Property(x => x.documento)
+                    .HasColumnName("documento");
+
+                entity.Property(x => x.idTipoDocumento)
+                    .HasColumnName("idTipoDocumento");
+
+                entity.Property(x => x.telefono)
+                    .HasColumnName("telefono");
+
+                entity.Property(x => x.passwordHash)
+                    .HasColumnName("passwordHash");
+
+                entity.Property(x => x.estado)
+                    .HasColumnName("estado");
+
+                entity.Property(x => x.idRol)
+                    .HasColumnName("idRol");
+
+                entity.Property(x => x.email)
+                    .HasColumnName("email");
+
+                entity.HasOne(x => x.tipoDocumento)
+                    .WithMany(x => x.usuarios)
+                    .HasForeignKey(x => x.idTipoDocumento)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(x => x.rol)
+                    .WithMany(x => x.usuarios)
+                    .HasForeignKey(x => x.idRol)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
         }
 
         public async Task<bool> BoolAsync()

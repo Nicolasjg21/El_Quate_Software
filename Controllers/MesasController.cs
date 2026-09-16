@@ -3,6 +3,7 @@ using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElQuateDePatty.Controllers
 {
@@ -93,36 +94,74 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
-        [HttpPost("PostMesa")]
+        [HttpGet("GetMesasByEstado/{estado}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PostMesa([FromBody] Mesas mesas)
+        public async Task<IActionResult> GetMesasByEstado(string estado)
         {
             try
             {
-                if (!ModelState.IsValid || mesas == null)
-                    return BadRequest(new { statusCode = 400, message = "Los datos de la mesa no son válidos." });
+                if (string.IsNullOrWhiteSpace(estado))
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El estado de la mesa es requerido."
+                    });
+                }
 
-                var response = await _mesasRepository.PostMesas(mesas);
+                var response = await _mesasRepository.GetMesasByEstado(estado);
 
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar la mesa." });
+                if (response == null || response.Count == 0)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontraron mesas con el estado indicado."
+                    });
+                }
 
-                return Ok(new { statusCode = 200, message = "Mesa registrada correctamente." });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Consulta de mesas por estado realizada correctamente.",
+                    data = response
+                });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                return Unauthorized(new
+                {
+                    statusCode = 401,
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    statusCode = 404,
+                    message = ex.Message
+                });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
             }
         }
 

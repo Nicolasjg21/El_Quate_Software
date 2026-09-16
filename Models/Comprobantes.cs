@@ -9,16 +9,22 @@ namespace ElQuateDePatty.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idComprobante { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idCuenta))]
         public int idCuenta { get; set; }
+
         [Required]
         public DateTime fecha { get; set; }
+
         [Required]
         [Precision(10, 2)]
         public decimal total { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idMetodo))]
         public int idMetodo { get; set; }
+
+        public Cuentas cuenta { get; set; } = null!;
+
+        public MetodosPago metodoPago { get; set; } = null!;
     }
 }

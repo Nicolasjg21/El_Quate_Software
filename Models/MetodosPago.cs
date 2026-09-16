@@ -9,9 +9,11 @@ namespace ElQuateDePatty.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idMetodo { get; set; }
 
-        [Required(ErrorMessage = "Campo requerido")]
-        [StringLength(50, ErrorMessage = "Solo se permiten 50 caracteres")]
-        public string nombreMetodo { get; set; }
+        [Required]
+        [StringLength(50)]
+        public string nombreMetodo { get; set; } = string.Empty;
 
+        public ICollection<Comprobantes> comprobantes { get; set; }
+            = new List<Comprobantes>();
     }
 }

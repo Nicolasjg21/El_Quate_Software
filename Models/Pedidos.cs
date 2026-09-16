@@ -8,17 +8,25 @@ namespace ElQuateDePatty.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idPedido { get; set; }
-        [Required(ErrorMessage = "Campo requerido")]
-        [ForeignKey(nameof(idCuenta))]
-        public int idCuenta { get; set; }
-        [Required(ErrorMessage = "Campo requerido")]
-        [ForeignKey(nameof(idUsuario))]
-        public int idUsuario { get; set; }
-        [Required (ErrorMessage ="Campo requerido")]
-        public DateTime fecha { get; set; }
-        [Required(ErrorMessage = "Campo requerido")]
-        [MaxLength(20)]
-        public string estadoPedido { get; set; }
 
+        [Required]
+        public int idCuenta { get; set; }
+
+        [Required]
+        public int idUsuario { get; set; }
+
+        [Required]
+        public DateTime fecha { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        public string estadoPedido { get; set; } = string.Empty;
+
+        public Cuentas cuenta { get; set; } = null!;
+
+        public Usuarios usuario { get; set; } = null!;
+
+        public ICollection<DetallePedidos> detalles { get; set; }
+            = new List<DetallePedidos>();
     }
 }

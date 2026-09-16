@@ -9,23 +9,33 @@ namespace ElQuateDePatty.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idMovimiento { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idProducto))]
         public int idProducto { get; set; }
+
         [Required]
-        [StringLength(10, ErrorMessage = "El tipo de movimiento no puede exceder los 10 caracteres.")]
-        public string tipoMovimiento { get; set; }
+        [StringLength(10)]
+        public string tipoMovimiento { get; set; } = string.Empty;
+
         [Required]
         public int cantidad { get; set; }
+
         [Required]
         public int stockAnterior { get; set; }
+
         [Required]
         public int stockNuevo { get; set; }
+
         public string? motivo { get; set; }
+
         [Required]
         public DateTime fecha { get; set; }
+
         [Required]
-        [ForeignKey(nameof(idUsuario))]
         public int idUsuario { get; set; }
+
+        public Productos producto { get; set; } = null!;
+
+        public Usuarios usuario { get; set; } = null!;
     }
 }

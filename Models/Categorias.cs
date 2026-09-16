@@ -10,7 +10,10 @@ namespace ElQuateDePatty.Models
         public int idCategoria { get; set; }
 
         [Required]
-        [StringLength(100, ErrorMessage = "El nombre de la categoría no puede exceder los 100 caracteres")]
-        public string nombreCategoria { get; set; }
+        [StringLength(100)]
+        public string nombreCategoria { get; set; } = string.Empty;
+
+        public ICollection<Productos> productos { get; set; }
+            = new List<Productos>();
     }
 }

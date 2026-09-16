@@ -10,32 +10,45 @@ namespace ElQuateDePatty.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int idUsuario { get; set; }
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string nombres { get; set; }
+        [Required]
+        public string nombres { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string apellidos { get; set; }
+        [Required]
+        public string apellidos { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string documento { get; set; }
+        [Required]
+        public string documento { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
-        [ForeignKey(nameof(idTipoDocumento))]
+        [Required]
         public int idTipoDocumento { get; set; }
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string telefono { get; set; }
+        [Required]
+        public string telefono { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
-        public string passwordHash { get; set; }
+        [Required]
+        public string passwordHash { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Campo requerido")]
+        [Required]
         public bool estado { get; set; }
 
-        [Required(ErrorMessage = "Campo requerido")]
+        [Required]
         public int idRol { get; set; }
-        [Required(ErrorMessage = "Campo requerido")]
-        [EmailAddress(ErrorMessage = "Correo electrónico no válido")]
-        public string email { get; set; }
+
+        [Required]
+        [EmailAddress]
+        public string email { get; set; } = string.Empty;
+
+        public TipoDocumento tipoDocumento { get; set; } = null!;
+
+        public Roles rol { get; set; } = null!;
+
+        public ICollection<Pedidos> pedidos { get; set; }
+            = new List<Pedidos>();
+
+        public ICollection<Kardex> movimientosKardex { get; set; }
+            = new List<Kardex>();
+
+        public ICollection<Auditorias> auditorias { get; set; }
+            = new List<Auditorias>();
     }
 }
