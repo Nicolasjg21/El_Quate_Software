@@ -13,7 +13,14 @@ namespace ElQuateDePatty
             string connectionString = "";
             connectionString = _configuration["ConnectionStrings:SQLConnectionStrings"];
 
-            services.AddDbContext<ElQuateDePattyContext>(options => options.UseSqlServer(connectionString));
+            services.AddDbContext<ElQuateDePattyContext>(
+                options => options.UseSqlServer(
+                    connectionString,
+                    sqlOptions =>
+                    {
+                        sqlOptions.EnableRetryOnFailure();
+                    }
+    ));
             services.AddScoped<IAuditoriasRepository, AuditoriasRepository>();
             services.AddScoped<ICategoriasRepository, CategoriasRepository>(); 
             services.AddScoped<IComprasRepository, ComprasRepository>();
