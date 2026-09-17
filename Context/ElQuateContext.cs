@@ -264,6 +264,8 @@ namespace ElQuateDePatty.Context
             // DetalleCompras
             // =========================================================
 
+            //Cambio prueba
+
             modelBuilder.Entity<DetalleCompras>(entity =>
             {
                 entity.ToTable("DetalleCompras");
