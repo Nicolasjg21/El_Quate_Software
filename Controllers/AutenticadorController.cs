@@ -37,9 +37,6 @@ namespace ElQuateDePatty.Controllers
             }
 
 
-            await context.Database.OpenConnectionAsync();
-            context.Database.CloseConnection();
-
             var usuario = await context.Usuarios
                 .FirstOrDefaultAsync(u => u.email == login.Email);
 
