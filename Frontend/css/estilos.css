@@ -1,0 +1,543 @@
+/* ==========================================================================
+   El Cuate — Estilos
+   Un solo archivo CSS para todo el sistema.
+   ========================================================================== */
+
+:root {
+  --naranja: #F06543;
+  --naranja-oscuro: #E55435;
+  --oscuro: #313638;
+  --fondo: #E8E9EB;
+  --borde: #D6D8D5;
+  --gris: #5C6062;
+  --verde: #16A34A;
+  --rojo: #DC2626;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background-color: var(--fondo);
+  color: var(--oscuro);
+  font-size: 14px;
+}
+
+/* ---------- Estructura de la página ---------- */
+
+.contenedor {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- Menú lateral ---------- */
+
+.menu {
+  width: 240px;
+  background-color: var(--oscuro);
+  color: white;
+  padding: 20px 0;
+}
+
+.menu h2 {
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid #454B4E;
+  font-size: 20px;
+}
+
+.marca-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid #454B4E;
+}
+
+.marca-menu img {
+  width: 36px;
+  height: 36px;
+}
+
+.marca-menu h2 {
+  padding: 0;
+  border-bottom: none;
+  margin: 0;
+  font-size: 18px;
+}
+
+.marca-menu .submarca {
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-top: 1px;
+}
+
+.menu a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  color: #CCCCCC;
+  text-decoration: none;
+}
+
+.menu a .icono-menu {
+  font-size: 15px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.menu a:hover {
+  background-color: var(--naranja);
+  color: white;
+}
+
+.menu a.activo {
+  background-color: var(--naranja);
+  color: white;
+}
+
+/* ---------- Contenido ---------- */
+
+.contenido {
+  flex: 1;
+  padding: 30px;
+}
+
+h1 {
+  font-size: 26px;
+  margin-bottom: 5px;
+}
+
+.subtitulo {
+  color: var(--gris);
+  margin-bottom: 25px;
+}
+
+/* ---------- Tarjetas ---------- */
+
+.tarjeta {
+  background-color: white;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.tarjeta h3 {
+  margin-bottom: 15px;
+  font-size: 17px;
+}
+
+/* ---------- Formularios ---------- */
+
+.fila-formulario {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.campo {
+  margin-bottom: 15px;
+  flex: 1;
+  min-width: 180px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--naranja);
+}
+
+/* ---------- Botones ---------- */
+
+button {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--naranja);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:hover {
+  background-color: var(--naranja-oscuro);
+}
+
+button.gris {
+  background-color: white;
+  color: var(--oscuro);
+  border: 1px solid var(--borde);
+}
+
+button.rojo {
+  background-color: var(--rojo);
+}
+
+button.pequeno {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* ---------- Tablas ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+th {
+  background-color: var(--fondo);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--gris);
+  border-bottom: 1px solid var(--borde);
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #EEEEEE;
+}
+
+tr:hover td {
+  background-color: #FAFAFA;
+}
+
+.derecha {
+  text-align: right;
+}
+
+.centro {
+  text-align: center;
+}
+
+/* ---------- Mensajes ---------- */
+
+.mensaje {
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.mensaje.error {
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+
+.mensaje.exito {
+  background-color: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+}
+
+.oculto {
+  display: none;
+}
+
+/* ---------- Pantalla de login ---------- */
+
+.pantalla-login {
+  background-color: var(--oscuro);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-login {
+  display: block;
+  width: 160px;
+  margin: 0 auto 20px auto;
+}
+
+.caja-login {
+  background-color: white;
+  padding: 40px;
+  border-radius: 12px;
+  width: 380px;
+}
+
+.caja-login h1 {
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.caja-login .subtitulo {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.caja-login button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+/* ---------- Agregado: pestañas, badges y ficha de estado ---------- */
+
+.pestanas { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid var(--borde); }
+.pestanas button { background: none; color: var(--gris); border-radius: 6px 6px 0 0; padding: 10px 18px; }
+.pestanas button:hover { background-color: #f0f0f0; }
+.pestanas button.activa { background-color: var(--naranja); color: white; }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+.badge.verde { background-color: #DCFCE7; color: #15803D; }
+.badge.rojo { background-color: #FEE2E2; color: #B91C1C; }
+.badge.amarillo { background-color: #FEF9C3; color: #A16207; }
+.badge.gris { background-color: #E8E9EB; color: var(--oscuro); }
+
+.tarjetas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.tarjeta-resumen { background-color: white; border: 1px solid var(--borde); border-radius: 10px; padding: 18px; }
+.tarjeta-resumen .etiqueta { font-size: 12px; color: var(--gris); margin-bottom: 6px; }
+.tarjeta-resumen .valor { font-size: 24px; font-weight: bold; }
+
+.rejilla-mesas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.mesa-tarjeta { text-align: left; border-radius: 8px; border: 2px solid; padding: 14px; background: white; cursor: pointer; }
+.mesa-tarjeta.libre { border-color: #BBF7D0; background-color: #F0FDF4; }
+.mesa-tarjeta.ocupada { border-color: #FECACA; background-color: #FEF2F2; }
+.mesa-tarjeta .numero { font-size: 20px; font-weight: bold; }
+
+a.boton-enlace { display: inline-block; padding: 9px 18px; border-radius: 6px; background-color: var(--naranja); color: white; text-decoration: none; font-weight: bold; font-size: 14px; }
+a.boton-enlace:hover { background-color: var(--naranja-oscuro); }
+
+.linea-total { display: flex; justify-content: space-between; padding: 8px 0; }
+.linea-total.grande { font-size: 20px; font-weight: bold; border-top: 2px solid var(--borde); margin-top: 8px; padding-top: 12px; }
+
+/* ==========================================================================
+   AGREGADO — para igualar el diseño del builder (encabezado, colores,
+   filtros, insignias y separación del pie del menú)
+   ========================================================================== */
+
+/* ---------- Encabezado de cada pantalla ---------- */
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.encabezado h1 { margin-bottom: 2px; }
+
+.encabezado__usuario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.encabezado__usuario .datos { text-align: right; }
+.encabezado__usuario .datos .nombre { font-weight: 600; font-size: 13px; }
+.encabezado__usuario .datos .fecha { font-size: 11px; color: var(--gris); }
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: var(--naranja);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ---------- Pie del menú (Configuración / Cerrar sesión) ---------- */
+.menu__pie {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid #454B4E;
+}
+
+.menu { display: flex; flex-direction: column; }
+.menu__enlaces { flex: 1; }
+
+/* ---------- Indicadores con icono de color (panel principal) ---------- */
+.kpi-tarjeta {
+  background-color: white;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.kpi-tarjeta .fila-icono {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.kpi-tarjeta .icono {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background-color: rgba(240, 101, 67, 0.12);
+  color: var(--naranja);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.kpi-tarjeta .etiqueta { font-size: 12px; color: var(--gris); margin-bottom: 6px; }
+.kpi-tarjeta .valor { font-size: 22px; font-weight: bold; margin-top: 8px; }
+.kpi-tarjeta .tendencia { font-size: 11px; font-weight: bold; margin-top: 4px; }
+.kpi-tarjeta .tendencia.sube { color: var(--verde); }
+.kpi-tarjeta .tendencia.baja { color: var(--rojo); }
+
+/* ---------- Cajas de estado con color de fondo ---------- */
+.estado-caja {
+  border-radius: 10px;
+  border: 1px solid;
+  padding: 14px 16px;
+}
+
+.estado-caja .etiqueta { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.estado-caja .valor { font-size: 22px; font-weight: bold; margin-top: 6px; }
+.estado-caja .valor small { font-weight: 400; font-size: 13px; opacity: .7; }
+
+.estado-caja.roja     { background-color: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
+.estado-caja.verde    { background-color: #F0FDF4; border-color: #BBF7D0; color: #15803D; }
+.estado-caja.amarilla { background-color: #FEFCE8; border-color: #FEF08A; color: #A16207; }
+.estado-caja.naranja  { background-color: #FFF1ED; border-color: #FBD5C9; color: #C2410C; }
+
+.punto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.punto.rojo { background-color: #EF4444; }
+.punto.verde { background-color: #22C55E; }
+.punto.amarillo { background-color: #EAB308; }
+
+/* ---------- Filtros tipo chip (pastillas) ---------- */
+.filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+
+.chip {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background-color: white;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--oscuro);
+}
+
+.chip:hover { background-color: var(--fondo); }
+.chip.activo { background-color: var(--naranja); border-color: var(--naranja); color: white; }
+
+/* ---------- Insignias (más colores) ---------- */
+.badge.azul     { background-color: #DBEAFE; color: #1D4ED8; }
+.badge.morado   { background-color: #EDE9FE; color: #6D28D9; }
+.badge.naranja  { background-color: #FFEDD5; color: #C2410C; }
+.badge.oscuro   { background-color: #E5E7EB; color: #374151; }
+
+/* ---------- Buscador con icono ---------- */
+.buscador { position: relative; flex: 1; min-width: 200px; }
+.buscador input { padding-left: 34px; }
+.buscador::before {
+  content: "🔍";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: .5;
+}
+
+/* ---------- Miniatura de producto (sin foto real: círculo con iniciales) ---------- */
+.miniatura {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background-color: var(--fondo);
+  color: var(--gris);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ---------- Filas y celdas con alerta (stock bajo, etc.) ---------- */
+tr.fila-alerta td { background-color: #FEF2F2; }
+.dato-alerta { color: var(--rojo); font-weight: bold; }
+
+/* ---------- Paginación ---------- */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--gris);
+}
+
+.paginacion .botones { display: flex; gap: 4px; }
+.paginacion button {
+  background-color: white;
+  color: var(--oscuro);
+  border: 1px solid var(--borde);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.paginacion button:hover:not(:disabled) { background-color: var(--fondo); }
+.paginacion button:disabled { opacity: .4; cursor: not-allowed; }
+.paginacion button.activo { background-color: var(--naranja); border-color: var(--naranja); color: white; }
+
+/* ---------- Barra de progreso (para "productos más vendidos") ---------- */
+.barra-progreso { height: 8px; border-radius: 999px; background-color: var(--fondo); overflow: hidden; margin-top: 4px; }
+.barra-progreso > div { height: 100%; background-color: var(--naranja); }
+
+/* ---------- Ajustes de la tabla para que admita más columnas sin verse apretada ---------- */
+.tabla-scroll { overflow-x: auto; }
+.tabla-scroll table { min-width: 640px; }
+
+.texto-suave { color: var(--gris); font-size: 13px; }
+.texto-xs { font-size: 11px; }
+
+/* ---------- Responsivo básico ---------- */
+@media (max-width: 900px) {
+  .contenedor { flex-direction: column; }
+  .menu { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 12px; }
+  .menu__enlaces, .menu__pie { display: flex; flex-wrap: wrap; gap: 4px; }
+  .marca-menu { width: 100%; border-bottom: none; padding-bottom: 8px; }
+  #tarjetasKpi, #resumenMesas, #resumenInventario { grid-template-columns: 1fr 1fr !important; }
+  .contenido > div[style*="grid-template-columns:2fr 1fr"],
+  .contenido > div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 560px) {
+  #tarjetasKpi, #resumenMesas, #resumenInventario { grid-template-columns: 1fr !important; }
+  .fila-formulario { flex-direction: column; }
+}
