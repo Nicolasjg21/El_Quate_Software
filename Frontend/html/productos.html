@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventario - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="productos" data-titulo="Inventario" data-subtitulo="Productos, precios y existencias">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div id="resumenInventario" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px"></div>
+    <div class="filtros">
+      <div class="buscador"><input type="text" id="busquedaProducto" placeholder="Buscar por nombre..."></div>
+      <select id="filtroCategoria" style="width:auto"><option value="todas">Todas las categorías</option></select>
+      <select id="filtroEstado" style="width:auto">
+        <option value="todos">Todos los estados</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option>
+      </select>
+      <button id="botonMostrarForm">+ Nuevo producto</button>
+    </div>
+    <div class="tarjeta oculto" id="formProducto">
+      <h3 id="tituloFormulario">Nuevo producto</h3>
+      <input type="hidden" id="idProducto">
+      <div class="fila-formulario">
+        <div class="campo"><label for="nombreProducto">Nombre del producto *</label>
+          <input type="text" id="nombreProducto" maxlength="100" placeholder="Cerveza Corona 330ml"></div>
+        <div class="campo"><label for="idCategoria">Categoría *</label><select id="idCategoria"></select></div>
+      </div>
+      <div class="fila-formulario">
+        <div class="campo"><label for="precioVenta">Precio de venta *</label>
+          <input type="number" id="precioVenta" min="0" step="0.01" placeholder="7500"></div>
+        <div class="campo"><label for="cantidadMinima">Cantidad mínima *</label>
+          <input type="number" id="cantidadMinima" min="0" step="1" placeholder="15"></div>
+        <div class="campo" id="campoStockInicial"><label for="stockInicial">Stock inicial (Kardex)</label>
+          <input type="number" id="stockInicial" min="0" step="1" value="0"></div>
+        <div class="campo campo-check"><label for="estado"><input type="checkbox" id="estado" checked> Producto activo</label></div>
+      </div>
+      <div class="acciones"><button id="botonGuardar">Guardar producto</button>
+      <button id="botonCancelar" class="gris">Cancelar</button></div>
+    </div>
+    <div class="tabla-contenedor"><div class="tabla-scroll"><table>
+      <thead><tr><th>Producto</th><th>Categoría</th><th class="derecha">Precio venta</th>
+      <th class="derecha">Stock</th><th class="derecha">Mínimo</th><th>Estado</th><th class="centro">Acciones</th></tr></thead>
+      <tbody id="cuerpoTabla"></tbody></table></div></div>
+    <p class="texto-xs texto-suave" id="conteoProductos" style="margin-top:10px"></p>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/productos.js"></script>
+</body>
+</html>

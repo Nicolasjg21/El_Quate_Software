@@ -1,75 +1,115 @@
 /* ==========================================================================
-   SESIÓN — recordar quién inició sesión
+   SESIÓN
    --------------------------------------------------------------------------
-   Única fuente de verdad para el token y el nombre del usuario. Ninguna
-   otra pantalla toca localStorage directamente: todas llaman a estas
-   funciones.
+   El JWT que emite /api/Autenticador/Login solo lleva dos claims: el email
+   (ClaimTypes.Name) y el idRol (ClaimTypes.Role). NO lleva idUsuario, pero
+   Pedidos.idUsuario, Kardex.idUsuario y Auditorias.idUsuario son obligatorios,
+   así que después del login se busca al usuario por email en GET Usuarios.
    ========================================================================== */
+(function (App) {
+  "use strict";
 
-/* Guarda el token y el nombre que se van a usar en toda la aplicación. */
-function guardarSesion(token, nombre) {
-    localStorage.setItem("token", token);
-    localStorage.setItem("nombreUsuario", nombre || "Usuario");
-}
+  var cfg = App.config;
+  var CLAVE = "cuate.sesion";
+  var URI_NOMBRE = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
+  var URI_ROL = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+  var URI_ROL_ALT = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role";
 
-/* Lee el token guardado (o null si no hay ninguno). */
-function obtenerToken() {
-    return localStorage.getItem("token");
-}
+  var sesion = {};
 
-/* Lee el nombre guardado (o "Usuario" si no hay ninguno). */
-function obtenerNombreUsuario() {
-    return localStorage.getItem("nombreUsuario") || "Usuario";
-}
+  function leer() {
+    var bruto = cfg.almacen.leer(CLAVE);
+    if (!bruto) return null;
+    try { return JSON.parse(bruto); } catch (e) { return null; }
+  }
+  function escribir(datos) { cfg.almacen.guardar(CLAVE, JSON.stringify(datos)); }
 
-/* Borra la sesión y regresa al login. Se usa en el botón "Cerrar sesión". */
-function cerrarSesion() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("nombreUsuario");
-    window.location.href = "index.html";
-}
+  /* Decodifica el payload del JWT (base64url → JSON, seguro con tildes). */
+  sesion.decodificar = function (token) {
+    try {
+      var b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      var bin = atob(b64);
+      var utf8 = decodeURIComponent(Array.prototype.map.call(bin, function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(""));
+      return JSON.parse(utf8);
+    } catch (e) { return null; }
+  };
 
-/* Se llama al principio de cada pantalla interna (no en el login).
-   Si no hay token guardado, no deja seguir: manda de vuelta al login.
-   Si sí hay sesión, aprovecha y llena el encabezado (nombre, fecha, avatar). */
-function protegerPagina() {
-    if (!obtenerToken()) {
-        window.location.href = "index.html";
-        return;
-    }
-    mostrarUsuarioEnEncabezado();
-}
+  sesion.datos = function () { return leer(); };
+  sesion.token = function () { var s = leer(); return s ? s.token : null; };
 
-/* ==========================================================================
-   Arreglo del botón "atrás" del navegador después de cerrar sesión
-   --------------------------------------------------------------------------
-   Cuando usas las flechas de atrás/adelante, algunos navegadores restauran
-   la página exactamente como se veía en pantalla, SIN volver a ejecutar el
-   $(document).ready() de la página (esto se llama "bfcache"). Por eso, si
-   cerrabas sesión y pulsabas "atrás", podías seguir viendo el panel aunque
-   ya no hubiera token guardado.
+  sesion.expirada = function () {
+    var s = leer();
+    if (!s || !s.exp) return false;                 // sin "exp" no se puede saber: lo decide el backend (401)
+    return s.exp * 1000 <= Date.now();
+  };
 
-   Este evento "pageshow" avisa cada vez que la página se muestra, incluso
-   cuando viene del bfcache (evento.persisted === true). En ese caso,
-   volvemos a comprobar la sesión.
-   ========================================================================== */
-window.addEventListener("pageshow", function (evento) {
-    if (evento.persisted) {
-        protegerPagina();
-    }
-});
+  /* Guarda el token y completa idUsuario/nombre buscando por email. */
+  sesion.iniciar = async function (token) {
+    var p = sesion.decodificar(token) || {};
+    var email = p[URI_NOMBRE] || p.unique_name || p.name || p.email || "";
+    var rol = p[URI_ROL] || p[URI_ROL_ALT] || p.role || null;
+    if (Array.isArray(rol)) rol = rol[0];
 
-/* Llena el nombre, la fecha de hoy y la inicial del avatar en el
-   encabezado de la pantalla, si esos elementos existen en el HTML. */
-function mostrarUsuarioEnEncabezado() {
-    var nombre = obtenerNombreUsuario();
+    escribir({ token: token, exp: p.exp || null, email: email, idRol: rol == null ? null : Number(rol),
+               idUsuario: null, nombre: email || "Usuario" });
 
-    var elNombre = document.getElementById("nombreUsuarioTop");
-    if (elNombre) elNombre.textContent = nombre;
+    try { await sesion.resolverUsuario(); }
+    catch (e) { console.warn("No se pudo identificar al usuario tras el login:", e.message); }
+  };
 
-    var elFecha = document.getElementById("fechaHoy");
-    if (elFecha) elFecha.textContent = new Date().toLocaleDateString("es-CO");
+  /* Busca al usuario logueado en GET Usuarios (por email) y lo memoriza. */
+  sesion.resolverUsuario = async function () {
+    var s = leer();
+    if (!s) throw new Error("No hay sesión activa.");
+    if (s.idUsuario) return s;
+    var lista = await App.api.entidad("usuarios").listar();
+    var yo = lista.filter(function (u) { return String(u.email || "").toLowerCase() === String(s.email || "").toLowerCase(); })[0];
+    if (!yo) throw new Error("No se encontró en la base de datos al usuario con el correo " + s.email + ".");
+    s.idUsuario = yo.idUsuario;
+    s.nombre = App.ui.nombreCompleto(yo) || s.email;
+    s.idRol = yo.idRol;
+    escribir(s);
+    return s;
+  };
 
-    var elAvatar = document.getElementById("inicialUsuario");
-    if (elAvatar) elAvatar.textContent = nombre.charAt(0).toUpperCase();
-}
+  /* idUsuario garantizado (o error claro) — para Pedidos, Kardex y Auditorías. */
+  sesion.idUsuario = async function () {
+    var s = await sesion.resolverUsuario();
+    if (!s.idUsuario) throw new Error("No se pudo determinar el usuario de la sesión.");
+    return s.idUsuario;
+  };
+
+  /* Redirige al login. Las páginas están en /html/, el login en la raíz. */
+  sesion.irALogin = function (motivo) {
+    window.location.replace(cfg.RAIZ + "index.html" + (motivo ? "?motivo=" + encodeURIComponent(motivo) : ""));
+  };
+
+  sesion.cerrar = function () {
+    cfg.almacen.borrar(CLAVE);
+    sesion.irALogin();
+  };
+
+  /* Llamado por api.js ante un 401: la sesión ya no sirve. */
+  sesion.expulsar = function () {
+    cfg.almacen.borrar(CLAVE);
+    sesion.irALogin("expirada");
+  };
+
+  /* Se usa al inicio de cada pantalla interna. Devuelve false si redirige. */
+  sesion.proteger = function () {
+    if (!sesion.token()) { sesion.irALogin(); return false; }
+    if (sesion.expirada()) { cfg.almacen.borrar(CLAVE); sesion.irALogin("expirada"); return false; }
+    return true;
+  };
+
+  /* bfcache: al volver con "atrás" tras cerrar sesión, el navegador restaura la
+     página sin ejecutar nada; se vuelve a comprobar la sesión. */
+  window.addEventListener("pageshow", function (ev) {
+    if (ev.persisted && document.body && document.body.dataset.publica !== "1") sesion.proteger();
+  });
+
+  App.sesion = sesion;
+})(window.App = window.App || {});

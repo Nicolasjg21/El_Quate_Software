@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historiales - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="historiales" data-titulo="Historiales" data-subtitulo="Comprobantes pagados y compras registradas">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="pestanas">
+      <button id="botonPestanaComprobantes" class="activa">Comprobantes</button>
+      <button id="botonPestanaCompras">Compras</button>
+    </div>
+    <div class="filtros">
+      <div class="buscador"><input type="text" id="busquedaHistorial" placeholder="Buscar..."></div>
+      <button class="chip activo" data-rango="todos">Todos</button>
+      <button class="chip" data-rango="hoy">Hoy</button>
+      <button class="chip" data-rango="semana">Esta semana</button>
+      <button class="chip" data-rango="mes">Este mes</button>
+      <span style="flex:1"></span>
+      <button id="botonExportar" class="gris">Exportar CSV</button>
+    </div>
+    <div class="tarjeta" id="bloqueComprobantes"><div class="tabla-scroll"><table>
+      <thead><tr><th>#</th><th>Mesa</th><th>Fecha</th><th>Método de pago</th><th class="derecha">Total</th></tr></thead>
+      <tbody id="cuerpoComprobantes"></tbody></table></div></div>
+    <div class="tarjeta oculto" id="bloqueCompras"><div class="tabla-scroll"><table>
+      <thead><tr><th>#</th><th>Proveedor</th><th>Fecha</th><th class="derecha">Artículos</th><th class="derecha">Total</th></tr></thead>
+      <tbody id="cuerpoCompras"></tbody></table></div></div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/historiales.js"></script>
+</body>
+</html>

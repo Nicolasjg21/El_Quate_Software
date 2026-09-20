@@ -1,70 +1,55 @@
 /* ==========================================================================
    LOGIN
    --------------------------------------------------------------------------
-   Manda usuario y contraseña al backend. Si responde bien, guarda el token
-   y entra al sistema.
+   POST /api/Autenticador/Login  { email, password }  →  { token }
+   Con el token se identifica al usuario (idUsuario/nombre) y se entra al panel.
    ========================================================================== */
+(function (App) {
+  "use strict";
 
-   
+  var ui = App.ui;
 
-$(document).ready(function () {
-
-    $("#botonEntrar").click(entrar);
-
-    // Permite entrar con Enter en vez de tener que hacer clic.
-    $("#password").keypress(function (evento) {
-        if (evento.which === 13) {
-            entrar();
-        }
-    });
-});
-
-
-function entrar() {
-
-    var email = $("#email").val();
-    var password = $("#password").val();
-
-    if (email === "" || password === "") {
-        mostrarMensaje("Escribe tu usuario y tu contraseña", "error");
-        return;
+  document.addEventListener("DOMContentLoaded", function () {
+    // Si ya hay una sesión vigente, no se vuelve a pedir login.
+    if (App.sesion.token() && !App.sesion.expirada()) {
+      window.location.replace("html/inicio.html");
+      return;
     }
 
-    $.ajax({
-        url: URL_LOGIN,
-        type: "POST",
-        contentType: "application/json; charset=utf-8",
+    var motivo = new URLSearchParams(window.location.search).get("motivo");
+    if (motivo === "expirada") ui.aviso("Tu sesión expiró. Inicia sesión de nuevo.", "error");
 
-        /* ⚠ Confirma qué nombres espera tu Controller.
-           Si espera "usuario" en vez de "email", cámbialo aquí. */
-        data: JSON.stringify({
-            email: email,
-            password: password
-        }),
-
-        success: function (response) {
-
-            /* ⚠ Confirma cómo se llama la propiedad del token en la
-               respuesta real. Si el backend devuelve "Token" con
-               mayúscula, cambia response.token por response.Token */
-            guardarSesion(response.token, response.nombre || email);
-            window.location.href = "inicio.html";
-        },
-
-        error: function (xhr) {
-            if (xhr.status === 401) {
-                mostrarMensaje("Usuario o contraseña incorrectos", "error");
-            } else if (xhr.status === 0) {
-                mostrarMensaje("No hay conexión con el servidor. ¿Está corriendo el backend?", "error");
-            } else {
-                mostrarMensaje("Error al iniciar sesión (código " + xhr.status + ")", "error");
-            }
-        }
+    ui.poner("apiUrl", App.config.API_URL);
+    document.getElementById("formLogin").addEventListener("submit", entrar);
+    document.getElementById("botonGuardarUrl").addEventListener("click", function () {
+      App.config.cambiarApiUrl(ui.valor("apiUrl"));
+      ui.aviso("URL guardada. Recargando…", "exito");
+      setTimeout(function () { window.location.reload(); }, 500);
     });
-}
+  });
 
+  async function entrar(ev) {
+    ev.preventDefault();
 
-function mostrarMensaje(texto, tipo) {
-    $("#mensaje").text(texto);
-    $("#mensaje").attr("class", "mensaje " + tipo);
-}
+    var r = ui.validar([
+      { id: "email", etiqueta: "El correo", requerido: true, tipo: "email" },
+      { id: "password", etiqueta: "La contraseña", requerido: true }
+    ]);
+    if (!r.ok) { ui.reportarValidacion(r); return; }
+
+    var boton = document.getElementById("botonEntrar");
+    await ui.conBoton(boton, async function () {
+      boton.textContent = "Entrando…";
+      try {
+        // El campo de contraseña NO se recorta (los espacios pueden ser parte de la clave).
+        var token = await App.api.login(r.valores.email, document.getElementById("password").value);
+        await App.sesion.iniciar(token);
+        window.location.href = "html/inicio.html";
+      } catch (e) {
+        ui.aviso(e.status === 401 ? (e.message || "Usuario o contraseña incorrectos.") : e.message, "error");
+      } finally {
+        boton.textContent = "Entrar";
+      }
+    });
+  }
+})(window.App = window.App || {});

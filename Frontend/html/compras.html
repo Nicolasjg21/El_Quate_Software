@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compras - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="compras" data-titulo="Compras" data-subtitulo="Compras a proveedores y su detalle">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="filtros">
+      <div class="buscador"><input type="text" id="busquedaCompra" placeholder="Buscar por proveedor..."></div>
+      <span style="flex:1"></span>
+      <button id="botonMostrarForm">+ Nueva compra</button>
+    </div>
+    <div class="tarjeta oculto" id="formCompra">
+      <h3>Registrar compra</h3>
+      <div class="fila-formulario">
+        <div class="campo"><label for="idProveedor">Proveedor *</label><select id="idProveedor"></select></div>
+        <div class="campo" style="max-width:220px"><label for="fechaCompra">Fecha *</label>
+          <input type="date" id="fechaCompra"></div>
+      </div>
+      <h3 style="margin-top:10px">Detalle</h3>
+      <div class="fila-formulario">
+        <div class="campo"><label for="idProductoCompra">Producto</label><select id="idProductoCompra"></select></div>
+        <div class="campo" style="max-width:150px"><label for="cantidadCompra">Cantidad</label>
+          <input type="number" id="cantidadCompra" min="1" step="1" value="1"></div>
+        <div class="campo" style="max-width:180px"><label for="precioCompra">Precio de compra</label>
+          <input type="number" id="precioCompra" min="0" step="0.01"></div>
+        <div class="campo campo-check"><button id="botonAgregarLinea" class="gris">Agregar línea</button></div>
+      </div>
+      <div class="tabla-scroll"><table>
+        <thead><tr><th>Producto</th><th class="derecha">Cantidad</th><th class="derecha">Precio</th><th class="derecha">Subtotal</th><th class="centro"></th></tr></thead>
+        <tbody id="cuerpoLineas"></tbody></table></div>
+      <div class="linea-total grande" style="max-width:320px;margin-left:auto;margin-top:12px">
+        <span>Total</span><span id="totalCompra">$ 0</span></div>
+      <div class="acciones" style="margin-top:12px"><button id="botonGuardar">Guardar compra</button>
+      <button id="botonCancelar" class="gris">Cancelar</button></div>
+    </div>
+    <div class="tabla-contenedor"><div class="tabla-scroll"><table>
+      <thead><tr><th>#</th><th>Proveedor</th><th>Fecha</th><th class="derecha">Artículos</th><th class="derecha">Total</th><th class="centro">Acciones</th></tr></thead>
+      <tbody id="cuerpoTabla"></tbody></table></div></div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/compras.js"></script>
+</body>
+</html>

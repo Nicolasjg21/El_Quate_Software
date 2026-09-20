@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kardex - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="kardex" data-titulo="Kardex" data-subtitulo="Movimientos de inventario">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="filtros">
+      <select id="filtroProducto" style="width:auto"><option value="todos">Todos los productos</option></select>
+      <select id="filtroTipo" style="width:auto"><option value="todos">Entradas y salidas</option></select>
+      <span style="flex:1"></span>
+      <button id="botonMostrarForm">+ Registrar ajuste</button>
+      <button id="botonExportar" class="gris">Exportar CSV</button>
+    </div>
+    <div class="tarjeta oculto" id="formMovimiento">
+      <h3>Ajuste manual de inventario</h3>
+      <div class="fila-formulario">
+        <div class="campo"><label for="idProducto">Producto *</label><select id="idProducto"></select></div>
+        <div class="campo" style="max-width:180px"><label for="tipoMovimiento">Tipo *</label><select id="tipoMovimiento"></select></div>
+        <div class="campo" style="max-width:160px"><label for="cantidad">Cantidad *</label>
+          <input type="number" id="cantidad" min="1" step="1"></div>
+      </div>
+      <div class="campo"><label for="motivo">Motivo</label>
+        <input type="text" id="motivo" maxlength="200" placeholder="Conteo físico, rotura, devolución..."></div>
+      <div class="acciones"><button id="botonGuardar">Registrar movimiento</button>
+      <button id="botonCancelar" class="gris">Cancelar</button></div>
+    </div>
+    <div class="tabla-contenedor"><div class="tabla-scroll"><table>
+      <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="derecha">Cantidad</th>
+      <th class="derecha">Anterior</th><th class="derecha">Nuevo</th><th>Motivo</th><th>Usuario</th></tr></thead>
+      <tbody id="cuerpoTabla"></tbody></table></div></div>
+    <p class="texto-xs texto-suave" id="conteoKardex" style="margin-top:10px"></p>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/kardex.js"></script>
+</body>
+</html>

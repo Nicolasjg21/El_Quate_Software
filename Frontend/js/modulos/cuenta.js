@@ -1,208 +1,297 @@
 /* ==========================================================================
-   CUENTA DE MESA
+   CUENTA DE MESA (punto de venta)
    --------------------------------------------------------------------------
-   Esta es la pantalla más difícil de las nueve, porque junta tres entidades:
-   Mesas, Pedidos/DetallePedidos y Comprobantes. Como no puedo ver tu backend
-   real, las peticiones de aquí son las MÁS PROBABLES según el nombre de tus
-   Controllers, pero son las que con más seguridad vas a tener que ajustar.
-
-   ⚠ SUPUESTOS QUE HAY QUE CONFIRMAR:
-     1. Que se puede pedir "los detalles de pedido de una mesa" agregando
-        ?idMesa=X a la URL de DetallePedidos. Si tu Controller no lo soporta,
-        toca traer TODOS los detalles (GET sin filtro) y filtrar aquí mismo
-        con un "for", como se hace en pintarMesas() de mesas.js.
-     2. Que crear un detalle de pedido nuevo es un POST a DetallePedidos con
-        idMesa, idProducto y cantidad.
-     3. Que registrar el pago es un POST a Comprobantes con idMesa y total.
-
-   Si algo de esto no coincide con tu backend, es cuestión de cambiar la URL
-   o el objeto que se envía — la forma de escribir el $.ajax no cambia.
+   Cadena real del modelo (no se puede saltar ningún eslabón):
+     mesas → cuentas(idMesa, estado, fechaApertura, total)
+           → pedidos(idCuenta, idUsuario, fecha, estadoPedido)
+           → detallePedidos(idPedido, idProducto, cantidad, precioUnitario)
+           → comprobantes(idCuenta, fecha, total, idMetodo)
+   El detalle NO tiene idMesa: se cuelga de un pedido, y el pedido de una cuenta.
    ========================================================================== */
+(function (App) {
+  "use strict";
+  var ui = App.ui, cfg = App.config;
 
-var idMesaActual = null;
-var productosDisponibles = [];   // se llena al cargar la página, para el <select>
-var itemsPedido = [];            // lo que se muestra en la tabla
+  var idMesa = null, mesa = null, cuenta = null, pedido = null;
+  var productos = [], categorias = [], metodos = [], detalles = [], stock = new Map();
+  var filtroCat = "todas", busqueda = "";
+  var cola = Promise.resolve();          // serializa las operaciones para que toques rápidos no se pisen
 
-
-$(document).ready(function () {
-    protegerPagina();
-
-    $("#botonSalir").click(cerrarSesion);
-    $("#botonAgregar").click(agregarProducto);
-    $("#botonPagar").click(registrarPago);
-
-    // Leemos el "?id=" de la URL: cuenta.html?id=3
-    idMesaActual = new URLSearchParams(window.location.search).get("id");
-
-    if (!idMesaActual) {
-        mostrarMensaje("No se indicó qué mesa abrir", "error");
-        return;
+  App.pagina(async function () {
+    idMesa = Number(new URLSearchParams(window.location.search).get("idMesa"));
+    if (!idMesa) {
+      ui.html("bloqueCuenta", ui.vacio("🍽️", "No se indicó qué mesa abrir", "Vuelve a Mesas y selecciona una.",
+        "<a class='boton-enlace' href='mesas.html'>Ir a las mesas</a>"));
+      return;
     }
 
-    $("#tituloMesa").text("Mesa " + idMesaActual);
+    document.getElementById("botonAbrirCuenta").addEventListener("click", abrirCuenta);
+    document.getElementById("botonPagar").addEventListener("click", pagar);
+    document.getElementById("botonCancelarCuenta").addEventListener("click", cancelarCuenta);
+    document.getElementById("busquedaProducto").addEventListener("input", ui.debounce(function (e) {
+      busqueda = e.target.value.trim().toLowerCase(); pintarCatalogo();
+    }, 150));
 
-    cargarProductosParaSelect();
-    cargarPedidoDeLaMesa();
-});
+    ui.alHacerClic("productosRejilla", "button[data-producto]", function (b) { encolar(function () { agregar(Number(b.dataset.producto)); }); });
+    ui.alHacerClic("chipsCategorias", "button[data-cat]", function (b) {
+      filtroCat = b.dataset.cat; pintarChips(); pintarCatalogo();
+    });
+    ui.alHacerClic("ticketLineas", "button[data-accion]", function (b) {
+      var id = Number(b.dataset.id);
+      encolar(function () { return cambiarCantidad(id, b.dataset.accion); });
+    });
 
+    await cargar();
+  });
 
-/* ---------- Traer los productos, para llenar el <select> ---------- */
-function cargarProductosParaSelect() {
+  /* Ejecuta una operación tras las anteriores y muestra el error si falla. */
+  function encolar(tarea) {
+    cola = cola.then(tarea).catch(function (e) { ui.aviso(App.api.explicar(e), "error"); });
+    return cola;
+  }
 
-    $.ajax({
-        url: URL_PRODUCTOS,
-        type: "GET",
-        contentType: "application/json; charset=utf-8",
+  async function cargar() {
+    var d = await App.datos.cargar(["mesas", "cuentas", "pedidos", "detallePedidos", "productos", "categorias", "metodosPago", "kardex"]);
+    productos = d.productos.filter(function (p) { return p.estado; });
+    categorias = d.categorias; metodos = d.metodosPago;
+    stock = App.datos.stockPorProducto(d.kardex);
 
-        success: function (productos) {
-            productosDisponibles = productos;
+    mesa = d.mesas.filter(function (m) { return m.idMesa === idMesa; })[0];
+    if (!mesa) {
+      ui.html("bloqueCuenta", ui.vacio("❓", "La mesa #" + idMesa + " no existe", "", "<a class='boton-enlace' href='mesas.html'>Ir a las mesas</a>"));
+      return;
+    }
 
-            var opciones = "";
-            for (var i = 0; i < productos.length; i++) {
-                opciones = opciones +
-                    "<option value='" + productos[i].id + "'>" +
-                        productos[i].nombre + " — $" + productos[i].precioVenta +
-                    "</option>";
+    document.body.dataset.titulo = "Mesa " + mesa.numeroMesa;
+    var h1 = document.querySelector(".encabezado h1"); if (h1) h1.textContent = "Mesa " + mesa.numeroMesa;
+    ui.texto("tituloCuenta", "Mesa " + mesa.numeroMesa);
+
+    cuenta = App.datos.cuentaAbierta(d.cuentas, idMesa);
+    if (!cuenta) {
+      ui.html("datosCuenta", "");
+      ui.mostrar("sinCuenta", true);
+      ui.mostrar("bloquePos", false);
+      return;
+    }
+    ui.mostrar("sinCuenta", false);
+    ui.mostrar("bloquePos", true);
+
+    // Pedido vigente (el más reciente); si no hay, se crea al agregar el primer producto.
+    var suyos = d.pedidos.filter(function (p) { return p.idCuenta === cuenta.idCuenta; })
+                         .sort(function (a, b) { return b.idPedido - a.idPedido; });
+    pedido = suyos[0] || null;
+    var ids = suyos.map(function (p) { return p.idPedido; });
+    detalles = d.detallePedidos.filter(function (x) { return ids.indexOf(x.idPedido) !== -1; });
+
+    ui.html("datosCuenta",
+      "<span>Cuenta <strong>#" + cuenta.idCuenta + "</strong></span>" +
+      "<span>Estado <strong>" + ui.esc(cuenta.estado) + "</strong></span>" +
+      "<span>Abierta <strong>" + ui.esc(ui.fecha(cuenta.fechaApertura)) + " (" + ui.esc(ui.hace(cuenta.fechaApertura)) + ")</strong></span>");
+
+    ui.html("metodoPago", ui.opciones(metodos, "idMetodo", "nombreMetodo", null, "— Selecciona el método —"));
+    if (!metodos.length) ui.aviso("No hay métodos de pago registrados. Crea al menos uno en Catálogos para poder cobrar.", "advertencia");
+    if (!productos.length) ui.aviso("No hay productos activos para vender. Regístralos en Inventario.", "advertencia");
+
+    pintarChips();
+    pintarCatalogo();
+    pintarTicket();
+  }
+
+  /* ---------- Catálogo ---------- */
+  function pintarChips() {
+    var chips = "<button class='chip" + (filtroCat === "todas" ? " activo" : "") + "' data-cat='todas'>Todas</button>" +
+      categorias.map(function (c) {
+        return "<button class='chip" + (String(filtroCat) === String(c.idCategoria) ? " activo" : "") + "' data-cat='" + c.idCategoria + "'>" + ui.esc(c.nombreCategoria) + "</button>";
+      }).join("");
+    ui.html("chipsCategorias", chips);
+  }
+
+  function pintarCatalogo() {
+    var visibles = productos.filter(function (p) {
+      var c = filtroCat === "todas" || String(p.idCategoria) === String(filtroCat);
+      var t = !busqueda || String(p.nombreProducto).toLowerCase().indexOf(busqueda) !== -1;
+      return c && t;
+    });
+    ui.html("productosRejilla", visibles.length ? visibles.map(function (p) {
+      var s = stock.get(p.idProducto) || 0, bajo = s <= Number(p.cantidadMinima);
+      return "<button class='producto-tile' data-producto='" + p.idProducto + "'>" +
+        "<span class='nombre'>" + ui.esc(p.nombreProducto) + "</span>" +
+        "<span class='stock" + (bajo ? " bajo" : "") + "'>" + (s <= 0 ? "Sin stock" : "Stock: " + ui.num(s)) + "</span>" +
+        "<span class='precio'>" + ui.moneda(p.precioVenta) + "</span></button>";
+    }).join("") : "<div style='grid-column:1/-1'>" + ui.vacio("🔍", "No hay productos para mostrar", "Cambia la categoría o la búsqueda.") + "</div>");
+  }
+
+  /* ---------- Ticket ---------- */
+  function totalActual() { return App.datos.sumar(detalles); }
+
+  function pintarTicket() {
+    var total = totalActual();
+    ui.html("ticketLineas", detalles.length ? detalles.map(function (d) {
+      var p = productos.filter(function (x) { return x.idProducto === d.idProducto; })[0];
+      var importe = Number(d.cantidad) * Number(d.precioUnitario);
+      var unico = Number(d.cantidad) <= 1;
+      return "<div class='linea-ticket'>" +
+        "<div><div class='nombre'>" + ui.esc(p ? p.nombreProducto : "Producto #" + d.idProducto) + "</div>" +
+        "<div class='unit'>" + ui.moneda(d.precioUnitario) + " c/u</div></div>" +
+        "<div class='importe'>" + ui.moneda(importe) + "</div>" +
+        "<div class='cantidad'>" +
+          "<button data-accion='menos' data-id='" + d.idDetalle + "' class='" + (unico ? "quitar" : "") + "' title='" + (unico ? "Quitar" : "Restar uno") + "'>" + (unico ? "🗑" : "−") + "</button>" +
+          "<span>" + ui.num(d.cantidad) + "</span>" +
+          "<button data-accion='mas' data-id='" + d.idDetalle + "' title='Sumar uno'>+</button>" +
+        "</div></div>";
+    }).join("") : "<div class='vacio-ticket'>🧾<br>Aún no hay productos.<br><small>Toca uno del catálogo para agregarlo.</small></div>");
+
+    ui.texto("subtotalTexto", ui.moneda(total));
+    ui.texto("totalTexto", ui.moneda(total));
+    ui.texto("etiquetaPedido", pedido ? "Pedido #" + pedido.idPedido : "Sin pedido");
+    document.getElementById("botonPagar").disabled = detalles.length === 0;
+    ui.mostrar("botonCancelarCuenta", detalles.length === 0);
+  }
+
+  async function refrescarDetalles() {
+    var todos = await App.api.entidad("detallePedidos").listar();
+    var pedidos = await App.api.entidad("pedidos").listar();
+    var ids = pedidos.filter(function (p) { return p.idCuenta === cuenta.idCuenta; }).map(function (p) { return p.idPedido; });
+    detalles = todos.filter(function (x) { return ids.indexOf(x.idPedido) !== -1; });
+  }
+
+  async function abrirCuenta() {
+    await ui.conBoton(document.getElementById("botonAbrirCuenta"), async function () {
+      try {
+        await App.api.entidad("cuentas").crear({
+          idMesa: idMesa, estado: cfg.ESTADOS.CUENTA.ABIERTA,
+          fechaApertura: ui.ahoraLocal(), fechaCierre: null, total: 0
+        });
+        await App.datos.cambiarEstadoMesa(mesa, cfg.ESTADOS.MESA.OCUPADA);
+        await App.api.auditar("cuentas", "INSERT", null, { idMesa: idMesa });
+        ui.aviso("Cuenta abierta para la mesa " + mesa.numeroMesa + ".", "exito");
+        await cargar();
+      } catch (e) { ui.aviso(App.api.explicar(e), "error"); }
+    });
+  }
+
+  /* Si la cuenta aún no tiene pedido, se crea uno antes del primer detalle. */
+  async function asegurarPedido() {
+    if (pedido) return pedido;
+    var idUsuario = await App.sesion.idUsuario();
+    await App.api.entidad("pedidos").crear({
+      idCuenta: cuenta.idCuenta, idUsuario: idUsuario,
+      fecha: ui.ahoraLocal(), estadoPedido: cfg.ESTADOS.PEDIDO.PENDIENTE
+    });
+    var todos = await App.api.entidad("pedidos").listar();   // PostPedidos no siempre devuelve el id
+    pedido = todos.filter(function (p) { return p.idCuenta === cuenta.idCuenta; })
+                  .sort(function (a, b) { return b.idPedido - a.idPedido; })[0];
+    if (!pedido) throw new Error("No se pudo crear el pedido de la cuenta.");
+    return pedido;
+  }
+
+  /* Toque en un producto: suma 1 a la línea existente o crea una nueva. */
+  async function agregar(idProducto) {
+    var p = productos.filter(function (x) { return x.idProducto === idProducto; })[0];
+    if (!p) return;
+    var svc = App.api.entidad("detallePedidos");
+    var pd = await asegurarPedido();
+    var linea = detalles.filter(function (d) {
+      return d.idProducto === idProducto && Number(d.precioUnitario) === Number(p.precioVenta);
+    })[0];
+
+    if (linea) {
+      await svc.editar({ idDetalle: linea.idDetalle, idPedido: linea.idPedido, idProducto: linea.idProducto,
+                         cantidad: Number(linea.cantidad) + 1, precioUnitario: linea.precioUnitario });
+      linea.cantidad = Number(linea.cantidad) + 1;
+    } else {
+      await svc.crear({ idPedido: pd.idPedido, idProducto: idProducto, cantidad: 1, precioUnitario: Number(p.precioVenta) });
+      await refrescarDetalles();          // PostDetallePedido no devuelve el id creado
+    }
+    pintarTicket();
+  }
+
+  async function cambiarCantidad(idDetalle, accion) {
+    var svc = App.api.entidad("detallePedidos");
+    var linea = detalles.filter(function (d) { return d.idDetalle === idDetalle; })[0];
+    if (!linea) return;
+
+    if (accion === "menos" && Number(linea.cantidad) <= 1) {
+      await svc.eliminar(idDetalle);
+      detalles = detalles.filter(function (d) { return d.idDetalle !== idDetalle; });
+    } else {
+      var nueva = Number(linea.cantidad) + (accion === "mas" ? 1 : -1);
+      await svc.editar({ idDetalle: linea.idDetalle, idPedido: linea.idPedido, idProducto: linea.idProducto,
+                         cantidad: nueva, precioUnitario: linea.precioUnitario });
+      linea.cantidad = nueva;
+    }
+    pintarTicket();
+  }
+
+  /* Cuenta sin consumo: se cierra y se libera la mesa (no genera comprobante). */
+  async function cancelarCuenta() {
+    if (!confirm("¿Cancelar la cuenta de la mesa " + mesa.numeroMesa + "? No tiene productos, se cerrará sin cobro.")) return;
+    await ui.conBoton(document.getElementById("botonCancelarCuenta"), async function () {
+      try {
+        await App.api.entidad("cuentas").editar({
+          idCuenta: cuenta.idCuenta, idMesa: cuenta.idMesa, estado: cfg.ESTADOS.CUENTA.CERRADA,
+          fechaApertura: cuenta.fechaApertura, fechaCierre: ui.ahoraLocal(), total: 0
+        });
+        await App.datos.cambiarEstadoMesa(mesa, cfg.ESTADOS.MESA.LIBRE);
+        await App.api.auditar("cuentas", "UPDATE", { idCuenta: cuenta.idCuenta }, { estado: cfg.ESTADOS.CUENTA.CERRADA });
+        ui.flash("Cuenta de la mesa " + mesa.numeroMesa + " cancelada.", "exito");
+        window.location.href = "mesas.html";
+      } catch (e) { ui.aviso(App.api.explicar(e), "error"); }
+    });
+  }
+
+  async function pagar() {
+    if (!detalles.length) { ui.aviso("Esta cuenta no tiene productos.", "error"); return; }
+    var idMetodo = Number(ui.valor("metodoPago"));
+    if (!idMetodo) {
+      ui.aviso("Selecciona el método de pago.", "error");
+      document.getElementById("metodoPago").classList.add("invalido");
+      document.getElementById("metodoPago").focus();
+      return;
+    }
+    document.getElementById("metodoPago").classList.remove("invalido");
+
+    var total = totalActual();
+    if (!confirm("¿Cobrar " + ui.moneda(total) + " y cerrar la cuenta de la mesa " + mesa.numeroMesa + "?")) return;
+
+    await encolar(async function () {
+      await ui.conBoton(document.getElementById("botonPagar"), async function () {
+        try {
+          var ahora = ui.ahoraLocal();
+          // 1) comprobante (si un intento previo ya lo creó, no se duplica)
+          var existentes = await App.api.entidad("comprobantes").listar();
+          var yaCobrada = existentes.filter(function (c) { return c.idCuenta === cuenta.idCuenta; })[0];
+          if (!yaCobrada) {
+            await App.api.entidad("comprobantes").crear({ idCuenta: cuenta.idCuenta, fecha: ahora, total: total, idMetodo: idMetodo });
+          }
+          // 2) salida de inventario por lo vendido
+          if (cfg.OPCIONES.KARDEX_AUTOMATICO && !yaCobrada) {
+            var porProducto = new Map();
+            detalles.forEach(function (d) { porProducto.set(d.idProducto, (porProducto.get(d.idProducto) || 0) + Number(d.cantidad)); });
+            for (var par of porProducto) {
+              await App.datos.moverStock({ idProducto: par[0], tipo: "SALIDA", cantidad: par[1],
+                stockActual: stock.get(par[0]) || 0, motivo: "Venta cuenta #" + cuenta.idCuenta, permitirNegativo: true });
             }
-            $("#productoSeleccionado").html(opciones);
-        },
+          }
+          // 3) cerrar la cuenta
+          await App.api.entidad("cuentas").editar({
+            idCuenta: cuenta.idCuenta, idMesa: cuenta.idMesa, estado: cfg.ESTADOS.CUENTA.CERRADA,
+            fechaApertura: cuenta.fechaApertura, fechaCierre: ahora, total: total
+          });
+          await App.api.auditar("comprobantes", "INSERT", null, { idCuenta: cuenta.idCuenta, total: total, idMetodo: idMetodo });
 
-        error: function (xhr) {
-            mostrarMensaje("No se pudieron cargar los productos. Error " + xhr.status, "error");
-        }
+          // El cobro ya está registrado: si solo falla liberar la mesa, se avisa
+          // pero NO se presenta el pago como fallido.
+          try {
+            await App.datos.cambiarEstadoMesa(mesa, cfg.ESTADOS.MESA.LIBRE);
+            ui.flash("Pago de " + ui.moneda(total) + " registrado. Mesa " + mesa.numeroMesa + " liberada.", "exito");
+          } catch (errMesa) {
+            ui.flash("Pago de " + ui.moneda(total) + " registrado y cuenta cerrada, pero la mesa " + mesa.numeroMesa +
+                     " no quedó libre: " + errMesa.message, "advertencia");
+          }
+          window.location.href = "mesas.html";
+        } catch (e) { ui.aviso(App.api.explicar(e), "error"); }
+      });
     });
-}
-
-
-/* ---------- GET: traer lo que ya lleva pedido esta mesa ---------- */
-function cargarPedidoDeLaMesa() {
-
-    $.ajax({
-        // ⚠ Ver el supuesto 1 al inicio del archivo.
-        url: URL_DETALLE_PEDIDOS + "?idMesa=" + idMesaActual,
-        type: "GET",
-        contentType: "application/json; charset=utf-8",
-
-        success: function (detalles) {
-            itemsPedido = detalles;
-            pintarTablaPedido();
-        },
-
-        error: function (xhr) {
-            // Si la mesa todavía no tiene pedido, es normal que dé 404.
-            // No lo tratamos como error grave: mostramos la tabla vacía.
-            itemsPedido = [];
-            pintarTablaPedido();
-        }
-    });
-}
-
-
-/* ---------- Pintar la tabla y el total ---------- */
-function pintarTablaPedido() {
-
-    var filas = "";
-    var subtotal = 0;
-
-    for (var i = 0; i < itemsPedido.length; i++) {
-
-        var item = itemsPedido[i];
-        var importe = item.cantidad * item.precioUnitario;
-        subtotal = subtotal + importe;
-
-        filas = filas +
-            "<tr>" +
-                "<td>" + item.nombreProducto + "</td>" +
-                "<td class='centro'>" + item.cantidad + "</td>" +
-                "<td class='derecha'>$ " + item.precioUnitario + "</td>" +
-                "<td class='derecha'>$ " + importe + "</td>" +
-            "</tr>";
-    }
-
-    if (itemsPedido.length === 0) {
-        filas = "<tr><td colspan='4' class='centro'>Todavía no hay productos en el pedido</td></tr>";
-    }
-
-    $("#cuerpoTabla").html(filas);
-    $("#subtotalTexto").text("$ " + subtotal);
-    $("#totalTexto").text("$ " + subtotal);   // si manejas IVA, súmalo aquí
-}
-
-
-/* ---------- POST: agregar un producto al pedido ---------- */
-function agregarProducto() {
-
-    var idProducto = $("#productoSeleccionado").val();
-    var cantidad = Number($("#cantidadProducto").val());
-
-    if (!idProducto || cantidad <= 0) {
-        mostrarMensaje("Selecciona un producto y una cantidad válida", "error");
-        return;
-    }
-
-    var detalleNuevo = {
-        idMesa: Number(idMesaActual),
-        idProducto: Number(idProducto),
-        cantidad: cantidad
-    };
-
-    $.ajax({
-        url: URL_DETALLE_PEDIDOS,
-        type: "POST",
-        contentType: "application/json; charset=utf-8",
-        data: JSON.stringify(detalleNuevo),
-
-        success: function (response) {
-            mostrarMensaje("Producto agregado al pedido", "exito");
-            $("#cantidadProducto").val(1);
-            cargarPedidoDeLaMesa();     // recargamos la tabla
-        },
-
-        error: function (xhr) {
-            mostrarMensaje("No se pudo agregar el producto. Error " + xhr.status, "error");
-        }
-    });
-}
-
-
-/* ---------- POST: registrar el pago y cerrar la cuenta ---------- */
-function registrarPago() {
-
-    if (itemsPedido.length === 0) {
-        mostrarMensaje("Esta mesa no tiene productos en el pedido", "error");
-        return;
-    }
-
-    if (!confirm("¿Confirmar el pago y cerrar la cuenta de esta mesa?")) {
-        return;
-    }
-
-    var total = Number($("#totalTexto").text().replace("$", "").trim());
-
-    var comprobante = {
-        idMesa: Number(idMesaActual),
-        total: total
-    };
-
-    $.ajax({
-        url: URL_COMPROBANTES,
-        type: "POST",
-        contentType: "application/json; charset=utf-8",
-        data: JSON.stringify(comprobante),
-
-        success: function (response) {
-            alert("Pago registrado correctamente");
-            window.location.href = "mesas.html";
-        },
-
-        error: function (xhr) {
-            mostrarMensaje("No se pudo registrar el pago. Error " + xhr.status, "error");
-        }
-    });
-}
-
-
-function mostrarMensaje(texto, tipo) {
-    $("#mensaje").text(texto);
-    $("#mensaje").attr("class", "mensaje " + tipo);
-}
+  }
+})(window.App = window.App || {});

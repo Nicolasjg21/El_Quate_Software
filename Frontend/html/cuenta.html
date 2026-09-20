@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cuenta de mesa - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="cuenta" data-titulo="Cuenta de la mesa" data-subtitulo="Toca un producto para agregarlo al pedido">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <a href="mesas.html" class="boton-enlace" style="margin-bottom:16px;display:inline-block;background:var(--gris)">&larr; Volver a mesas</a>
+
+    <div class="tarjeta" id="bloqueCuenta">
+      <h3 id="tituloCuenta">Cuenta</h3>
+      <div class="datos-cuenta" id="datosCuenta" style="margin:10px 0 0"></div>
+      <div id="sinCuenta" class="oculto" style="margin-top:14px">
+        <p class="texto-suave" style="margin-bottom:12px">Esta mesa no tiene una cuenta abierta. Ábrela para empezar a tomar el pedido.</p>
+        <button id="botonAbrirCuenta">Abrir cuenta para esta mesa</button>
+      </div>
+    </div>
+
+    <div class="pos oculto" id="bloquePos">
+      <div class="tarjeta catalogo">
+        <h3>Productos</h3>
+        <div class="barra-catalogo" style="margin-top:12px">
+          <div class="buscador"><input type="text" id="busquedaProducto" placeholder="Buscar producto..."></div>
+        </div>
+        <div class="chips-categorias" id="chipsCategorias"></div>
+        <div class="productos-rejilla" id="productosRejilla"></div>
+      </div>
+
+      <div class="tarjeta ticket">
+        <h3><span>Pedido</span><span class="badge gris" id="etiquetaPedido"></span></h3>
+        <div class="ticket-lineas" id="ticketLineas"></div>
+        <div class="linea-total"><span>Subtotal</span><span id="subtotalTexto">$ 0</span></div>
+        <div class="linea-total grande"><span>Total</span><span id="totalTexto">$ 0</span></div>
+        <div class="campo" style="margin-top:14px"><label for="metodoPago">Método de pago</label><select id="metodoPago"></select></div>
+        <button id="botonPagar">Cobrar y cerrar cuenta</button>
+        <button id="botonCancelarCuenta" class="gris oculto" style="width:100%;margin-top:8px">Cancelar cuenta (sin consumo)</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/cuenta.js"></script>
+</body>
+</html>

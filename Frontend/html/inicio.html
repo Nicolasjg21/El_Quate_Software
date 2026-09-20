@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Principal - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="inicio" data-titulo="Panel Principal" data-subtitulo="Resumen del negocio con datos reales de la base">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="saludo">
+      <div>
+        <h2 id="saludoTexto">Hola</h2>
+        <p id="saludoSub"></p>
+      </div>
+      <div class="acciones-rapidas">
+        <a class="accion-rapida principal" href="mesas.html">🍽️ Ir a las mesas</a>
+        <a class="accion-rapida" href="productos.html">📦 Inventario</a>
+        <a class="accion-rapida" href="compras.html">🛒 Registrar compra</a>
+        <a class="accion-rapida" href="reportes.html">📊 Ver reportes</a>
+      </div>
+    </div>
+
+    <div id="bloquePrimerosPasos"></div>
+
+    <div id="tarjetasKpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px"></div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:0">
+      <div class="tarjeta"><h3>Ventas de los últimos 7 días</h3><div id="graficoVentas" style="margin-top:12px"></div></div>
+      <div class="tarjeta"><h3>Ingresos por categoría</h3><div id="graficoCategorias" style="margin-top:12px"></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="tarjeta">
+        <h3>Cuentas abiertas ahora</h3>
+        <div id="listaCuentas" class="lista-cuentas"></div>
+      </div>
+      <div class="tarjeta"><h3>Productos más vendidos</h3>
+        <div class="tabla-contenedor" style="margin-top:14px;border:none"><div class="tabla-scroll"><table>
+          <thead><tr><th>Producto</th><th class="derecha">Unidades</th><th class="derecha">Ingresos</th></tr></thead>
+          <tbody id="cuerpoTop"></tbody></table></div></div>
+      </div>
+    </div>
+
+    <div class="tarjeta"><h3>Productos en o por debajo del mínimo</h3>
+      <div class="tabla-contenedor" style="margin-top:14px;border:none"><div class="tabla-scroll"><table>
+        <thead><tr><th>Producto</th><th>Categoría</th><th class="derecha">Stock</th><th class="derecha">Mínimo</th><th>Estado</th></tr></thead>
+        <tbody id="cuerpoInventario"></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/core/graficos.js"></script>
+<script src="../js/modulos/inicio.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuración - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="configuracion" data-titulo="Configuración" data-subtitulo="Conexión con la API y diagnóstico de endpoints">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="tarjeta">
+      <h3>Sesión activa</h3>
+      <div class="datos-cuenta" id="datosSesion"></div>
+    </div>
+    <div class="tarjeta">
+      <h3>URL del backend</h3>
+      <div class="fila-formulario">
+        <div class="campo"><label for="apiUrl">Dirección base</label>
+          <input type="text" id="apiUrl" placeholder="https://localhost:7135"></div>
+      </div>
+      <div class="acciones"><button id="botonGuardarUrl">Guardar</button>
+      <button id="botonRestablecer" class="gris">Restablecer</button></div>
+    </div>
+    <div class="tarjeta">
+      <h3>Diagnóstico de la API</h3>
+      <p class="texto-suave">Llama al GET de cada controller y muestra qué responde. Úsalo para confirmar los
+      endpoints y para copiar los valores reales de los campos de estado.</p>
+      <div class="acciones" style="margin:12px 0"><button id="botonProbar">Probar todos los endpoints</button></div>
+      <div class="tabla-scroll"><table>
+        <thead><tr><th>Entidad</th><th>Endpoint</th><th>Resultado</th><th class="derecha">Registros</th><th class="derecha">ms</th></tr></thead>
+        <tbody id="cuerpoDiagnostico"></tbody></table></div>
+      <div id="valoresEstado" style="margin-top:16px"></div>
+    </div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/configuracion.js"></script>
+</body>
+</html>

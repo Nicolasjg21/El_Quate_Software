@@ -1,127 +1,150 @@
 /* ==========================================================================
-   INICIO (Panel Principal)
-   --------------------------------------------------------------------------
-   4 indicadores con icono, 2 gráficos SVG y 2 tablas. Los datos de
-   productos y mesas salen del backend real (Productos, Mesas). Los que
-   todavía no tienen Controller propio (ventas por día, categorías) usan
-   datos de ejemplo marcados como tales, hasta que exista ese endpoint.
+   INICIO — todos los indicadores salen de la base de datos.
    ========================================================================== */
+(function (App) {
+  "use strict";
+  var ui = App.ui, cfg = App.config;
 
-var ventasSemana = [
-  { dia: "Lun", ventas: 4000, ordenes: 32 },
-  { dia: "Mar", ventas: 3000, ordenes: 28 },
-  { dia: "Mié", ventas: 2000, ordenes: 20 },
-  { dia: "Jue", ventas: 2780, ordenes: 25 },
-  { dia: "Vie", ventas: 1890, ordenes: 18 },
-  { dia: "Sáb", ventas: 2390, ordenes: 22 },
-  { dia: "Dom", ventas: 3490, ordenes: 30 }
-];
+  App.pagina(async function () {
+    var d = await App.datos.cargar(["comprobantes", "cuentas", "pedidos", "detallePedidos", "productos",
+                                    "categorias", "kardex", "mesas", "metodosPago", "proveedores"]);
+    var yo = App.sesion.datos() || {};
 
-var categorias = [
-  { nombre: "Cervezas", valor: 10500 },
-  { nombre: "Licores", valor: 8200 },
-  { nombre: "Bebidas", valor: 3600 },
-  { nombre: "Snacks", valor: 2100 }
-];
+    saludo(yo);
+    primerosPasos(d);
 
-var productosTop = [
-  { nombre: "Cerveza Club Colombia Dorada", unidades: 456, ingresos: 5472000, tendencia: 12 },
-  { nombre: "Cerveza Águila Original",      unidades: 234, ingresos: 2691000, tendencia: 8 },
-  { nombre: "Whisky Old Parr",              unidades: 89,  ingresos: 3912000, tendencia: -3 }
-];
+    var stock = App.datos.stockPorProducto(d.kardex);
+    var porCuenta = App.datos.detallesPorCuenta(d.pedidos, d.detallePedidos);
 
-$(document).ready(function () {
-    protegerPagina();
-    $("#botonSalir").click(cerrarSesion);
+    /* ---- KPIs: últimos 7 días contra los 7 anteriores ---- */
+    var hoy0 = ui.inicioDelDia();
+    var desde = new Date(hoy0); desde.setDate(desde.getDate() - 6);
+    var desdePrev = new Date(desde); desdePrev.setDate(desdePrev.getDate() - 7);
 
-    dibujarKpis();
-    dibujarGraficos();
-    dibujarProductosTop();
-    cargarInventario();
-});
+    function entre(lista, a, b) {
+      return lista.filter(function (c) { var f = ui.parseFecha(c.fecha); return f && f >= a && f < b; });
+    }
+    var fin = new Date(hoy0.getTime() + 86400000);
+    var actual = entre(d.comprobantes, desde, fin);
+    var previo = entre(d.comprobantes, desdePrev, desde);
+    var suma = function (l) { return l.reduce(function (s, c) { return s + Number(c.total); }, 0); };
+    var ingresos = suma(actual), ingresosPrev = suma(previo);
+    var ticket = actual.length ? ingresos / actual.length : 0;
+    var ticketPrev = previo.length ? ingresosPrev / previo.length : 0;
+    var ocupadas = d.mesas.filter(function (m) { return cfg.igual(m.estado, cfg.ESTADOS.MESA.OCUPADA); }).length;
 
+    ui.html("tarjetasKpi",
+      kpi("💲", "Ventas (7 días)", ui.moneda(ingresos), tendencia(ingresos, ingresosPrev)) +
+      kpi("🧾", "Comprobantes (7 días)", ui.num(actual.length), tendencia(actual.length, previo.length)) +
+      kpi("📈", "Ticket promedio", ui.moneda(ticket), tendencia(ticket, ticketPrev)) +
+      kpi("🍽️", "Mesas ocupadas", ocupadas + " / " + d.mesas.length,
+          { texto: d.mesas.length ? Math.round((ocupadas / d.mesas.length) * 100) + "% del salón" : "Sin mesas registradas", clase: "neutra" }));
 
-function dibujarKpis() {
-    var totalVentas = ventasSemana.reduce(function (s, d) { return s + d.ventas; }, 0);
-    var totalOrdenes = ventasSemana.reduce(function (s, d) { return s + d.ordenes; }, 0);
-    var promedio = Math.round(totalVentas / (totalOrdenes || 1));
+    /* ---- Ventas por día ---- */
+    var etiquetas = [], valores = [];
+    for (var i = 6; i >= 0; i--) {
+      var dia = new Date(hoy0); dia.setDate(dia.getDate() - i);
+      var sig = new Date(dia.getTime() + 86400000);
+      etiquetas.push(dia.toLocaleDateString("es-CO", { weekday: "short" }));
+      valores.push(suma(entre(d.comprobantes, dia, sig)));
+    }
+    ui.html("graficoVentas", App.graficos.linea([{ nombre: "Ventas", valores: valores }], etiquetas));
 
-    var html =
-        tarjetaKpi("💲", "Ventas Totales", "$ " + formatoMiles(totalVentas), "+12% vs semana pasada", true) +
-        tarjetaKpi("🛒", "Órdenes Totales", formatoMiles(totalOrdenes), "+8% vs semana pasada", true) +
-        tarjetaKpi("📦", "Artículos de Inventario", "—", "se llena con Productos", null) +
-        tarjetaKpi("📈", "Valor Promedio de Orden", "$ " + formatoMiles(promedio), "+5% vs semana pasada", true);
+    /* ---- Categorías y top de productos (solo cuentas cobradas) ---- */
+    var cobradas = new Set(d.comprobantes.map(function (c) { return c.idCuenta; }));
+    var vendidos = [];
+    porCuenta.forEach(function (lista, idCuenta) { if (cobradas.has(idCuenta)) vendidos = vendidos.concat(lista); });
 
-    $("#tarjetasKpi").html(html);
-
-    // El total de productos sale del backend real.
-    $.ajax({
-        url: URL_PRODUCTOS, type: "GET", contentType: "application/json; charset=utf-8",
-        success: function (r) { $("#tarjetasKpi .valor-articulos").text(r.length); },
-        error: function () { $("#tarjetasKpi .valor-articulos").text("51"); }
+    var prodPorId = ui.indexar(d.productos, "idProducto");
+    var porCategoria = new Map(), porProducto = new Map();
+    vendidos.forEach(function (x) {
+      var p = prodPorId.get(x.idProducto);
+      var importe = Number(x.cantidad) * Number(x.precioUnitario);
+      if (p) porCategoria.set(p.idCategoria, (porCategoria.get(p.idCategoria) || 0) + importe);
+      var acc = porProducto.get(x.idProducto) || { unidades: 0, ingresos: 0 };
+      acc.unidades += Number(x.cantidad); acc.ingresos += importe;
+      porProducto.set(x.idProducto, acc);
     });
-}
 
-function tarjetaKpi(icono, etiqueta, valor, tendencia, sube) {
-    var claseValor = etiqueta.indexOf("Artículos") !== -1 ? " valor-articulos" : "";
-    return '<div class="kpi-tarjeta">' +
-        '<div class="fila-icono">' +
-            '<div><div class="etiqueta">' + etiqueta + '</div></div>' +
-            '<div class="icono">' + icono + '</div>' +
-        '</div>' +
-        '<div class="valor' + claseValor + '">' + valor + '</div>' +
-        (tendencia ? '<div class="tendencia ' + (sube ? "sube" : "baja") + '">' + (sube ? "↑ " : "↓ ") + tendencia + '</div>' : '') +
-    '</div>';
-}
+    ui.html("graficoCategorias", App.graficos.dona(d.categorias.map(function (c) {
+      return { nombre: c.nombreCategoria, valor: porCategoria.get(c.idCategoria) || 0 };
+    }).filter(function (x) { return x.valor > 0; })));
 
+    var top = Array.from(porProducto.entries())
+      .map(function (e) { var p = prodPorId.get(e[0]); return { nombre: p ? p.nombreProducto : "Producto #" + e[0], unidades: e[1].unidades, ingresos: e[1].ingresos }; })
+      .sort(function (a, b) { return b.ingresos - a.ingresos; }).slice(0, 5);
 
-function dibujarGraficos() {
-    $("#graficoVentas").html(
-        graficoLinea(ventasSemana.map(function (d) { return d.ventas; }), ventasSemana.map(function (d) { return d.dia; }))
-    );
-    $("#graficoCategorias").html(graficoDona(categorias));
-}
+    ui.html("cuerpoTop", ui.filasOVacio(top.map(function (t) {
+      return "<tr><td>" + ui.esc(t.nombre) + "</td><td class='derecha'>" + ui.num(t.unidades) +
+             "</td><td class='derecha'><strong>" + ui.moneda(t.ingresos) + "</strong></td></tr>";
+    }), 3, "Aún no hay ventas cobradas.", { icono: "🏆" }));
 
+    /* ---- Cuentas abiertas ahora ---- */
+    var abiertas = d.cuentas.filter(function (c) { return cfg.igual(c.estado, cfg.ESTADOS.CUENTA.ABIERTA); })
+      .sort(function (a, b) { return b.idCuenta - a.idCuenta; });
+    var mesaPorId = ui.indexar(d.mesas, "idMesa");
+    ui.html("listaCuentas", abiertas.length ? abiertas.slice(0, 6).map(function (c) {
+      var m = mesaPorId.get(c.idMesa);
+      return "<a class='cuenta-fila' href='cuenta.html?idMesa=" + c.idMesa + "'>" +
+        "<div><strong>Mesa " + ui.esc(m ? m.numeroMesa : c.idMesa) + "</strong><small>Abierta " + ui.esc(ui.hace(c.fechaApertura)) + "</small></div>" +
+        "<strong>" + ui.moneda(App.datos.sumar(porCuenta.get(c.idCuenta))) + "</strong></a>";
+    }).join("") : ui.vacio("🍽️", "No hay cuentas abiertas", "Cuando una mesa se ocupe, aparecerá aquí con su consumo actual.",
+                           "<a class='boton-enlace' href='mesas.html'>Ir a las mesas</a>"));
 
-function dibujarProductosTop() {
-    var filas = productosTop.map(function (p) {
-        var sube = p.tendencia >= 0;
-        return "<tr>" +
-            "<td>" + p.nombre + "</td>" +
-            "<td class='derecha'>" + formatoMiles(p.unidades) + "</td>" +
-            "<td class='derecha'><strong>$ " + formatoMiles(p.ingresos) + "</strong></td>" +
-            "<td class='derecha'><span class='badge " + (sube ? "verde" : "rojo") + "'>" + (sube ? "+" : "") + p.tendencia + "%</span></td>" +
-        "</tr>";
-    }).join("");
-    $("#cuerpoTop").html(filas);
-}
+    /* ---- Productos en o bajo el mínimo ---- */
+    var catPorId = ui.indexar(d.categorias, "idCategoria");
+    var bajos = d.productos.filter(function (p) { return p.estado && (stock.get(p.idProducto) || 0) <= Number(p.cantidadMinima); })
+      .sort(function (a, b) { return (stock.get(a.idProducto) || 0) - (stock.get(b.idProducto) || 0); }).slice(0, 10);
 
+    ui.html("cuerpoInventario", ui.filasOVacio(bajos.map(function (p) {
+      var s = stock.get(p.idProducto) || 0, cat = catPorId.get(p.idCategoria);
+      return "<tr class='fila-alerta'><td>" + ui.esc(p.nombreProducto) + "</td>" +
+        "<td>" + ui.badge(cat ? cat.nombreCategoria : "—", "gris") + "</td>" +
+        "<td class='derecha dato-alerta'>" + ui.num(s) + "</td><td class='derecha'>" + ui.num(p.cantidadMinima) + "</td>" +
+        "<td>" + ui.badge(s <= 0 ? "Sin existencias" : "Stock bajo", s <= 0 ? "rojo" : "amarillo") + "</td></tr>";
+    }), 5, d.productos.length ? "Todos los productos tienen existencias suficientes. 👍" : "Todavía no hay productos registrados.",
+       { icono: d.productos.length ? "✅" : "📦", accion: d.productos.length ? "" : "<a class='boton-enlace' href='productos.html'>Registrar productos</a>" }));
+  });
 
-function cargarInventario() {
-    $.ajax({
-        url: URL_PRODUCTOS, type: "GET", contentType: "application/json; charset=utf-8",
-        success: function (r) { dibujarInventario(r); },
-        error: function () {
-            dibujarInventario([
-                { codigo: "CCH-001", nombre: "Club Colombia Dorada", categoria: "Cervezas", stock: 156, stockMinimo: 80 },
-                { codigo: "AGU-045", nombre: "Aguardiente Antioqueño Rojo", categoria: "Licores", stock: 48, stockMinimo: 20 }
-            ]);
-        }
-    });
-}
+  function saludo(yo) {
+    var h = new Date().getHours();
+    var momento = h < 12 ? "Buenos días" : (h < 19 ? "Buenas tardes" : "Buenas noches");
+    var nombre = String(yo.nombre || "").split(" ")[0];
+    ui.texto("saludoTexto", momento + (nombre ? ", " + nombre : "") + " 👋");
+    ui.texto("saludoSub", new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+  }
 
-function dibujarInventario(productos) {
-    var filas = productos.slice(0, 8).map(function (p) {
-        var bajo = p.stockMinimo !== undefined && p.stock < p.stockMinimo;
-        return "<tr" + (bajo ? " class='fila-alerta'" : "") + ">" +
-            "<td class='texto-xs texto-suave'>" + p.codigo + "</td>" +
-            "<td>" + p.nombre + "</td>" +
-            "<td><span class='badge gris'>" + p.categoria + "</span></td>" +
-            "<td class='derecha'>" + p.stock + "</td>" +
-            "<td>" + (bajo ? "<span class='badge amarillo'>Stock bajo</span>" : "<span class='badge verde'>En existencia</span>") + "</td>" +
-        "</tr>";
-    }).join("");
-    $("#cuerpoInventario").html(filas || "<tr><td colspan='5' class='centro'>Sin productos registrados</td></tr>");
-}
+  /* Guía para una base recién creada: qué falta registrar y dónde. */
+  function primerosPasos(d) {
+    var pasos = [
+      { ok: d.categorias.length, t: "Crear categorías", s: "Agrupan tus productos (cervezas, snacks…)", href: "catalogos.html?c=categorias" },
+      { ok: d.productos.length, t: "Registrar productos", s: "Con precio de venta, mínimo y stock inicial", href: "productos.html" },
+      { ok: d.mesas.length, t: "Registrar mesas", s: "Las del salón, para poder abrir cuentas", href: "mesas.html" },
+      { ok: d.metodosPago.length, t: "Definir métodos de pago", s: "Efectivo, tarjeta, transferencia…", href: "catalogos.html?c=metodosPago" },
+      { ok: d.proveedores.length, t: "Registrar proveedores", s: "Para poder anotar tus compras", href: "catalogos.html?c=proveedores" }
+    ];
+    var hechos = pasos.filter(function (p) { return p.ok; }).length;
+    if (hechos === pasos.length) { ui.html("bloquePrimerosPasos", ""); return; }
+    ui.html("bloquePrimerosPasos",
+      "<div class='tarjeta primeros-pasos'><h3>🚀 Primeros pasos <span class='texto-suave' style='font-weight:normal;font-size:13px'>(" + hechos + " de " + pasos.length + ")</span></h3>" +
+      "<p class='texto-suave' style='margin-top:4px'>Para que el sistema empiece a mostrar información, registra estos datos base:</p>" +
+      "<ul class='pasos'>" + pasos.map(function (p) {
+        return "<li class='" + (p.ok ? "hecho" : "") + "'><span class='marca'>" + (p.ok ? "✓" : "") + "</span>" +
+          "<span class='texto'>" + ui.esc(p.t) + "<small>" + ui.esc(p.s) + "</small></span>" +
+          (p.ok ? "" : "<a href='" + p.href + "'>Hacerlo →</a>") + "</li>";
+      }).join("") + "</ul></div>");
+  }
 
-function formatoMiles(n) { return new Intl.NumberFormat("es-CO").format(n || 0); }
+  function tendencia(actual, previo) {
+    if (!previo) return { texto: actual ? "Sin período anterior para comparar" : "Sin movimientos aún", clase: "neutra" };
+    var pct = Math.round(((actual - previo) / previo) * 100);
+    if (pct === 0) return { texto: "Igual que la semana anterior", clase: "neutra" };
+    return { texto: (pct > 0 ? "▲ " : "▼ ") + Math.abs(pct) + "% vs. semana anterior", clase: pct > 0 ? "sube" : "baja" };
+  }
+
+  function kpi(icono, etiqueta, valor, t) {
+    return "<div class='kpi-tarjeta'><div class='fila-icono'><div><div class='etiqueta'>" + ui.esc(etiqueta) +
+      "</div></div><div class='icono'>" + icono + "</div></div><div class='valor'>" + ui.esc(valor) + "</div>" +
+      "<div class='tendencia " + t.clase + "'>" + ui.esc(t.texto) + "</div></div>";
+  }
+})(window.App = window.App || {});

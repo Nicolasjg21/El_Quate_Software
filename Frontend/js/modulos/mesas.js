@@ -1,178 +1,144 @@
 /* ==========================================================================
    MESAS
    --------------------------------------------------------------------------
-   Lista las mesas (GET), registra una nueva (POST) y, al hacer clic en una
-   mesa, manda a la pantalla de su cuenta (cuenta.html?id=...).
-
-   Si el backend todavía no responde, se usan datos de ejemplo
-   (mesasEjemplo) para que la pantalla se vea completa mientras conectas
-   la API real. En cuanto listarMesas() reciba una respuesta del backend,
-   se usa esa respuesta y ya no los datos de ejemplo.
+   mesas(idMesa, numeroMesa:int, estado:string) — no hay "personas" ni "total":
+   el consumo mostrado sale de la cuenta abierta y sus detalles de pedido.
    ========================================================================== */
+(function (App) {
+  "use strict";
+  var ui = App.ui, cfg = App.config;
+  var svc = App.api.entidad("mesas");
 
-var mesas = [];
-var filtroActual = "todas";
+  var mesas = [], cuentas = [], pedidos = [], detallesPorCuenta = new Map(), usuarios = [], filtro = "todas";
 
-/* Datos de ejemplo — se ven en pantalla SÓLO si el backend no responde. */
-var mesasEjemplo = [
-  { id: 1, numero: "1", estado: "Libre",   personas: 0, total: 0,      hora: "" },
-  { id: 2, numero: "2", estado: "Ocupada", personas: 4, total: 127500, hora: "14:32" },
-  { id: 3, numero: "3", estado: "Ocupada", personas: 2, total: 89250,  hora: "14:15" },
-  { id: 4, numero: "4", estado: "Cerrando",personas: 3, total: 156500, hora: "13:20" },
-  { id: 5, numero: "5", estado: "Libre",   personas: 0, total: 0,      hora: "" },
-  { id: 6, numero: "6", estado: "Ocupada", personas: 2, total: 234800, hora: "14:50" }
-];
+  App.pagina(async function () {
+    ui.html("estadoMesa", ui.opciones(
+      [{ v: cfg.ESTADOS.MESA.LIBRE }, { v: cfg.ESTADOS.MESA.OCUPADA }], "v", "v", cfg.ESTADOS.MESA.LIBRE));
 
-$(document).ready(function () {
-    protegerPagina();
+    document.getElementById("botonNuevaMesa").addEventListener("click", function () {
+      ui.mostrar("formNuevaMesa", true);
+      document.getElementById("numeroMesa").focus();
+    });
+    document.getElementById("botonCancelarMesa").addEventListener("click", function () { ui.mostrar("formNuevaMesa", false); });
+    document.getElementById("botonRegistrar").addEventListener("click", registrar);
+    document.getElementById("numeroMesa").addEventListener("keydown", function (e) { if (e.key === "Enter") registrar(); });
 
-    $("#botonSalir").click(cerrarSesion);
-    $("#botonNuevaMesa").click(function () { $("#formNuevaMesa").removeClass("oculto"); });
-    $("#botonCancelarMesa").click(function () { $("#formNuevaMesa").addClass("oculto"); });
-    $("#botonRegistrar").click(registrarMesa);
-
-    $(".chip").click(function () {
-        filtroActual = $(this).data("filtro");
-        $(".chip").removeClass("activo");
-        $(this).addClass("activo");
-        dibujarMesas();
+    ui.$$(".chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        ui.$$(".chip").forEach(function (c) { c.classList.remove("activo"); });
+        chip.classList.add("activo");
+        filtro = chip.dataset.filtro;
+        pintar();
+      });
     });
 
-    listarMesas();
-});
-
-
-/* ---------- GET: listar ---------- */
-function listarMesas() {
-
-    $.ajax({
-        url: URL_MESAS,
-        type: "GET",
-        contentType: "application/json; charset=utf-8",
-
-        success: function (respuesta) {
-            mesas = respuesta;
-            dibujarMesas();
-        },
-
-        error: function (xhr) {
-            // Sin backend todavía: se muestran los datos de ejemplo.
-            mesas = mesasEjemplo;
-            dibujarMesas();
-        }
+    ui.alHacerClic("rejillaMesas", "button[data-id]", function (b) {
+      window.location.href = "cuenta.html?idMesa=" + encodeURIComponent(b.dataset.id);
     });
-}
+    ui.alHacerClic("rejillaMesas", "button[data-nueva]", function () { document.getElementById("botonNuevaMesa").click(); });
 
+    await cargar();
+  });
 
-/* ---------- Resumen de estados (cajas de color) ---------- */
-function dibujarResumen() {
-    var ocupadas = mesas.filter(function (m) { return m.estado === "Ocupada"; }).length;
-    var libres   = mesas.filter(function (m) { return m.estado === "Libre"; }).length;
-    var cerrando = mesas.filter(function (m) { return m.estado === "Cerrando"; }).length;
-    var total = mesas.length;
+  async function cargar() {
+    var d = await App.datos.cargar(["mesas", "cuentas", "pedidos", "detallePedidos", "usuarios"]);
+    mesas = d.mesas.slice().sort(function (a, b) { return a.numeroMesa - b.numeroMesa; });
+    cuentas = d.cuentas; pedidos = d.pedidos; usuarios = d.usuarios;
+    detallesPorCuenta = App.datos.detallesPorCuenta(d.pedidos, d.detallePedidos);
+    pintar();
+  }
 
-    $("#resumenMesas").html(
-        '<div class="estado-caja roja">' +
-          '<div class="etiqueta"><span class="punto rojo"></span> Ocupadas</div>' +
-          '<div class="valor">' + ocupadas + ' <small>/ ' + total + '</small></div>' +
-        '</div>' +
-        '<div class="estado-caja verde">' +
-          '<div class="etiqueta"><span class="punto verde"></span> Libres</div>' +
-          '<div class="valor">' + libres + ' <small>/ ' + total + '</small></div>' +
-        '</div>' +
-        '<div class="estado-caja amarilla">' +
-          '<div class="etiqueta"><span class="punto amarillo"></span> Cerrando</div>' +
-          '<div class="valor">' + cerrando + ' <small>/ ' + total + '</small></div>' +
-        '</div>'
-    );
-}
+  function meseroDe(idCuenta) {
+    var suyos = pedidos.filter(function (p) { return p.idCuenta === idCuenta; }).sort(function (a, b) { return a.idPedido - b.idPedido; });
+    if (!suyos.length) return "";
+    var u = usuarios.filter(function (x) { return x.idUsuario === suyos[0].idUsuario; })[0];
+    return u ? String(u.nombres).split(" ")[0] : "";
+  }
 
+  function pintar() {
+    var libres = mesas.filter(function (m) { return cfg.igual(m.estado, cfg.ESTADOS.MESA.LIBRE); }).length;
+    var ocupadas = mesas.filter(function (m) { return cfg.igual(m.estado, cfg.ESTADOS.MESA.OCUPADA); }).length;
+    var otras = mesas.length - libres - ocupadas;
 
-/* ---------- Rejilla de mesas, con color según el estado ---------- */
-function dibujarMesas() {
-    dibujarResumen();
+    ui.html("resumenMesas",
+      caja("roja", "🔴 Ocupadas", ocupadas, mesas.length) +
+      caja("verde", "🟢 Libres", libres, mesas.length) +
+      (otras ? caja("amarilla", "🟡 Otro estado", otras, mesas.length) : ""));
 
-    var visibles = filtroActual === "todas"
-        ? mesas
-        : mesas.filter(function (m) { return m.estado === filtroActual; });
+    if (!mesas.length) {
+      ui.html("rejillaMesas", "<div style='grid-column:1/-1'>" + ui.vacio("🍽️", "Todavía no hay mesas registradas",
+        "Registra las mesas de tu salón para poder abrir cuentas y tomar pedidos.",
+        "<button data-nueva='1'>+ Registrar la primera mesa</button>") + "</div>");
+      return;
+    }
 
-    var html = "";
+    var visibles = mesas.filter(function (m) {
+      if (filtro === "todas") return true;
+      return cfg.igual(m.estado, filtro === "libre" ? cfg.ESTADOS.MESA.LIBRE : cfg.ESTADOS.MESA.OCUPADA);
+    });
 
-    for (var i = 0; i < visibles.length; i++) {
-        var m = visibles[i];
-        var clase = m.estado === "Ocupada" ? "ocupada" : "libre";
-        var punto = m.estado === "Ocupada" ? "rojo" : (m.estado === "Cerrando" ? "amarillo" : "verde");
+    var html = visibles.map(function (m) {
+      var cuenta = App.datos.cuentaAbierta(cuentas, m.idMesa);
+      var esLibre = cfg.igual(m.estado, cfg.ESTADOS.MESA.LIBRE);
+      var esOcupada = cfg.igual(m.estado, cfg.ESTADOS.MESA.OCUPADA);
+      var clase = esOcupada ? "ocupada" : (esLibre ? "libre" : "otra");
+      var punto = esOcupada ? "rojo" : (esLibre ? "verde" : "amarillo");
 
-        var cuerpo;
-        if (m.estado === "Libre") {
-            cuerpo = '<div class="badge verde" style="margin-top:10px">Libre</div>';
+      var cuerpo;
+      if (cuenta) {
+        var lineas = detallesPorCuenta.get(cuenta.idCuenta) || [];
+        var items = lineas.reduce(function (s, x) { return s + Number(x.cantidad); }, 0);
+        var mesero = meseroDe(cuenta.idCuenta);
+        cuerpo =
+          "<div class='detalle'>🕐 " + ui.esc(ui.hace(cuenta.fechaApertura)) + "</div>" +
+          "<div class='detalle'>🧾 " + items + (items === 1 ? " producto" : " productos") + (mesero ? " · " + ui.esc(mesero) : "") + "</div>" +
+          "<div class='monto'>" + ui.moneda(App.datos.sumar(lineas)) + "<small>Consumo actual</small></div>";
+      } else if (esLibre) {
+        cuerpo = "<div class='detalle'>Disponible</div><div class='llamada'>Abrir cuenta</div>";
+      } else {
+        cuerpo = "<div class='detalle'>" + ui.esc(m.estado || "Sin estado") + "</div><div class='llamada'>Ver mesa</div>";
+      }
+
+      return "<button class='mesa-tarjeta " + clase + "' data-id='" + m.idMesa + "' title='Mesa " + ui.esc(m.numeroMesa) + " — " + ui.esc(m.estado) + "'>" +
+        "<div class='cabecera'><span class='numero'>Mesa " + ui.esc(m.numeroMesa) + "</span><span class='punto " + punto + "'></span></div>" +
+        cuerpo + "</button>";
+    }).join("");
+
+    ui.html("rejillaMesas", html || "<div style='grid-column:1/-1'>" + ui.vacio("🔍", "Ninguna mesa con ese estado", "Prueba con otro filtro.") + "</div>");
+  }
+
+  function caja(color, etiqueta, valor, total) {
+    return "<div class='estado-caja " + color + "'><div class='etiqueta'>" + ui.esc(etiqueta) +
+      "</div><div class='valor'>" + valor + " <small>/ " + total + "</small></div></div>";
+  }
+
+  async function registrar() {
+    var r = ui.validar([{ id: "numeroMesa", etiqueta: "El número de mesa", requerido: true, tipo: "entero", min: 1 }]);
+    if (!r.ok) { ui.reportarValidacion(r); return; }
+
+    if (mesas.some(function (m) { return Number(m.numeroMesa) === r.valores.numeroMesa; })) {
+      ui.aviso("Ya existe una mesa con el número " + r.valores.numeroMesa + ".", "error");
+      return;
+    }
+
+    await ui.conBoton(document.getElementById("botonRegistrar"), async function () {
+      var cuerpo = { numeroMesa: r.valores.numeroMesa, estado: ui.valor("estadoMesa") };
+      try {
+        await svc.crear(cuerpo);
+        await App.api.auditar("mesas", "INSERT", null, cuerpo);
+        ui.aviso("Mesa " + cuerpo.numeroMesa + " registrada correctamente.", "exito");
+        ui.poner("numeroMesa", "");
+        ui.mostrar("formNuevaMesa", false);
+        await cargar();
+      } catch (e) {
+        if (e.status === 404 || e.status === 405) {
+          ui.aviso("El backend no expone POST para mesas: MesasController no tiene ningún [HttpPost] " +
+                   "(aunque MesasRepository.PostMesas sí existe). Hay que agregar el endpoint PostMesa; " +
+                   "el parche está en CONECTAR-BACKEND.md (P3).", "error");
         } else {
-            cuerpo =
-                '<div class="texto-xs texto-suave" style="margin-top:8px">🕐 ' + m.hora + '</div>' +
-                '<div class="texto-xs texto-suave">👥 ' + m.personas + ' personas</div>' +
-                '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08)">' +
-                    '<strong>$ ' + formatoMiles(m.total) + '</strong>' +
-                    '<div class="texto-xs texto-suave">' + (m.estado === "Cerrando" ? "Cerrando cuenta" : "Total actual") + '</div>' +
-                '</div>';
+          ui.aviso(App.api.explicar(e), "error");
         }
-
-        html += '<button class="mesa-tarjeta ' + clase + '" data-id="' + m.id + '">' +
-                    '<div class="fila-entre" style="display:flex;justify-content:space-between;align-items:center">' +
-                        '<span class="numero">Mesa ' + m.numero + '</span>' +
-                        '<span class="punto ' + punto + '"></span>' +
-                    '</div>' +
-                    cuerpo +
-                '</button>';
-    }
-
-    if (visibles.length === 0) {
-        html = '<p class="texto-suave">No hay mesas con ese estado.</p>';
-    }
-
-    $("#rejillaMesas").html(html);
-
-    $(".mesa-tarjeta").click(function () {
-        window.location.href = "cuenta.html?id=" + $(this).data("id");
+      }
     });
-}
-
-
-/* ---------- POST: registrar mesa nueva ---------- */
-function registrarMesa() {
-    var numero = $("#numeroMesa").val();
-
-    if (numero === "") {
-        mostrarMensaje("Escribe el número de la mesa", "error");
-        return;
-    }
-
-    var mesaNueva = { numero: numero, estado: "Libre" };
-
-    $.ajax({
-        url: URL_MESAS,
-        type: "POST",
-        contentType: "application/json; charset=utf-8",
-        data: JSON.stringify(mesaNueva),
-
-        success: function () {
-            mostrarMensaje("Mesa registrada correctamente", "exito");
-            $("#numeroMesa").val("");
-            $("#formNuevaMesa").addClass("oculto");
-            listarMesas();
-        },
-
-        error: function (xhr) {
-            mostrarMensaje("No se pudo registrar la mesa. Error " + xhr.status, "error");
-        }
-    });
-}
-
-
-function formatoMiles(n) {
-    return new Intl.NumberFormat("es-CO").format(n || 0);
-}
-
-function mostrarMensaje(texto, tipo) {
-    $("#mensaje").text(texto);
-    $("#mensaje").attr("class", "mensaje " + tipo);
-}
+  }
+})(window.App = window.App || {});

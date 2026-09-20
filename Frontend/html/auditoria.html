@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditoría - El Cuate</title>
+  <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body data-pagina="auditoria" data-titulo="Auditoría" data-subtitulo="Registro de actividades del sistema">
+<div class="contenedor">
+  <div class="menu" id="menu"></div>
+  <div class="contenido">
+    <div id="cabecera"></div>
+
+    <div class="tarjeta">
+      <div class="fila-formulario">
+        <div class="campo"><label for="filtroTexto">Buscar</label>
+          <input type="text" id="filtroTexto" placeholder="Tabla, acción o usuario..."></div>
+        <div class="campo"><label for="filtroTabla">Tabla</label><select id="filtroTabla"></select></div>
+        <div class="campo"><label for="filtroUsuario">Usuario</label><select id="filtroUsuario"></select></div>
+      </div>
+      <div class="fila-formulario">
+        <div class="campo"><label for="filtroDesde">Desde</label><input type="date" id="filtroDesde"></div>
+        <div class="campo"><label for="filtroHasta">Hasta</label><input type="date" id="filtroHasta"></div>
+      </div>
+      <div class="acciones"><button id="botonFiltrar">Filtrar</button>
+      <button id="botonLimpiar" class="gris">Limpiar</button>
+      <button id="botonExportar" class="gris">Exportar CSV</button></div>
+    </div>
+    <div class="tarjeta"><h3 id="conteoAuditoria">Registros de auditoría</h3>
+      <div class="tabla-contenedor" style="margin-top:14px"><div class="tabla-scroll"><table>
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Tabla</th><th>Acción</th><th>Datos</th></tr></thead>
+        <tbody id="cuerpoTabla"></tbody></table></div></div>
+      <div class="paginacion"><span id="rangoPagina"></span><div class="botones" id="botonesPagina"></div></div>
+    </div>
+  </div>
+</div>
+<script src="../js/core/config.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/sesion.js"></script>
+<script src="../js/core/api.js"></script>
+<script src="../js/core/datos.js"></script>
+<script src="../js/core/layout.js"></script>
+<script src="../js/modulos/auditoria.js"></script>
+</body>
+</html>

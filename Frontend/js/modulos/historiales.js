@@ -1,137 +1,128 @@
 /* ==========================================================================
-   HISTORIALES
-   --------------------------------------------------------------------------
-   Dos tablas de sólo lectura: Comprobantes (GET) y Compras (GET), con
-   pestañas, búsqueda y filtro por fecha. Si el backend no responde, se ven
-   datos de ejemplo para que la pantalla no quede vacía.
+   HISTORIALES — comprobantes y compras (solo lectura), con filtro de fecha
+   real y exportación a CSV de verdad.
    ========================================================================== */
+(function (App) {
+  "use strict";
+  var ui = App.ui;
 
-var pestanaActiva = "comprobantes";
-var textoBusqueda = "";
-var rangoFecha = "todos";
+  var comprobantes = [], compras = [], detalles = [], cuentas = [], mesas = [], metodos = [], proveedores = [];
+  var pestana = "comprobantes", busqueda = "", rango = "todos";
 
-var comprobantes = [];
-var compras = [];
-
-var comprobantesEjemplo = [
-  { id: "ORD-2024-5847", mesa: 3, mesero: "Carlos Ramírez", fecha: "2024-05-12 23:45", metodo: "Efectivo", total: 186000 },
-  { id: "ORD-2024-5846", mesa: 7, mesero: "Laura Gómez",    fecha: "2024-05-12 23:20", metodo: "Tarjeta",  total: 152000 },
-  { id: "ORD-2024-5845", mesa: 2, mesero: "Santiago Pérez", fecha: "2024-05-12 22:50", metodo: "Digital",  total: 95000 }
-];
-var comprasEjemplo = [
-  { id: "CMP-2024-1847", proveedor: "Bavaria S.A.",  fecha: "2024-05-10", articulos: 84, costo: 1480000 },
-  { id: "CMP-2024-1846", proveedor: "Diageo Colombia", fecha: "2024-05-08", articulos: 30, costo: 3200000 }
-];
-
-$(document).ready(function () {
-    protegerPagina();
-    $("#botonSalir").click(cerrarSesion);
-
-    $("#botonPestanaComprobantes").click(function () { cambiarPestana("comprobantes"); });
-    $("#botonPestanaCompras").click(function () { cambiarPestana("compras"); });
-
-    $("#busquedaHistorial").on("input", function () { textoBusqueda = $(this).val().toLowerCase(); dibujarTodo(); });
-
-    $(".chip").click(function () {
-        rangoFecha = $(this).data("rango");
-        $(".chip").removeClass("activo");
-        $(this).addClass("activo");
-        dibujarTodo();
+  App.pagina(async function () {
+    document.getElementById("botonPestanaComprobantes").addEventListener("click", function () { cambiar("comprobantes"); });
+    document.getElementById("botonPestanaCompras").addEventListener("click", function () { cambiar("compras"); });
+    document.getElementById("busquedaHistorial").addEventListener("input", ui.debounce(function (e) {
+      busqueda = e.target.value.trim().toLowerCase(); pintar();
+    }, 200));
+    ui.$$(".chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        ui.$$(".chip").forEach(function (c) { c.classList.remove("activo"); });
+        chip.classList.add("activo");
+        rango = chip.dataset.rango;
+        pintar();
+      });
     });
+    document.getElementById("botonExportar").addEventListener("click", exportar);
 
-    $("#botonExportar").click(exportarCsv);
+    var d = await App.datos.cargar(["comprobantes", "compras", "detalleCompras", "cuentas", "mesas", "metodosPago", "proveedores"]);
+    comprobantes = d.comprobantes; compras = d.compras; detalles = d.detalleCompras;
+    cuentas = d.cuentas; mesas = d.mesas; metodos = d.metodosPago; proveedores = d.proveedores;
+    pintar();
+  });
 
-    listarComprobantes();
-    listarCompras();
-});
+  function cambiar(cual) {
+    pestana = cual;
+    var esComp = cual === "comprobantes";
+    ui.mostrar("bloqueComprobantes", esComp);
+    ui.mostrar("bloqueCompras", !esComp);
+    document.getElementById("botonPestanaComprobantes").classList.toggle("activa", esComp);
+    document.getElementById("botonPestanaCompras").classList.toggle("activa", !esComp);
+  }
 
+  function desdeDelRango() {
+    if (rango === "todos") return null;
+    var d = ui.inicioDelDia();
+    if (rango === "semana") d.setDate(d.getDate() - 7);
+    if (rango === "mes") d.setMonth(d.getMonth() - 1);
+    return d;
+  }
+  function enRango(valor) {
+    var limite = desdeDelRango();
+    if (!limite) return true;
+    var f = ui.parseFecha(valor);
+    return f && f >= limite;
+  }
 
-function cambiarPestana(cual) {
-    pestanaActiva = cual;
-    var esComprobantes = cual === "comprobantes";
-    $("#bloqueComprobantes").toggleClass("oculto", !esComprobantes);
-    $("#bloqueCompras").toggleClass("oculto", esComprobantes);
-    $("#botonPestanaComprobantes").toggleClass("activa", esComprobantes);
-    $("#botonPestanaCompras").toggleClass("activa", !esComprobantes);
-}
+  function mesaDeCuenta(idCuenta) {
+    var c = cuentas.filter(function (x) { return x.idCuenta === idCuenta; })[0];
+    if (!c) return "—";
+    var m = mesas.filter(function (x) { return x.idMesa === c.idMesa; })[0];
+    return m ? "Mesa " + m.numeroMesa : "Mesa #" + c.idMesa;
+  }
+  function nombreMetodo(id) { var m = metodos.filter(function (x) { return x.idMetodo === id; })[0]; return m ? m.nombreMetodo : "Método #" + id; }
+  function nombreProveedor(id) { var p = proveedores.filter(function (x) { return x.idProveedor === id; })[0]; return p ? p.nombreProveedor : "Proveedor #" + id; }
+  function colorMetodo(nombre) {
+    var n = String(nombre).toLowerCase();
+    if (n.indexOf("efectivo") !== -1) return "verde";
+    if (n.indexOf("tarjeta") !== -1) return "azul";
+    return "morado";
+  }
 
+  function comprobantesVisibles() {
+    return comprobantes.filter(function (c) {
+      if (!enRango(c.fecha)) return false;
+      if (!busqueda) return true;
+      return (String(c.idComprobante) + " " + mesaDeCuenta(c.idCuenta) + " " + nombreMetodo(c.idMetodo)).toLowerCase().indexOf(busqueda) !== -1;
+    }).sort(function (a, b) { return b.idComprobante - a.idComprobante; });
+  }
+  function comprasVisibles() {
+    return compras.filter(function (c) {
+      if (!enRango(c.fecha)) return false;
+      if (!busqueda) return true;
+      return (String(c.idCompra) + " " + nombreProveedor(c.idProveedor)).toLowerCase().indexOf(busqueda) !== -1;
+    }).sort(function (a, b) { return b.idCompra - a.idCompra; });
+  }
+  function articulosDe(idCompra) {
+    return detalles.filter(function (d) { return d.idCompra === idCompra; })
+                   .reduce(function (s, d) { return s + Number(d.cantidad); }, 0);
+  }
 
-function listarComprobantes() {
-    $.ajax({
-        url: URL_COMPROBANTES, type: "GET", contentType: "application/json; charset=utf-8",
-        success: function (r) { comprobantes = r; dibujarTodo(); },
-        error: function () { comprobantes = comprobantesEjemplo; dibujarTodo(); }
-    });
-}
+  function pintar() {
+    ui.html("cuerpoComprobantes", ui.filasOVacio(comprobantesVisibles().map(function (c) {
+      return "<tr><td class='texto-suave'>" + c.idComprobante + "</td>" +
+        "<td>" + ui.esc(mesaDeCuenta(c.idCuenta)) + "</td>" +
+        "<td class='texto-xs texto-suave'>" + ui.esc(ui.fecha(c.fecha)) + "</td>" +
+        "<td>" + ui.badge(nombreMetodo(c.idMetodo), colorMetodo(nombreMetodo(c.idMetodo))) + "</td>" +
+        "<td class='derecha'><strong>" + ui.moneda(c.total) + "</strong></td></tr>";
+    }), 5, "No hay comprobantes en ese período."));
 
-function listarCompras() {
-    $.ajax({
-        url: URL_COMPRAS, type: "GET", contentType: "application/json; charset=utf-8",
-        success: function (r) { compras = r; dibujarTodo(); },
-        error: function () { compras = comprasEjemplo; dibujarTodo(); }
-    });
-}
+    ui.html("cuerpoCompras", ui.filasOVacio(comprasVisibles().map(function (c) {
+      return "<tr><td class='texto-suave'>" + c.idCompra + "</td>" +
+        "<td>" + ui.esc(nombreProveedor(c.idProveedor)) + "</td>" +
+        "<td class='texto-xs texto-suave'>" + ui.esc(ui.soloFecha(c.fecha)) + "</td>" +
+        "<td class='derecha'>" + ui.num(articulosDe(c.idCompra)) + "</td>" +
+        "<td class='derecha'><strong>" + ui.moneda(c.total) + "</strong></td></tr>";
+    }), 5, "No hay compras en ese período."));
+  }
 
-
-function dibujarTodo() {
-    dibujarComprobantes();
-    dibujarCompras();
-}
-
-
-function insigniaMetodo(metodo) {
-    var colores = { "Efectivo": "verde", "Tarjeta": "azul", "Digital": "morado" };
-    return "<span class='badge " + (colores[metodo] || "gris") + "'>" + metodo + "</span>";
-}
-
-
-function dibujarComprobantes() {
-    var visibles = comprobantes.filter(function (c) {
-        return !textoBusqueda ||
-            String(c.mesero).toLowerCase().indexOf(textoBusqueda) !== -1 ||
-            String(c.id).toLowerCase().indexOf(textoBusqueda) !== -1;
-    });
-
-    var filas = visibles.map(function (c) {
-        return "<tr>" +
-            "<td>" + c.id + "</td><td>Mesa " + c.mesa + "</td><td>" + c.mesero + "</td>" +
-            "<td class='texto-xs texto-suave'>" + c.fecha + "</td>" +
-            "<td>" + insigniaMetodo(c.metodo) + "</td>" +
-            "<td class='derecha'><strong>$ " + formatoMiles(c.total) + "</strong></td>" +
-        "</tr>";
-    }).join("");
-
-    $("#cuerpoComprobantes").html(filas || "<tr><td colspan='6' class='centro'>No hay órdenes que coincidan</td></tr>");
-}
-
-
-function dibujarCompras() {
-    var visibles = compras.filter(function (c) {
-        return !textoBusqueda ||
-            String(c.proveedor).toLowerCase().indexOf(textoBusqueda) !== -1 ||
-            String(c.id).toLowerCase().indexOf(textoBusqueda) !== -1;
-    });
-
-    var filas = visibles.map(function (c) {
-        return "<tr>" +
-            "<td>" + c.id + "</td><td>" + c.proveedor + "</td>" +
-            "<td class='texto-xs texto-suave'>" + c.fecha + "</td>" +
-            "<td class='derecha'>" + c.articulos + "</td>" +
-            "<td class='derecha'><strong>$ " + formatoMiles(c.costo) + "</strong></td>" +
-        "</tr>";
-    }).join("");
-
-    $("#cuerpoCompras").html(filas || "<tr><td colspan='5' class='centro'>No hay compras que coincidan</td></tr>");
-}
-
-
-function exportarCsv() {
-    var datos = pestanaActiva === "comprobantes" ? comprobantes : compras;
-    var csv = JSON.stringify(datos, null, 2);
-    var enlace = document.createElement("a");
-    enlace.href = "data:text/plain;charset=utf-8," + encodeURIComponent(csv);
-    enlace.download = pestanaActiva + ".json";
-    enlace.click();
-}
-
-function formatoMiles(n) { return new Intl.NumberFormat("es-CO").format(n || 0); }
+  function exportar() {
+    if (pestana === "comprobantes") {
+      ui.descargarCsv("comprobantes.csv", [
+        { titulo: "Comprobante", valor: "idComprobante" },
+        { titulo: "Mesa", valor: function (c) { return mesaDeCuenta(c.idCuenta); } },
+        { titulo: "Fecha", valor: function (c) { return ui.fecha(c.fecha); } },
+        { titulo: "Método de pago", valor: function (c) { return nombreMetodo(c.idMetodo); } },
+        { titulo: "Total", valor: "total" }
+      ], comprobantesVisibles());
+    } else {
+      ui.descargarCsv("compras.csv", [
+        { titulo: "Compra", valor: "idCompra" },
+        { titulo: "Proveedor", valor: function (c) { return nombreProveedor(c.idProveedor); } },
+        { titulo: "Fecha", valor: function (c) { return ui.soloFecha(c.fecha); } },
+        { titulo: "Artículos", valor: function (c) { return articulosDe(c.idCompra); } },
+        { titulo: "Total", valor: "total" }
+      ], comprasVisibles());
+    }
+  }
+})(window.App = window.App || {});

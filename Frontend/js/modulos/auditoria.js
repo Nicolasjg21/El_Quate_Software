@@ -1,127 +1,128 @@
 /* ==========================================================================
-   AUDITORÍA
-   --------------------------------------------------------------------------
-   Un GET trae todos los registros; el resto (buscar, filtrar por módulo,
-   usuario y fechas, y paginar) se hace en el navegador sobre esa lista.
-   Si el backend no responde, se ven datos de ejemplo.
+   AUDITORÍA — auditorias(idAuditoria, tabla, accion, idUsuario, fecha,
+   datosAnteriores, datosNuevos). Los nombres "modulo" y "detalle" que usaba
+   la versión anterior no existen en la tabla.
    ========================================================================== */
+(function (App) {
+  "use strict";
+  var ui = App.ui;
 
-var registrosTodos = [];
-var filtrosAplicados = { texto: "", modulo: "Todas", usuario: "Todos", desde: "", hasta: "" };
-var paginaActual = 1;
-var POR_PAGINA = 8;
+  var registros = [], usuarios = [], pagina = 1, POR_PAGINA = 10;
+  var filtros = { texto: "", tabla: "todas", usuario: "todos", desde: "", hasta: "" };
 
-var auditoriaEjemplo = [
-  { id: "AUD-001", fecha: "15/09/2026 10:32", usuario: "Nicolás Velandia", modulo: "Productos", accion: "UPDATE", detalle: "Actualización de producto" },
-  { id: "AUD-002", fecha: "15/09/2026 10:15", usuario: "Andrés Cardona",   modulo: "Compras",   accion: "INSERT", detalle: "Creación de compra" },
-  { id: "AUD-003", fecha: "15/09/2026 09:58", usuario: "Juan Camilo Restrepo", modulo: "Pedidos", accion: "UPDATE", detalle: "Actualización de pedido" },
-  { id: "AUD-004", fecha: "15/09/2026 08:05", usuario: "Daniela Vélez",    modulo: "Usuarios",  accion: "LOGIN",  detalle: "Inicio de sesión" }
-];
-
-$(document).ready(function () {
-    protegerPagina();
-    $("#botonSalir").click(cerrarSesion);
-
-    $("#botonFiltrar").click(aplicarFiltros);
-    $("#botonLimpiar").click(function () {
-        $("#filtroTexto").val(""); $("#filtroModulo").val("Todas"); $("#filtroUsuario").val("Todos");
-        $("#filtroDesde").val(""); $("#filtroHasta").val("");
-        aplicarFiltros();
+  App.pagina(async function () {
+    document.getElementById("botonFiltrar").addEventListener("click", aplicar);
+    document.getElementById("botonExportar").addEventListener("click", exportar);
+    document.getElementById("botonLimpiar").addEventListener("click", function () {
+      ui.poner("filtroTexto", ""); ui.poner("filtroTabla", "todas"); ui.poner("filtroUsuario", "todos");
+      ui.poner("filtroDesde", ""); ui.poner("filtroHasta", "");
+      aplicar();
+    });
+    ui.alHacerClic("botonesPagina", "button[data-pagina]", function (b) {
+      pagina = Number(b.dataset.pagina); pintar();
     });
 
-    listarAuditoria();
-});
+    var d = await App.datos.cargar(["auditorias", "usuarios"]);
+    registros = d.auditorias; usuarios = d.usuarios;
 
+    var tablas = [];
+    registros.forEach(function (r) { if (r.tabla && tablas.indexOf(r.tabla) === -1) tablas.push(r.tabla); });
+    ui.html("filtroTabla", "<option value='todas'>Todas</option>" + tablas.sort().map(function (t) {
+      return "<option value='" + ui.esc(t) + "'>" + ui.esc(t) + "</option>";
+    }).join(""));
+    ui.html("filtroUsuario", "<option value='todos'>Todos</option>" +
+      ui.opciones(usuarios, "idUsuario", function (u) { return ui.nombreCompleto(u); }));
 
-function listarAuditoria() {
-    $.ajax({
-        url: URL_AUDITORIAS, type: "GET", contentType: "application/json; charset=utf-8",
-        success: function (r) { registrosTodos = r; prepararFiltros(); aplicarFiltros(); },
-        error: function () { registrosTodos = auditoriaEjemplo; prepararFiltros(); aplicarFiltros(); }
-    });
-}
+    pintar();
+  });
 
+  function nombreUsuario(id) {
+    var u = usuarios.filter(function (x) { return x.idUsuario === id; })[0];
+    return u ? ui.nombreCompleto(u) : "Usuario #" + id;
+  }
+  function colorAccion(accion) {
+    var a = String(accion).toUpperCase();
+    if (a.indexOf("INSERT") !== -1 || a.indexOf("CREA") !== -1) return "verde";
+    if (a.indexOf("UPDATE") !== -1 || a.indexOf("ACTUALIZ") !== -1) return "naranja";
+    if (a.indexOf("DELETE") !== -1 || a.indexOf("ELIMIN") !== -1) return "rojo";
+    return "gris";
+  }
 
-function prepararFiltros() {
-    var modulos = ["Todas"], usuarios = ["Todos"];
-    registrosTodos.forEach(function (r) {
-        if (modulos.indexOf(r.modulo) === -1) modulos.push(r.modulo);
-        if (usuarios.indexOf(r.usuario) === -1) usuarios.push(r.usuario);
-    });
-    $("#filtroModulo").html(modulos.map(function (m) { return "<option>" + m + "</option>"; }).join(""));
-    $("#filtroUsuario").html(usuarios.map(function (u) { return "<option>" + u + "</option>"; }).join(""));
-}
-
-
-function aplicarFiltros() {
-    filtrosAplicados = {
-        texto: $("#filtroTexto").val().toLowerCase(),
-        modulo: $("#filtroModulo").val() || "Todas",
-        usuario: $("#filtroUsuario").val() || "Todos",
-        desde: $("#filtroDesde").val(),
-        hasta: $("#filtroHasta").val()
+  function aplicar() {
+    filtros = {
+      texto: ui.valor("filtroTexto").trim().toLowerCase(),
+      tabla: ui.valor("filtroTabla") || "todas",
+      usuario: ui.valor("filtroUsuario") || "todos",
+      desde: ui.valor("filtroDesde"),
+      hasta: ui.valor("filtroHasta")
     };
-    paginaActual = 1;
-    dibujarTabla();
-}
+    pagina = 1;
+    pintar();
+  }
 
+  function filtrados() {
+    var desde = filtros.desde ? new Date(filtros.desde + "T00:00:00") : null;
+    var hasta = filtros.hasta ? new Date(filtros.hasta + "T23:59:59") : null;
+    return registros.filter(function (r) {
+      var t = !filtros.texto || [r.tabla, r.accion, nombreUsuario(r.idUsuario)]
+        .some(function (v) { return String(v).toLowerCase().indexOf(filtros.texto) !== -1; });
+      var tb = filtros.tabla === "todas" || r.tabla === filtros.tabla;
+      var us = filtros.usuario === "todos" || String(r.idUsuario) === String(filtros.usuario);
+      var f = ui.parseFecha(r.fecha);
+      var fe = (!desde || (f && f >= desde)) && (!hasta || (f && f <= hasta));
+      return t && tb && us && fe;
+    }).sort(function (a, b) { return b.idAuditoria - a.idAuditoria; });
+  }
 
-function registrosFiltrados() {
-    return registrosTodos.filter(function (r) {
-        var texto = !filtrosAplicados.texto ||
-            [r.usuario, r.modulo, r.accion, r.detalle].some(function (v) {
-                return String(v).toLowerCase().indexOf(filtrosAplicados.texto) !== -1;
-            });
-        var modulo = filtrosAplicados.modulo === "Todas" || r.modulo === filtrosAplicados.modulo;
-        var usuario = filtrosAplicados.usuario === "Todos" || r.usuario === filtrosAplicados.usuario;
-        return texto && modulo && usuario;
-    });
-}
+  function json(texto) {
+    if (!texto) return "";
+    try { return JSON.stringify(JSON.parse(texto), null, 2); } catch (e) { return String(texto); }
+  }
 
+  function pintar() {
+    var lista = filtrados();
+    var totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+    if (pagina > totalPaginas) pagina = totalPaginas;
+    var visibles = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
-function colorAccion(accion) {
-    return { "INSERT": "gris", "UPDATE": "naranja", "DELETE": "rojo", "LOGIN": "oscuro", "LOGOUT": "oscuro" }[accion] || "gris";
-}
+    ui.texto("conteoAuditoria", "Registros de auditoría — " + lista.length + (lista.length === 1 ? " registro" : " registros"));
 
+    ui.html("cuerpoTabla", ui.filasOVacio(visibles.map(function (r) {
+      var antes = json(r.datosAnteriores), despues = json(r.datosNuevos);
+      var detalle = "";
+      if (antes || despues) {
+        detalle = "<details class='datos-json'><summary>Ver cambios</summary><pre>" +
+          (antes ? "ANTES:\n" + ui.esc(antes) + "\n\n" : "") +
+          (despues ? "DESPUÉS:\n" + ui.esc(despues) : "") + "</pre></details>";
+      } else {
+        detalle = "<span class='texto-suave'>—</span>";
+      }
+      return "<tr><td class='texto-xs texto-suave'>" + ui.esc(ui.fecha(r.fecha)) + "</td>" +
+        "<td>" + ui.esc(nombreUsuario(r.idUsuario)) + "</td>" +
+        "<td>" + ui.esc(r.tabla) + "</td>" +
+        "<td>" + ui.badge(r.accion, colorAccion(r.accion)) + "</td>" +
+        "<td>" + detalle + "</td></tr>";
+    }), 5, "No hay registros de auditoría con esos filtros."));
 
-function dibujarTabla() {
-    var filtrados = registrosFiltrados();
-    var totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
-    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+    var desde = lista.length ? (pagina - 1) * POR_PAGINA + 1 : 0;
+    ui.texto("rangoPagina", "Mostrando " + desde + "-" + Math.min(pagina * POR_PAGINA, lista.length) + " de " + lista.length);
 
-    var visibles = filtrados.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
-
-    $("#conteoAuditoria").text("Registros de auditoría — " + filtrados.length + (filtrados.length === 1 ? " registro" : " registros"));
-
-    var filas = visibles.map(function (r) {
-        return "<tr>" +
-            "<td class='texto-xs texto-suave'>" + r.fecha + "</td>" +
-            "<td>" + r.usuario + "</td>" +
-            "<td>" + r.modulo + "</td>" +
-            "<td><span class='badge " + colorAccion(r.accion) + "'>" + r.accion + "</span></td>" +
-            "<td>" + r.detalle + "</td>" +
-        "</tr>";
-    }).join("");
-
-    $("#cuerpoTabla").html(filas || "<tr><td colspan='5' class='centro'>No se encontraron registros</td></tr>");
-
-    dibujarPaginacion(totalPaginas, filtrados.length);
-}
-
-
-function dibujarPaginacion(totalPaginas, totalRegistros) {
-    var desde = totalRegistros === 0 ? 0 : (paginaActual - 1) * POR_PAGINA + 1;
-    var hasta = Math.min(paginaActual * POR_PAGINA, totalRegistros);
-    $("#rangoPagina").text("Mostrando " + desde + "-" + hasta + " de " + totalRegistros);
-
-    var html = "<button id='pagAnterior'" + (paginaActual === 1 ? " disabled" : "") + ">Anterior</button>";
+    var botones = "<button data-pagina='" + (pagina - 1) + "'" + (pagina === 1 ? " disabled" : "") + ">Anterior</button>";
     for (var i = 1; i <= totalPaginas; i++) {
-        html += "<button class='pagina" + (i === paginaActual ? " activo" : "") + "' data-pagina='" + i + "'>" + i + "</button>";
+      botones += "<button class='pagina" + (i === pagina ? " activo" : "") + "' data-pagina='" + i + "'>" + i + "</button>";
     }
-    html += "<button id='pagSiguiente'" + (paginaActual === totalPaginas ? " disabled" : "") + ">Siguiente</button>";
-    $("#botonesPagina").html(html);
+    botones += "<button data-pagina='" + (pagina + 1) + "'" + (pagina === totalPaginas ? " disabled" : "") + ">Siguiente</button>";
+    ui.html("botonesPagina", botones);
+  }
 
-    $("#pagAnterior").click(function () { paginaActual--; dibujarTabla(); });
-    $("#pagSiguiente").click(function () { paginaActual++; dibujarTabla(); });
-    $(".pagina").click(function () { paginaActual = Number($(this).data("pagina")); dibujarTabla(); });
-}
+  function exportar() {
+    ui.descargarCsv("auditoria.csv", [
+      { titulo: "Fecha", valor: function (r) { return ui.fecha(r.fecha); } },
+      { titulo: "Usuario", valor: function (r) { return nombreUsuario(r.idUsuario); } },
+      { titulo: "Tabla", valor: "tabla" },
+      { titulo: "Acción", valor: "accion" },
+      { titulo: "Datos anteriores", valor: function (r) { return r.datosAnteriores || ""; } },
+      { titulo: "Datos nuevos", valor: function (r) { return r.datosNuevos || ""; } }
+    ], filtrados());
+  }
+})(window.App = window.App || {});

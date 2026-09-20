@@ -2,45 +2,48 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión - El Cuate</title>
   <link rel="stylesheet" href="css/estilos.css">
 </head>
-<body class="pantalla-login">
+<body class="pantalla-login" data-publica="1">
 
   <img class="logo-login" src="img/logo-login.png" alt="Los Cuates de Patty">
 
-  <div class="caja-login">
+  <form class="caja-login" id="formLogin" novalidate>
 
-    <h1>El Cuate</h1>
+    <h1>El Quate</h1>
     <p class="subtitulo">Sistema POS</p>
 
-    <!-- Empieza oculto. JavaScript le quita la clase "oculto" si hay un error. -->
-    <div id="mensaje" class="mensaje oculto"></div>
+    <div id="mensaje" class="mensaje oculto" role="alert"></div>
 
     <div class="campo">
-      <label for="email">Usuario</label>
-      <input type="text" id="email" placeholder="manager">
+      <label for="email">Correo electrónico</label>
+      <input type="email" id="email" placeholder="usuario@correo.com" autocomplete="username" autofocus>
     </div>
 
     <div class="campo">
       <label for="password">Contraseña</label>
-      <input type="password" id="password" placeholder="••••••••">
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
     </div>
 
-    <button id="botonEntrar">Entrar</button>
+    <button type="submit" id="botonEntrar">Entrar</button>
 
-  </div>
+    <details style="margin-top:16px;font-size:12px;color:#ccc">
+      <summary style="cursor:pointer">Conexión con el backend</summary>
+      <div class="campo" style="margin:8px 0 6px">
+        <label for="apiUrl" style="color:#ccc">URL del backend</label>
+        <input type="text" id="apiUrl" placeholder="https://localhost:7135">
+      </div>
+      <button type="button" id="botonGuardarUrl" class="gris pequeno">Guardar URL</button>
+    </details>
 
-  <!-- jQuery: primero intenta la copia local; si no está, la trae de internet -->
-  <script src="js/lib/jquery-3.7.1.min.js"></script>
-  <script>
-    if (typeof jQuery === "undefined") {
-      document.write('<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
-    }
-  </script>
+  </form>
 
   <script src="js/core/config.js"></script>
+  <script src="js/core/ui.js"></script>
   <script src="js/core/sesion.js"></script>
+  <script src="js/core/api.js"></script>
   <script src="js/modulos/login.js"></script>
 
 </body>
