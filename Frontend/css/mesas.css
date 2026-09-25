@@ -1,0 +1,183 @@
+/* ==========================================================================
+   MESAS — estilos específicos
+   ========================================================================== */
+
+.link-volver {
+  background: none;
+  border: none;
+  color: var(--coral);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.link-volver:hover { text-decoration: underline; }
+
+/* ---------- Grid de mesas ---------- */
+.mesas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.mesa-card {
+  border-radius: var(--radio);
+  padding: 16px;
+  border: 1px solid var(--borde);
+  background-color: #FFFFFF;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 120px;
+}
+
+.mesa-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(31,36,38,0.10); }
+
+.mesa-card--libre    { background-color: var(--verde-fondo); border-color: #CFEBD8; }
+.mesa-card--ocupada  { background-color: var(--rojo-fondo); border-color: #F5CFC7; }
+.mesa-card--cerrando { background-color: var(--amarillo-fondo); border-color: #F3E1AE; }
+
+.mesa-card-fila-superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mesa-card-nombre { font-size: 16px; font-weight: 700; color: var(--texto-principal); }
+
+.mesa-card-punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.mesa-card-punto--libre { background-color: var(--verde-punto); }
+.mesa-card-punto--ocupada { background-color: var(--rojo-punto); }
+.mesa-card-punto--cerrando { background-color: var(--amarillo-punto); }
+
+.mesa-card-info {
+  font-size: 11px;
+  color: var(--texto-secundario);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mesa-card-estado-libre {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.mesa-card-estado-libre .pill { background-color: rgba(255,255,255,0.6); }
+
+.mesa-card-total {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(31,36,38,0.08);
+}
+
+.mesa-card-total-valor {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--texto-principal);
+}
+
+.mesa-card-total-etiqueta {
+  font-size: 10px;
+  color: var(--texto-secundario);
+  margin-top: 2px;
+}
+
+.mesa-card-disponible {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--verde-texto);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ---------- Detalle de mesa ---------- */
+.detalle-totales {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detalle-totales-fila {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
+.detalle-total-caja {
+  margin-top: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radio-chico);
+  background: linear-gradient(90deg, #FDECE6, #FFF6F1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detalle-total-etiqueta { font-size: 11px; font-weight: 700; color: var(--texto-suave); letter-spacing: 0.03em; }
+.detalle-total-valor { font-size: 24px; font-weight: 700; color: var(--coral); }
+
+.cant-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 3px 6px;
+}
+
+.cant-control button {
+  background: none;
+  border: none;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  color: var(--texto-secundario);
+  line-height: 1;
+}
+
+.cant-control button:hover { color: var(--coral); }
+.cant-control span { font-size: 13px; font-weight: 600; min-width: 16px; text-align: center; }
+
+.btn-quitar {
+  background: none;
+  border: none;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+.btn-quitar:hover { color: var(--rojo-texto); }
+
+/* ---------- Picker de productos (modal Agregar Productos) ---------- */
+.picker-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.picker-item-info { min-width: 0; }
+.picker-item-nombre { font-size: 13px; font-weight: 600; color: var(--texto-principal); }
+.picker-item-meta { font-size: 11px; color: var(--texto-secundario); margin-top: 2px; }
+.picker-item-meta--bajo { color: var(--rojo-texto); font-weight: 600; }
+
+.picker-item-acciones { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.picker-vacio { text-align: center; color: var(--texto-secundario); font-size: 13px; padding: 30px 0; }

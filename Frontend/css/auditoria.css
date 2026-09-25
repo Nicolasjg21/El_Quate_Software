@@ -1,0 +1,130 @@
+/* ==========================================================================
+   AUDITORÍA — estilos específicos (consulta, filtros, detalle)
+   Reutiliza layout.css y admin.css.
+   ========================================================================== */
+
+/* ---------- Panel de búsqueda y filtros ---------- */
+.filtros-panel { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+
+.filtros-fila { display: grid; gap: 14px 16px; }
+.filtros-fila--busqueda { grid-template-columns: 1fr; }
+.filtros-fila--campos { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.filtros-panel .buscador { width: 100%; }
+.filtros-panel .buscador input { width: 100%; padding: 10px 12px 10px 32px; }
+.filtros-panel .buscador-icono { left: 11px; }
+.filtros-panel .campo input[type="date"] { min-height: 38px; }
+.filtros-panel .campo select,
+.filtros-panel .campo input { background-color: #FFFFFF; }
+
+.filtros-acciones { display: flex; justify-content: flex-end; gap: 10px; }
+.filtros-acciones .btn { min-width: 84px; }
+
+/* ---------- Panel de resultados ---------- */
+.resultados-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 6px 4px 12px 4px; }
+.resultados-titulo { font-size: 15px; font-weight: 700; color: var(--texto-principal); }
+.resultados-conteo { font-size: 11px; color: var(--texto-secundario); margin-top: 3px; }
+.resultados-icono { width: 18px; height: 18px; fill: none; stroke: var(--coral); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+.tabla-auditoria { min-width: 760px; }
+.tabla-auditoria .col-fecha { white-space: nowrap; color: var(--texto-secundario); }
+.tabla-auditoria .col-detalle { color: var(--texto-secundario); }
+.tabla-auditoria thead th:last-child { width: 70px; }
+.tabla-auditoria tbody td { padding: 10px; }
+
+/* ---------- Etiquetas de acción ---------- */
+.accion {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.accion--insert { background-color: var(--verde-fondo); color: var(--verde-texto); }
+.accion--update { background-color: #FDEBD3; color: #B9660F; }
+.accion--delete { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
+.accion--acceso { background-color: var(--gris-claro); color: var(--carbon); }
+
+/* ---------- Mensajes de estado (cargando / vacío / error) ---------- */
+.estado-tabla .btn { margin-top: 14px; }
+.estado-tabla--error p { color: var(--rojo-texto); }
+
+/* ---------- Paginación ---------- */
+.paginacion-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--borde);
+  margin-top: 12px;
+  padding: 14px 4px 4px 4px;
+}
+.paginacion-barra .tabla-pie { padding: 0; }
+.paginacion { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pag-btn {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 10px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--texto-principal);
+}
+.pag-btn:hover:not(:disabled):not(.pag-btn--activo) { background-color: var(--gris-claro); }
+.pag-btn--activo { background-color: var(--coral); border-color: var(--coral); color: #FFFFFF; }
+.pag-btn:disabled { color: var(--texto-suave); cursor: not-allowed; background-color: #FAFAFA; }
+.pag-btn:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
+
+/* ---------- Modal de detalle ---------- */
+.modal--auditoria { max-width: 640px; }
+.auditoria-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; }
+.meta-campo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.meta-etiqueta { font-size: 11px; color: var(--texto-suave); font-weight: 600; }
+.meta-valor { font-size: 13px; color: var(--texto-principal); font-weight: 600; overflow-wrap: anywhere; }
+.meta-valor--descripcion { grid-column: 1 / -1; }
+.meta-descripcion { font-size: 13px; color: var(--texto-secundario); line-height: 1.45; }
+
+.auditoria-separador { border: none; border-top: 1px solid var(--borde); }
+
+.comparacion { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.comparacion--simple { grid-template-columns: 1fr; }
+
+.bloque-datos { border: 1px solid var(--borde); border-radius: var(--radio-chico); overflow: hidden; background-color: #FFFFFF; }
+.bloque-datos-titulo { font-size: 12px; font-weight: 700; padding: 9px 12px; border-bottom: 1px solid var(--borde); }
+.bloque-datos--anterior .bloque-datos-titulo { background-color: var(--gris-claro); color: var(--carbon); }
+.bloque-datos--nuevo .bloque-datos-titulo { background-color: #FDECE6; color: var(--coral-oscuro); }
+.bloque-datos--nuevo { border-color: #F6C9BB; }
+
+.datos-lista { display: flex; flex-direction: column; }
+.dato-fila { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-bottom: 1px solid var(--borde); }
+.dato-fila:last-child { border-bottom: none; }
+.dato-etiqueta { font-size: 11px; color: var(--texto-suave); }
+.dato-valor { font-size: 13px; color: var(--texto-principal); overflow-wrap: anywhere; }
+.dato-fila--cambio { background-color: #FFF8F0; }
+.dato-fila--cambio .dato-valor { font-weight: 700; }
+.bloque-datos--anterior .dato-fila--cambio { background-color: #F6F7F7; }
+
+.modal--auditoria .modal-pie .btn { min-width: 110px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .filtros-fila--campos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .filtros-fila--campos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .auditoria-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comparacion { grid-template-columns: 1fr; }
+  .paginacion-barra { justify-content: center; }
+}
+@media (max-width: 480px) {
+  .filtros-panel { padding: 14px; }
+  .filtros-fila--campos { grid-template-columns: 1fr; }
+  .filtros-acciones .btn { flex: 1; }
+  .auditoria-meta { grid-template-columns: 1fr; }
+  .resultados-cabecera { padding-top: 10px; }
+}

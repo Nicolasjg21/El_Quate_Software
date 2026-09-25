@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — El Cuate</title>
+  <link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+
+  <main class="login-pantalla">
+
+    <img
+      src="../assets/logo-el-cuates.png"
+      alt="Los Cuates de Patty"
+      class="login-logo"
+    >
+
+    <section class="login-tarjeta">
+
+      <h1 class="login-titulo">Bienvenido</h1>
+      <p class="login-subtitulo">Accede a tu cuenta de El Cuate</p>
+
+      <form class="login-formulario" action="dashboard.html" method="get">
+
+        <div class="login-campo">
+          <label for="usuario">Usuario</label>
+          <div class="login-input-wrap">
+            <span class="login-icono" aria-hidden="true">&#9993;</span>
+            <input type="text" id="usuario" placeholder="manager">
+          </div>
+        </div>
+
+        <div class="login-campo">
+          <label for="password">Contraseña</label>
+          <div class="login-input-wrap">
+            <span class="login-icono" aria-hidden="true">&#128274;</span>
+            <input type="password" id="password" placeholder="••••••••">
+          </div>
+        </div>
+
+        <label class="login-recordar">
+          <input type="checkbox" id="recordar">
+          Recordar este dispositivo
+        </label>
+
+        <button type="submit" class="login-boton">
+          Acceder <span aria-hidden="true">&#8250;</span>
+        </button>
+
+      </form>
+
+    </section>
+
+    <p class="login-copyright">© 2024 El Cuate POS System. Todos los derechos reservados.</p>
+
+  </main>
+
+</body>
+</html>

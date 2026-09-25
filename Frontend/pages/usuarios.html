@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios — El Cuate</title>
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/admin.css">
+<link rel="stylesheet" href="../css/menu-responsive.css">
+</head>
+<body>
+
+<div class="app">
+
+  
+  <input type="checkbox" id="menu-toggle" class="menu-toggle" aria-label="Abrir o cerrar el menú">
+<!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-marca">
+      <img src="../assets/logo-sidebar.png" alt="El Cuate" class="sidebar-logo">
+      <div>
+        <p class="sidebar-nombre">El Cuate</p>
+        <p class="sidebar-slogan">Sistema POS</p>
+      </div>
+    </div>
+
+    <label for="menu-toggle" class="menu-boton" aria-label="Menú de navegación"></label>
+
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8962;</span>
+        Panel Principal
+      </a>
+      <a href="mesas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9638;</span>
+        Mesas
+      </a>
+      <a href="analiticas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128202;</span>
+        Ventas y Analíticas
+      </a>
+      <a href="inventario.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128230;</span>
+        Inventario
+      </a>
+      <a href="historiales.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128220;</span>
+        Historiales
+      </a>
+      <a href="auditoria.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128337;</span>
+        Auditoría
+      </a>
+      <a href="proveedores.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128666;</span>
+        Proveedores
+      </a>
+      <a href="usuarios.html" class="nav-item nav-item--activo">
+        <span class="nav-icono" aria-hidden="true">&#128101;</span>
+        Usuarios
+      </a>
+    </nav>
+
+    <div class="sidebar-pie">
+      <a href="#" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9881;</span>
+        Configuración
+      </a>
+      <a href="login.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8677;</span>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="contenido">
+
+    <header class="header">
+      <div>
+        <h1 class="header-titulo">Punto de Venta</h1>
+        <p class="header-subtitulo">Bienvenido a El Cuate Sistema POS</p>
+      </div>
+      <div class="header-usuario">
+        <div class="header-usuario-texto">
+          <p class="header-usuario-nombre">Usuario Administrador</p>
+          <p class="header-usuario-fecha" id="fecha-actual">—</p>
+        </div>
+        <img src="../assets/usuario.png" alt="Usuario Administrador" class="user-avatar">
+      </div>
+    </header>
+
+    <main class="cuerpo">
+
+      <div class="modulo-header">
+        <div>
+          <h2 class="modulo-titulo">Usuarios</h2>
+          <p class="modulo-subtitulo">Administra los usuarios y sus roles de acceso al sistema.</p>
+        </div>
+      </div>
+
+      <div class="toolbar toolbar-admin">
+        <div class="buscador">
+          <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+          <input type="text" id="buscar-usuarios" placeholder="Buscar usuarios..." aria-label="Buscar usuarios" autocomplete="off">
+        </div>
+        <button class="btn btn--primario" id="btn-nuevo-usuario">+ Nuevo usuario</button>
+      </div>
+
+      <section class="panel panel--tabla">
+        <div class="tabla-scroll">
+          <table class="tabla tabla-admin">
+            <thead>
+              <tr>
+                <th class="col-centro">ID</th>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Documento</th>
+                <th>Tipo de Documento</th>
+                <th>Teléfono</th>
+                <th class="col-centro">Estado</th>
+                <th class="col-centro">Rol</th>
+                <th>Correo Electrónico</th>
+                <th class="col-centro">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-usuarios"></tbody>
+          </table>
+        </div>
+        <p class="tabla-pie" id="tabla-pie">Mostrando 0 de 0 usuarios</p>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: NUEVO / EDITAR USUARIO ============ -->
+<div class="overlay" id="overlay-usuario">
+  <div class="modal modal--admin" role="dialog" aria-modal="true" aria-labelledby="titulo-usuario">
+    <div class="modal-header modal-header--admin">
+      <div>
+        <p class="modal-titulo" id="titulo-usuario">Nuevo usuario</p>
+        <p class="modal-descripcion" id="descripcion-usuario">Registra la información del usuario.</p>
+      </div>
+      <button class="modal-cerrar" data-cerrar="overlay-usuario" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo" id="form-usuario">
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="u-nombres">Nombres *</label>
+          <input type="text" id="u-nombres" placeholder="Ej. María" autocomplete="off">
+          <span class="campo-mensaje-error"></span>
+        </div>
+        <div class="campo">
+          <label for="u-apellidos">Apellidos *</label>
+          <input type="text" id="u-apellidos" placeholder="Ej. García" autocomplete="off">
+          <span class="campo-mensaje-error"></span>
+        </div>
+      </div>
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="u-documento">Documento *</label>
+          <input type="text" id="u-documento" placeholder="Ej. 1023456789" autocomplete="off">
+          <span class="campo-mensaje-error"></span>
+        </div>
+        <div class="campo">
+          <label for="u-telefono">Teléfono *</label>
+          <input type="text" id="u-telefono" placeholder="Ej. 310 456 7821" autocomplete="off">
+          <span class="campo-mensaje-error"></span>
+        </div>
+      </div>
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="u-tipo-documento">Tipo de Documento *</label>
+          <select id="u-tipo-documento"></select>
+          <span class="campo-mensaje-error"></span>
+        </div>
+        <div class="campo">
+          <label for="u-rol">Rol *</label>
+          <select id="u-rol"></select>
+          <span class="campo-mensaje-error"></span>
+        </div>
+      </div>
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="u-estado">Estado *</label>
+          <select id="u-estado">
+            <option value="">Seleccione una opción</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+          <span class="campo-mensaje-error"></span>
+        </div>
+        <div class="campo">
+          <label for="u-email">Correo Electrónico *</label>
+          <input type="email" id="u-email" placeholder="Ej. maria.garcia@gmail.com" autocomplete="off">
+          <span class="campo-mensaje-error"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-pie modal-pie--doble">
+      <button class="btn btn--secundario" id="btn-cancelar-usuario" data-cerrar="overlay-usuario">Cancelar</button>
+      <button class="btn btn--primario" id="btn-guardar-usuario">Guardar usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: CONFIRMAR ELIMINACIÓN ============ -->
+<div class="overlay" id="overlay-eliminar">
+  <div class="modal modal--admin modal--corto" role="alertdialog" aria-modal="true" aria-labelledby="titulo-eliminar">
+    <div class="modal-header">
+      <p class="modal-titulo" id="titulo-eliminar">Eliminar usuario</p>
+      <button class="modal-cerrar" data-cerrar="overlay-eliminar" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <p class="confirmar-texto" id="texto-eliminar"></p>
+    </div>
+    <div class="modal-pie modal-pie--doble">
+      <button class="btn btn--secundario" id="btn-cancelar-eliminar" data-cerrar="overlay-eliminar">Cancelar</button>
+      <button class="btn btn--peligro" id="btn-confirmar-eliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/admin-data.js"></script>
+<script src="../js/admin-ui.js"></script>
+<script src="../js/usuarios.js"></script>
+</body>
+</html>

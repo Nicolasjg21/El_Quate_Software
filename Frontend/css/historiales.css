@@ -1,0 +1,305 @@
+/* ==========================================================================
+   HISTORIALES — estilos específicos
+   --------------------------------------------------------------------------
+   Colores semánticos adicionales (solo para método de pago). No sustituyen
+   la paleta principal del proyecto, únicamente la complementan.
+   ========================================================================== */
+
+:root {
+  --azul-fondo: #E7EEFB;
+  --azul-texto: #2C5DBB;
+  --azul-punto: #3B6FD6;
+
+  --morado-fondo: #F1E9FB;
+  --morado-texto: #7C3AED;
+  --morado-punto: #8B5CF6;
+}
+
+/* ---------- Pestañas (Órdenes Pagadas / Compras Realizadas) ---------- */
+.historial-tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.historial-tab {
+  background: none;
+  border: none;
+  padding: 10px 2px 12px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-secundario);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.historial-tab:hover { color: var(--texto-principal); }
+
+.historial-tab--activo {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
+  font-weight: 700;
+}
+
+.historial-panel { display: none; flex-direction: column; gap: 16px; }
+.historial-panel--activo { display: flex; }
+
+/* ---------- Etiquetas de método de pago (don't make me think) ---------- */
+.metodo-pago {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.metodo-pago-punto { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.metodo-pago--efectivo { background-color: var(--verde-fondo); color: var(--verde-texto); }
+.metodo-pago--efectivo .metodo-pago-punto { background-color: var(--verde-punto); }
+
+.metodo-pago--tarjeta { background-color: var(--azul-fondo); color: var(--azul-texto); }
+.metodo-pago--tarjeta .metodo-pago-punto { background-color: var(--azul-punto); }
+
+.metodo-pago--billetera { background-color: var(--morado-fondo); color: var(--morado-texto); }
+.metodo-pago--billetera .metodo-pago-punto { background-color: var(--morado-punto); }
+
+/* ---------- Ícono de acción (ver detalle) ---------- */
+.accion-ver {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--texto-secundario);
+  cursor: pointer;
+}
+
+.accion-ver:hover { background-color: var(--gris-claro); color: var(--coral); }
+.accion-ver:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
+.accion-ver svg { width: 16px; height: 16px; }
+
+/* ---------- Estado vacío ---------- */
+.estado-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--texto-secundario);
+}
+
+.estado-vacio-icono { font-size: 26px; opacity: 0.6; }
+.estado-vacio-titulo { font-size: 14px; font-weight: 700; color: var(--texto-principal); }
+.estado-vacio-texto { font-size: 12px; color: var(--texto-secundario); }
+
+/* ---------- Modal de detalle: bloques etiqueta/valor ---------- */
+.detalle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.detalle-campo { display: flex; flex-direction: column; gap: 4px; }
+.detalle-etiqueta { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: 0.02em; }
+.detalle-valor { font-size: 13px; font-weight: 600; color: var(--texto-principal); }
+.detalle-valor--mono { font-family: "Courier New", monospace; }
+
+.detalle-separador { border: none; border-top: 1px solid var(--borde); margin: 2px 0; }
+
+/* ---------- Resumen financiero del modal ---------- */
+.resumen-financiero { display: flex; flex-direction: column; gap: 8px; }
+
+.resumen-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
+.resumen-fila--total {
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--borde);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--texto-principal);
+}
+
+.resumen-fila--total .resumen-fila-valor { color: var(--coral); font-size: 19px; }
+
+.detalle-observaciones {
+  background-color: var(--gris-claro);
+  border-radius: var(--radio-chico);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--texto-principal);
+}
+
+/* ---------- Tabla dentro del modal ---------- */
+.tabla-modal { width: 100%; font-size: 12.5px; }
+.tabla-modal thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--borde);
+}
+.tabla-modal tbody td { padding: 8px 6px; border-bottom: 1px solid var(--borde); color: var(--texto-principal); }
+.tabla-modal tbody tr:last-child td { border-bottom: none; }
+.tabla-modal-scroll { max-height: 260px; overflow-y: auto; border: 1px solid var(--borde); border-radius: var(--radio-chico); }
+.tabla-modal-scroll .tabla-modal thead th { position: sticky; top: 0; background-color: #FFFFFF; }
+
+/* ---------- Formulario "Registrar Nueva Compra" ---------- */
+.seccion-formulario { display: flex; flex-direction: column; gap: 12px; }
+.seccion-titulo { font-size: 13px; font-weight: 700; color: var(--texto-principal); }
+
+.campo-solo-lectura {
+  padding: 9px 11px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  font-size: 13px;
+  color: var(--texto-secundario);
+  background-color: var(--gris-claro);
+}
+
+.buscador-producto { position: relative; flex: 1; }
+
+.sugerencias-productos {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 10;
+  display: none;
+}
+
+.sugerencias-productos--visible { display: block; }
+
+.sugerencia-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--texto-principal);
+  cursor: pointer;
+}
+
+.sugerencia-item:hover { background-color: var(--gris-claro); }
+.sugerencia-item-categoria { font-size: 11px; color: var(--texto-suave); }
+.sugerencias-vacio { padding: 12px; font-size: 12px; color: var(--texto-suave); text-align: center; }
+
+.tabla-compra input, .tabla-compra select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--texto-principal);
+}
+
+.tabla-compra input:focus, .tabla-compra select:focus { outline: none; border-color: var(--coral); }
+.tabla-compra input[readonly] { background-color: var(--gris-claro); color: var(--texto-secundario); }
+.tabla-compra td { vertical-align: middle; }
+.tabla-compra .col-cantidad, .tabla-compra .col-costo { width: 110px; }
+.tabla-compra .col-subtotal { width: 110px; font-weight: 700; text-align: right; white-space: nowrap; }
+.tabla-compra .col-acciones { width: 44px; text-align: center; }
+
+.btn-quitar-fila {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--texto-suave);
+}
+
+.btn-quitar-fila:hover { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
+
+.enlace-agregar {
+  background: none;
+  border: none;
+  color: var(--coral);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 0;
+  text-align: left;
+  align-self: flex-start;
+}
+
+.enlace-agregar:hover { color: var(--coral-oscuro); text-decoration: underline; }
+
+.resumen-formulario {
+  background-color: var(--gris-claro);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resumen-formulario-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--texto-secundario);
+}
+
+.resumen-formulario-fila--total {
+  padding-top: 8px;
+  margin-top: 2px;
+  border-top: 1px solid var(--borde);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto-principal);
+}
+
+.resumen-formulario-fila--total .resumen-formulario-valor { color: var(--coral); }
+
+.campo-textarea textarea {
+  padding: 9px 11px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  font-size: 13px;
+  color: var(--texto-principal);
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.campo-textarea textarea:focus { outline: none; border-color: var(--coral); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .detalle-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .detalle-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .historial-tabs { gap: 18px; }
+}

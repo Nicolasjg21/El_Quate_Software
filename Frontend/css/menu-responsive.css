@@ -1,0 +1,97 @@
+/* ==========================================================================
+   MENÚ RESPONSIVE — El Cuate
+   --------------------------------------------------------------------------
+   Convierte el sidebar en una barra superior con botón de menú (hamburguesa)
+   en tablet y móvil (≤ 900 px). Sólo HTML + CSS (checkbox + label).
+   Se carga DESPUÉS de layout.css / dashboard.css para poder ajustarlos.
+   ========================================================================== */
+
+/* En escritorio el botón y el checkbox no existen visualmente */
+.menu-toggle,
+.menu-boton { display: none; }
+
+@media (max-width: 900px) {
+
+  .app { flex-direction: column; }
+
+  /* checkbox oculto pero accesible por teclado */
+  .menu-toggle {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    width: 100%;
+    max-height: 100vh;
+    overflow-y: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 16px;
+  }
+
+  .sidebar-marca {
+    flex: 1;
+    border-bottom: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .menu-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #454B4E;
+    background-color: transparent;
+    color: #FFFFFF;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .menu-boton:hover { background-color: #3C4245; }
+  .menu-boton::before { content: "\2630"; }
+
+  .menu-toggle:checked ~ .sidebar .menu-boton { background-color: var(--coral); border-color: var(--coral); }
+  .menu-toggle:checked ~ .sidebar .menu-boton::before { content: "\2715"; font-size: 16px; }
+  .menu-toggle:focus-visible ~ .sidebar .menu-boton { outline: 2px solid var(--naranja); outline-offset: 2px; }
+
+  /* navegación: colapsada hasta que se abre el menú */
+  .sidebar-nav,
+  .sidebar-pie {
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    flex: 0 0 100%;
+    width: 100%;
+    gap: 2px;
+  }
+
+  .sidebar-nav { margin-top: 10px; padding-top: 10px; border-top: 1px solid #454B4E; }
+  .sidebar-pie { margin-top: 8px; padding-top: 8px; border-top: 1px solid #454B4E; }
+
+  .menu-toggle:checked ~ .sidebar .sidebar-nav,
+  .menu-toggle:checked ~ .sidebar .sidebar-pie { display: flex; }
+
+  .contenido { margin-left: 0; }
+  .header { flex-wrap: wrap; }
+}
+
+@media (max-width: 560px) {
+  .sidebar { padding: 10px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
