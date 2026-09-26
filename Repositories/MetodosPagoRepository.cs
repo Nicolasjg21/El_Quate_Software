@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<MetodosPago> GetMetodosPagoById(int id)
+        public async Task<MetodosPago?> GetMetodosPagoById(int id)
         {
             var data = await context.MetodosPago.FirstOrDefaultAsync(x => x.idMetodo == id);
             return data;

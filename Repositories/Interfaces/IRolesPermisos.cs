@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<RolesPermisos>> GetRolesPermisos();
 
-        Task<RolesPermisos> GetRolesPermisosById(int idRol, int idPermiso);
+        Task<RolesPermisos?> GetRolesPermisosById(int idRol, int idPermiso);
 
         Task<bool> PostRolesPermisos(RolesPermisos rolesPermisos);
 

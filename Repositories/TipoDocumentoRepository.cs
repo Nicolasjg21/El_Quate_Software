@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<TipoDocumento> GetTipoDocumentoById(int id)
+        public async Task<TipoDocumento?> GetTipoDocumentoById(int id)
         {
             var data = await context.TipoDocumento.FirstOrDefaultAsync(x => x.idTipoDocumento == id);
             return data;

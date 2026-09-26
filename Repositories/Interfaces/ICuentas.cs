@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Cuentas>> GetCuentas();
 
-        Task<Cuentas> GetCuentasById(int id);
+        Task<Cuentas?> GetCuentasById(int id);
 
         Task<bool> PostCuentas(Cuentas cuentas);
 

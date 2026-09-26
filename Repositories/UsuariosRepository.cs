@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Usuarios> GetUsuariosById(int id)
+        public async Task<Usuarios?> GetUsuariosById(int id)
         {
             var data = await context.Usuarios.FirstOrDefaultAsync(x => x.idUsuario == id);
             return data;

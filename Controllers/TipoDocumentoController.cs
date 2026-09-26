@@ -11,11 +11,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class TipoDocumentoController : ControllerBase
     {
-        private readonly ITipoDocumentoRepository _repository;
+        private readonly ITipoDocumentoRepository _tipoDocumentoRepository;
 
         public TipoDocumentoController(ITipoDocumentoRepository repository)
         {
-            _repository = repository;
+            _tipoDocumentoRepository = repository;
         }
 
         [HttpGet("GetTipoDocumento")]
@@ -27,7 +27,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var tipos = await _repository.GetTipoDocumento();
+                var tipos = await _tipoDocumentoRepository.GetTipoDocumento();
 
                 if (tipos == null || !tipos.Any())
                 {
@@ -98,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var tipo = await _repository.GetTipoDocumentoById(id);
+                var tipo = await _tipoDocumentoRepository.GetTipoDocumentoById(id);
 
                 if (tipo == null)
                 {
@@ -169,7 +169,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostTipoDocumento(tipo);
+                var response = await _tipoDocumentoRepository.PostTipoDocumento(tipo);
 
                 if (!response)
                 {
@@ -242,7 +242,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetTipoDocumentoById(tipo.idTipoDocumento);
+                var existente = await _tipoDocumentoRepository.GetTipoDocumentoById(tipo.idTipoDocumento);
 
                 if (existente == null)
                 {
@@ -255,7 +255,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreTipo = tipo.nombreTipo;
 
-                var response = await _repository.PutTipoDocumento(existente);
+                var response = await _tipoDocumentoRepository.PutTipoDocumento(existente);
 
                 if (!response)
                 {
@@ -327,7 +327,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var tipo = await _repository.GetTipoDocumentoById(id);
+                var tipo = await _tipoDocumentoRepository.GetTipoDocumentoById(id);
 
                 if (tipo == null)
                 {
@@ -338,7 +338,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteTipoDocumento(tipo);
+                var response = await _tipoDocumentoRepository.DeleteTipoDocumento(tipo);
 
                 if (!response)
                 {

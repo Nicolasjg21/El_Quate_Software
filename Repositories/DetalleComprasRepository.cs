@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<DetalleCompras> GetDetalleComprasById(int id)
+        public async Task<DetalleCompras?> GetDetalleComprasById(int id)
         {
             var data = await context.DetalleCompras.FirstOrDefaultAsync(x => x.idDetalleCompra == id);
             return data;

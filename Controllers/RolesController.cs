@@ -11,11 +11,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class RolesController : ControllerBase
     {
-        private readonly IRolesRepository _repository;
+        private readonly IRolesRepository _rolesRepository;
 
         public RolesController(IRolesRepository repository)
         {
-            _repository = repository;
+            _rolesRepository = repository;
         }
 
         [HttpGet("GetRoles")]
@@ -27,7 +27,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var roles = await _repository.GetRoles();
+                var roles = await _rolesRepository.GetRoles();
 
                 if (roles == null || !roles.Any())
                 {
@@ -98,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var rol = await _repository.GetRolesById(id);
+                var rol = await _rolesRepository.GetRolesById(id);
 
                 if (rol == null)
                 {
@@ -169,7 +169,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostRoles(rol);
+                var response = await _rolesRepository.PostRoles(rol);
 
                 if (!response)
                 {
@@ -242,7 +242,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetRolesById(rol.idRol);
+                var existente = await _rolesRepository.GetRolesById(rol.idRol);
 
                 if (existente == null)
                 {
@@ -255,7 +255,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreRol = rol.nombreRol;
 
-                var response = await _repository.PutRoles(existente);
+                var response = await _rolesRepository.PutRoles(existente);
 
                 if (!response)
                 {
@@ -327,7 +327,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var rol = await _repository.GetRolesById(id);
+                var rol = await _rolesRepository.GetRolesById(id);
 
                 if (rol == null)
                 {
@@ -338,7 +338,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteRoles(rol);
+                var response = await _rolesRepository.DeleteRoles(rol);
 
                 if (!response)
                 {

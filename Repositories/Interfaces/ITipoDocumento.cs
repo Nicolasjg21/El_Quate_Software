@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<TipoDocumento>> GetTipoDocumento();
 
-        Task<TipoDocumento> GetTipoDocumentoById(int id);
+        Task<TipoDocumento?> GetTipoDocumentoById(int id);
 
         Task<bool> PostTipoDocumento(TipoDocumento tipoDocumento);
 

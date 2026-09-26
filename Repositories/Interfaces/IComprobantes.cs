@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Comprobantes>> GetComprobantes();
 
-        Task<Comprobantes> GetComprobantesById(int id);
+        Task<Comprobantes?> GetComprobantesById(int id);
 
         Task<bool> PostComprobantes(Comprobantes comprobantes);
 

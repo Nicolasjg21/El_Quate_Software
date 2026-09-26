@@ -1,5 +1,5 @@
-﻿using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,17 +12,18 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class UsuariosController : ControllerBase
     {
-        private readonly IUsuariosRepository _repository;
+        private readonly IUsuariosRepository _usuariosRepository;
         private readonly PasswordHasher<Usuarios> _passwordHasher;
 
         public UsuariosController(
             IUsuariosRepository repository,
             PasswordHasher<Usuarios> passwordHasher)
         {
-            _repository = repository;
+            _usuariosRepository = repository;
             _passwordHasher = passwordHasher;
         }
 
+        // GET: api/Usuarios/GetUsuarios
         [HttpGet("GetUsuarios")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -32,7 +33,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var usuarios = await _repository.GetUsuarios();
+                var usuarios = await _usuariosRepository.GetUsuarios();
 
                 if (usuarios == null || !usuarios.Any())
                 {
@@ -43,40 +44,25 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                foreach (var usuario in usuarios)
-                {
-                    usuario.passwordHash = null;
-                }
+                var respuesta = usuarios.Select(usuario =>
+                    new UsuarioRespuestaDTO
+                    {
+                        idUsuario = usuario.idUsuario,
+                        nombres = usuario.nombres,
+                        apellidos = usuario.apellidos,
+                        documento = usuario.documento,
+                        idTipoDocumento = usuario.idTipoDocumento,
+                        telefono = usuario.telefono,
+                        estado = usuario.estado,
+                        idRol = usuario.idRol,
+                        email = usuario.email
+                    }).ToList();
 
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuarios obtenidos correctamente.",
-                    data = usuarios
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    data = respuesta
                 });
             }
             catch (Exception)
@@ -89,6 +75,7 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
+        // GET: api/Usuarios/GetUsuariosById/1
         [HttpGet("GetUsuariosById/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -108,7 +95,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var usuario = await _repository.GetUsuariosById(id);
+                var usuario = await _usuariosRepository.GetUsuariosById(id);
 
                 if (usuario == null)
                 {
@@ -119,37 +106,24 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                usuario.passwordHash = null;
+                var respuesta = new UsuarioRespuestaDTO
+                {
+                    idUsuario = usuario.idUsuario,
+                    nombres = usuario.nombres,
+                    apellidos = usuario.apellidos,
+                    documento = usuario.documento,
+                    idTipoDocumento = usuario.idTipoDocumento,
+                    telefono = usuario.telefono,
+                    estado = usuario.estado,
+                    idRol = usuario.idRol,
+                    email = usuario.email
+                };
 
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuario obtenido correctamente.",
-                    data = usuario
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    data = respuesta
                 });
             }
             catch (Exception)
@@ -162,12 +136,14 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
+        // POST: api/Usuarios/PostUsuarios
         [HttpPost("PostUsuarios")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostUsuarios([FromBody] Usuarios usuario)
+        public async Task<IActionResult> PostUsuarios(
+            [FromBody] UsuarioCrearDTO dto)
         {
             try
             {
@@ -181,7 +157,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                if (string.IsNullOrWhiteSpace(usuario.passwordHash))
+                if (string.IsNullOrWhiteSpace(dto.password))
                 {
                     return BadRequest(new
                     {
@@ -190,9 +166,25 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                usuario.passwordHash = _passwordHasher.HashPassword(usuario, usuario.passwordHash);
+                var usuario = new Usuarios
+                {
+                    nombres = dto.nombres,
+                    apellidos = dto.apellidos,
+                    documento = dto.documento,
+                    idTipoDocumento = dto.idTipoDocumento,
+                    telefono = dto.telefono,
+                    estado = dto.estado,
+                    idRol = dto.idRol,
+                    email = dto.email
+                };
 
-                var response = await _repository.PostUsuarios(usuario);
+                usuario.passwordHash =
+                    _passwordHasher.HashPassword(
+                        usuario,
+                        dto.password);
+
+                var response =
+                    await _usuariosRepository.PostUsuarios(usuario);
 
                 if (!response)
                 {
@@ -203,29 +195,24 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                usuario.passwordHash = null;
+                var respuesta = new UsuarioRespuestaDTO
+                {
+                    idUsuario = usuario.idUsuario,
+                    nombres = usuario.nombres,
+                    apellidos = usuario.apellidos,
+                    documento = usuario.documento,
+                    idTipoDocumento = usuario.idTipoDocumento,
+                    telefono = usuario.telefono,
+                    estado = usuario.estado,
+                    idRol = usuario.idRol,
+                    email = usuario.email
+                };
 
                 return StatusCode(201, new
                 {
                     statusCode = 201,
                     message = "Usuario registrado correctamente.",
-                    data = usuario
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
+                    data = respuesta
                 });
             }
             catch (Exception)
@@ -238,13 +225,16 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
-        [HttpPut("PutUsuarios")]
+        // PUT: api/Usuarios/PutUsuarios/1
+        [HttpPut("PutUsuarios/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutUsuarios([FromBody] Usuarios usuario)
+        public async Task<IActionResult> PutUsuarios(
+            int id,
+            [FromBody] UsuarioActualizarDTO dto)
         {
             try
             {
@@ -258,7 +248,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                if (usuario.idUsuario <= 0)
+                if (id <= 0)
                 {
                     return BadRequest(new
                     {
@@ -267,7 +257,8 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetUsuariosById(usuario.idUsuario);
+                var existente =
+                    await _usuariosRepository.GetUsuariosById(id);
 
                 if (existente == null)
                 {
@@ -278,24 +269,27 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                existente.nombres = usuario.nombres;
-                existente.apellidos = usuario.apellidos;
-                existente.documento = usuario.documento;
-                existente.idTipoDocumento = usuario.idTipoDocumento;
-                existente.telefono = usuario.telefono;
-                existente.estado = usuario.estado;
-                existente.idRol = usuario.idRol;
-                existente.email = usuario.email;
+                existente.nombres = dto.nombres;
+                existente.apellidos = dto.apellidos;
+                existente.documento = dto.documento;
+                existente.idTipoDocumento = dto.idTipoDocumento;
+                existente.telefono = dto.telefono;
+                existente.estado = dto.estado;
+                existente.idRol = dto.idRol;
+                existente.email = dto.email;
 
-                if (!string.IsNullOrWhiteSpace(usuario.passwordHash))
+                // Si se envía una nueva contraseña, se actualiza.
+                // Si viene vacía, se conserva la contraseña actual.
+                if (!string.IsNullOrWhiteSpace(dto.password))
                 {
                     existente.passwordHash =
                         _passwordHasher.HashPassword(
                             existente,
-                            usuario.passwordHash);
+                            dto.password);
                 }
 
-                var response = await _repository.PutUsuarios(existente);
+                var response =
+                    await _usuariosRepository.PutUsuarios(existente);
 
                 if (!response)
                 {
@@ -306,50 +300,37 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                existente.passwordHash = null;
+                var respuesta = new UsuarioRespuestaDTO
+                {
+                    idUsuario = existente.idUsuario,
+                    nombres = existente.nombres,
+                    apellidos = existente.apellidos,
+                    documento = existente.documento,
+                    idTipoDocumento = existente.idTipoDocumento,
+                    telefono = existente.telefono,
+                    estado = existente.estado,
+                    idRol = existente.idRol,
+                    email = existente.email
+                };
 
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuario actualizado correctamente.",
-                    data = existente
+                    data = respuesta
                 });
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno al actualizar el usuario."
                 });
             }
         }
 
+        // DELETE: api/Usuarios/DeleteUsuarios/1
         [HttpDelete("DeleteUsuarios/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -369,7 +350,8 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var usuario = await _repository.GetUsuariosById(id);
+                var usuario =
+                    await _usuariosRepository.GetUsuariosById(id);
 
                 if (usuario == null)
                 {
@@ -380,7 +362,8 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteUsuarios(usuario);
+                var response =
+                    await _usuariosRepository.DeleteUsuarios(usuario);
 
                 if (!response)
                 {
@@ -395,30 +378,6 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Usuario eliminado correctamente."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
                 });
             }
             catch (Exception)

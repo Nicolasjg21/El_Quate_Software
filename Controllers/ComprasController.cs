@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -285,6 +286,32 @@ namespace ElQuateDePatty.Controllers
             {
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
+        }
+
+        [HttpGet("Filtrar")]
+        public async Task<IActionResult> FiltrarCompras([FromQuery] CompraFiltroDTO filtro)
+        {
+            var data = await _comprasRepository.FiltrarCompras(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Compras filtradas correctamente",
+                data = data
+            });
+        }
+
+        [HttpGet("Historial")]
+        public async Task<IActionResult> FiltrarHistorialCompras([FromQuery] PeriodoFiltroDTO filtro)
+        {
+            var data = await _comprasRepository.FiltrarHistorialCompras(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Historial de compras consultado correctamente",
+                data = data
+            });
         }
     }
 }

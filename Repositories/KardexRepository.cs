@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Kardex> GetKardexById(int id)
+        public async Task<Kardex?> GetKardexById(int id)
         {
             var data = await context.Kardex.FirstOrDefaultAsync(x => x.idMovimiento == id);
             return data;

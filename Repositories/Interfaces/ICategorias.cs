@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Categorias>> GetCategorias();
 
-        Task<Categorias> GetCategoriasById(int id);
+        Task<Categorias?> GetCategoriasById(int id);
 
         Task<bool> PostCategorias(Categorias categorias);
 

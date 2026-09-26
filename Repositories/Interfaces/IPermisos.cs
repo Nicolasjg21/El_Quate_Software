@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Permisos>> GetPermisos();
 
-        Task<Permisos> GetPermisosById(int id);
+        Task<Permisos?> GetPermisosById(int id);
 
         Task<bool> PostPermisos(Permisos permisos);
 

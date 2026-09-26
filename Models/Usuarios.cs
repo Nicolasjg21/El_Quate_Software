@@ -26,7 +26,7 @@ namespace ElQuateDePatty.Models
         public string telefono { get; set; } = string.Empty;
 
         [Required]
-        public string passwordHash { get; set; } = string.Empty;
+        public string? passwordHash { get; set; } = string.Empty;
 
         [Required]
         public bool estado { get; set; }

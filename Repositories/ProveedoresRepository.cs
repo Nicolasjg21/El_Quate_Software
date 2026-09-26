@@ -1,6 +1,7 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.Context;
+using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
-using ElQuateDePatty.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElQuateDePatty.Repositories
@@ -20,7 +21,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Proveedores> GetProveedoresById(int id)
+        public async Task<Proveedores?> GetProveedoresById(int id)
         {
             var data = await context.Proveedores.FirstOrDefaultAsync(x => x.idProveedor == id);
             return data;
@@ -45,6 +46,41 @@ namespace ElQuateDePatty.Repositories
             context.Proveedores.Remove(proveedores);
             await context.BoolAsync();
             return true;
+        }
+
+        public async Task<List<Proveedores>> FiltrarProveedores(
+    ProveedorFiltroDTO filtro)
+        {
+            var query = context.Proveedores.AsQueryable();
+
+            // -----------------------------------------
+            // 1. FILTRO POR NOMBRE
+            // -----------------------------------------
+            if (!string.IsNullOrWhiteSpace(filtro.NombreProveedor))
+            {
+                query = query.Where(p =>
+                    p.nombreProveedor.Contains(filtro.NombreProveedor));
+            }
+
+            // -----------------------------------------
+            // 2. FILTRO POR TELÉFONO
+            // -----------------------------------------
+            if (!string.IsNullOrWhiteSpace(filtro.Telefono))
+            {
+                query = query.Where(p =>
+                    p.telefono.Contains(filtro.Telefono));
+            }
+
+            // -----------------------------------------
+            // 3. FILTRO POR DIRECCIÓN
+            // -----------------------------------------
+            if (!string.IsNullOrWhiteSpace(filtro.Direccion))
+            {
+                query = query.Where(p =>
+                    p.direccion.Contains(filtro.Direccion));
+            }
+
+            return await query.ToListAsync();
         }
     }
 }

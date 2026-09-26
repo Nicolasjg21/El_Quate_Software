@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<DetalleCompras>> GetDetalleCompras();
 
-        Task<DetalleCompras> GetDetalleComprasById(int id);
+        Task<DetalleCompras?> GetDetalleComprasById(int id);
 
         Task<bool> PostDetalleCompras(DetalleCompras detalleCompras);
 

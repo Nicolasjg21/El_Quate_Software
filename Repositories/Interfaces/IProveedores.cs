@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 
 namespace ElQuateDePatty.Repositories.Interfaces
 {
@@ -6,12 +7,14 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Proveedores>> GetProveedores();
 
-        Task<Proveedores> GetProveedoresById(int id);
+        Task<Proveedores?> GetProveedoresById(int id);
 
         Task<bool> PostProveedores(Proveedores proveedores);
 
         Task<bool> PutProveedores(Proveedores proveedores);
 
         Task<bool> DeleteProveedores(Proveedores proveedores);
+
+        Task<List<Proveedores>> FiltrarProveedores(ProveedorFiltroDTO filtro);
     }
 }

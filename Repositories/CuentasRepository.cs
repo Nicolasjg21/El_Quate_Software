@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Cuentas> GetCuentasById(int id)
+        public async Task<Cuentas?> GetCuentasById(int id)
         {
             var data = await context.Cuentas.FirstOrDefaultAsync(x => x.idCuenta == id);
             return data;

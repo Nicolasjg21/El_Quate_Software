@@ -11,11 +11,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class PermisosController : ControllerBase
     {
-        private readonly IPermisosRepository _repository;
+        private readonly IPermisosRepository _permisosRepository;
 
         public PermisosController(IPermisosRepository repository)
         {
-            _repository = repository;
+            _permisosRepository = repository;
         }
 
         [HttpGet("GetPermisos")]
@@ -27,7 +27,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var permisos = await _repository.GetPermisos();
+                var permisos = await _permisosRepository.GetPermisos();
 
                 if (permisos == null || !permisos.Any())
                 {
@@ -98,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var permiso = await _repository.GetPermisosById(id);
+                var permiso = await _permisosRepository.GetPermisosById(id);
 
                 if (permiso == null)
                 {
@@ -169,7 +169,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostPermisos(permiso);
+                var response = await _permisosRepository.PostPermisos(permiso);
 
                 if (!response)
                 {
@@ -242,7 +242,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetPermisosById(permiso.idPermiso);
+                var existente = await _permisosRepository.GetPermisosById(permiso.idPermiso);
 
                 if (existente == null)
                 {
@@ -255,7 +255,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombrePermiso = permiso.nombrePermiso;
 
-                var response = await _repository.PutPermisos(existente);
+                var response = await _permisosRepository.PutPermisos(existente);
 
                 if (!response)
                 {
@@ -327,7 +327,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var permiso = await _repository.GetPermisosById(id);
+                var permiso = await _permisosRepository.GetPermisosById(id);
 
                 if (permiso == null)
                 {
@@ -338,7 +338,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeletePermisos(permiso);
+                var response = await _permisosRepository.DeletePermisos(permiso);
 
                 if (!response)
                 {

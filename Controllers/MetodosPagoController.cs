@@ -11,11 +11,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class MetodosPagoController : ControllerBase
     {
-        private readonly IMetodosPagoRepository _repository;
+        private readonly IMetodosPagoRepository _metodosPagoRepository;
 
         public MetodosPagoController(IMetodosPagoRepository repository)
         {
-            _repository = repository;
+            _metodosPagoRepository = repository;
         }
 
         [HttpGet("GetMetodosPago")]
@@ -27,7 +27,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var metodos = await _repository.GetMetodosPago();
+                var metodos = await _metodosPagoRepository.GetMetodosPago();
 
                 if (metodos == null || !metodos.Any())
                 {
@@ -98,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var metodo = await _repository.GetMetodosPagoById(id);
+                var metodo = await _metodosPagoRepository.GetMetodosPagoById(id);
 
                 if (metodo == null)
                 {
@@ -169,7 +169,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostMetodosPago(metodo);
+                var response = await _metodosPagoRepository.PostMetodosPago(metodo);
 
                 if (!response)
                 {
@@ -242,7 +242,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetMetodosPagoById(metodo.idMetodo);
+                var existente = await _metodosPagoRepository.GetMetodosPagoById(metodo.idMetodo);
 
                 if (existente == null)
                 {
@@ -255,7 +255,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreMetodo = metodo.nombreMetodo;
 
-                var response = await _repository.PutMetodosPago(existente);
+                var response = await _metodosPagoRepository.PutMetodosPago(existente);
 
                 if (!response)
                 {
@@ -327,7 +327,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var metodo = await _repository.GetMetodosPagoById(id);
+                var metodo = await _metodosPagoRepository.GetMetodosPagoById(id);
 
                 if (metodo == null)
                 {
@@ -338,7 +338,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteMetodosPago(metodo);
+                var response = await _metodosPagoRepository.DeleteMetodosPago(metodo);
 
                 if (!response)
                 {

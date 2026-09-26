@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Auditorias> GetAuditoriasById(int id)
+        public async Task<Auditorias?> GetAuditoriasById(int id)
         {
             var data = await context.Auditorias.FirstOrDefaultAsync(x => x.idAuditoria == id);
             return data;

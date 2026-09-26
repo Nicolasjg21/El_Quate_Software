@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,11 +12,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class ProductosController : ControllerBase
     {
-        private readonly IProductosRepository _repository;
+        private readonly IProductosRepository _productosRepository;
 
         public ProductosController(IProductosRepository repository)
         {
-            _repository = repository;
+            _productosRepository = repository;
         }
 
         [HttpGet("GetProductos")]
@@ -27,7 +28,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var productos = await _repository.GetProductos();
+                var productos = await _productosRepository.GetProductos();
 
                 if (productos == null || !productos.Any())
                 {
@@ -98,7 +99,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var producto = await _repository.GetProductosById(id);
+                var producto = await _productosRepository.GetProductosById(id);
 
                 if (producto == null)
                 {
@@ -169,7 +170,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostProductos(producto);
+                var response = await _productosRepository.PostProductos(producto);
 
                 if (!response)
                 {
@@ -242,7 +243,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetProductosById(producto.idProducto);
+                var existente = await _productosRepository.GetProductosById(producto.idProducto);
 
                 if (existente == null)
                 {
@@ -259,7 +260,7 @@ namespace ElQuateDePatty.Controllers
                 existente.estado = producto.estado;
                 existente.idCategoria = producto.idCategoria;
 
-                var response = await _repository.PutProductos(existente);
+                var response = await _productosRepository.PutProductos(existente);
 
                 if (!response)
                 {
@@ -331,7 +332,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var producto = await _repository.GetProductosById(id);
+                var producto = await _productosRepository.GetProductosById(id);
 
                 if (producto == null)
                 {
@@ -342,7 +343,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteProductos(producto);
+                var response = await _productosRepository.DeleteProductos(producto);
 
                 if (!response)
                 {
@@ -391,6 +392,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Ocurrió un error interno al eliminar el producto."
                 });
             }
+
+        }
+
+        [HttpGet("Filtrar")]
+        public async Task<IActionResult> FiltrarProductos([FromQuery] ProductoFiltroDTO filtro)
+        {
+            var data = await _productosRepository.FiltrarProductos(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Productos filtrados correctamente",
+                data = data
+            });
         }
     }
 }

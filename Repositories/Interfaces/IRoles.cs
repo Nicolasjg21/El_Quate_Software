@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Roles>> GetRoles();
 
-        Task<Roles> GetRolesById(int id);
+        Task<Roles?> GetRolesById(int id);
 
         Task<bool> PostRoles(Roles roles);
 

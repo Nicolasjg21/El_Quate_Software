@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,11 +12,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class PedidosController : ControllerBase
     {
-        private readonly IPedidosRepository _repository;
+        private readonly IPedidosRepository _pedidosRepository;
 
         public PedidosController(IPedidosRepository repository)
         {
-            _repository = repository;
+            _pedidosRepository = repository;
         }
 
         [HttpGet("GetPedidos")]
@@ -27,7 +28,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var pedidos = await _repository.GetPedidos();
+                var pedidos = await _pedidosRepository.GetPedidos();
 
                 if (pedidos == null || !pedidos.Any())
                 {
@@ -98,7 +99,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var pedido = await _repository.GetPedidosById(id);
+                var pedido = await _pedidosRepository.GetPedidosById(id);
 
                 if (pedido == null)
                 {
@@ -169,7 +170,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostPedidos(pedido);
+                var response = await _pedidosRepository.PostPedidos(pedido);
 
                 if (!response)
                 {
@@ -242,7 +243,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetPedidosById(pedido.idPedido);
+                var existente = await _pedidosRepository.GetPedidosById(pedido.idPedido);
 
                 if (existente == null)
                 {
@@ -258,7 +259,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fecha = pedido.fecha;
                 existente.estadoPedido = pedido.estadoPedido;
 
-                var response = await _repository.PutPedidos(existente);
+                var response = await _pedidosRepository.PutPedidos(existente);
 
                 if (!response)
                 {
@@ -330,7 +331,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var pedido = await _repository.GetPedidosById(id);
+                var pedido = await _pedidosRepository.GetPedidosById(id);
 
                 if (pedido == null)
                 {
@@ -341,7 +342,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeletePedidos(pedido);
+                var response = await _pedidosRepository.DeletePedidos(pedido);
 
                 if (!response)
                 {
@@ -390,6 +391,28 @@ namespace ElQuateDePatty.Controllers
                     message = "Ocurrió un error interno al eliminar el pedido."
                 });
             }
+        }
+
+
+        [HttpPost("filtrar")]
+        public async Task<IActionResult> FiltrarPedidos([FromBody] PedidoFiltroDTO filtro)
+        {
+            var resultado = await _pedidosRepository.FiltrarPedidos(filtro);
+
+            return Ok(resultado);
+        }
+
+        [HttpGet("Historial")]
+        public async Task<IActionResult> FiltrarHistorialPedidos([FromQuery] PeriodoFiltroDTO filtro)
+        {
+            var data = await _pedidosRepository.FiltrarHistorialPedidos(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Historial de pedidos consultado correctamente",
+                data = data
+            });
         }
     }
 }

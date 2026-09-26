@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 
 namespace ElQuateDePatty.Repositories.Interfaces
 {
@@ -6,7 +7,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Mesas>> GetMesas();
 
-        Task<Mesas> GetMesasById(int id);
+        Task<Mesas?> GetMesasById(int id);
 
         Task<List<Mesas>> GetMesasByEstado(string estado);
 
@@ -15,5 +16,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
         Task<bool> PutMesas(Mesas mesas);
 
         Task<bool> DeleteMesas(Mesas mesas);
+
+        Task<List<Mesas>> FiltrarMesas(MesaFiltroDTO filtro);
     }
 }

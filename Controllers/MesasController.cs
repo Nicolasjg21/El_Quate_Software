@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -280,6 +281,19 @@ namespace ElQuateDePatty.Controllers
             {
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
+        }
+
+        [HttpGet("Filtrar")]
+        public async Task<IActionResult> FiltrarMesas([FromQuery] MesaFiltroDTO filtro)
+        {
+            var data = await _mesasRepository.FiltrarMesas(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Mesas filtradas correctamente",
+                data = data
+            });
         }
     }
 }

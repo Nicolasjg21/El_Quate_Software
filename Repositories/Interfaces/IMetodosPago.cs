@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<MetodosPago>> GetMetodosPago();
 
-        Task<MetodosPago> GetMetodosPagoById(int id);
+        Task<MetodosPago?> GetMetodosPagoById(int id);
 
         Task<bool> PostMetodosPago(MetodosPago metodosPago);
 

@@ -1,6 +1,7 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.Context;
+using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
-using ElQuateDePatty.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElQuateDePatty.Repositories
@@ -20,7 +21,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Mesas> GetMesasById(int id)
+        public async Task<Mesas?> GetMesasById(int id)
         {
             var data = await context.Mesas.FirstOrDefaultAsync(x => x.idMesa == id);
             return data;
@@ -54,6 +55,19 @@ namespace ElQuateDePatty.Repositories
             context.Mesas.Remove(mesas);
             await context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<List<Mesas>> FiltrarMesas(MesaFiltroDTO filtro)
+        {
+            var query = context.Mesas.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filtro.Estado))
+            {
+                query = query.Where(m =>
+                    m.estado == filtro.Estado);
+            }
+
+            return await query.ToListAsync();
         }
     }
 }

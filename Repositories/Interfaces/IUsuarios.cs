@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Usuarios>> GetUsuarios();
 
-        Task<Usuarios> GetUsuariosById(int id);
+        Task<Usuarios?> GetUsuariosById(int id);
 
         Task<bool> PostUsuarios(Usuarios usuarios);
 

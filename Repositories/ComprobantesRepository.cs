@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Comprobantes> GetComprobantesById(int id)
+        public async Task<Comprobantes?> GetComprobantesById(int id)
         {
             var data = await context.Comprobantes.FirstOrDefaultAsync(x => x.idComprobante == id);
             return data;

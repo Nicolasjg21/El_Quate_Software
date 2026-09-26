@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.Models;
+﻿using ElQuateDePatty.DTOs;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,11 +12,11 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class ProveedoresController : ControllerBase
     {
-        private readonly IProveedoresRepository _repository;
+        private readonly IProveedoresRepository _proveedoresRepository;
 
         public ProveedoresController(IProveedoresRepository repository)
         {
-            _repository = repository;
+            _proveedoresRepository = repository;
         }
 
         [HttpGet("GetProveedores")]
@@ -27,7 +28,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var proveedores = await _repository.GetProveedores();
+                var proveedores = await _proveedoresRepository.GetProveedores();
 
                 if (proveedores == null || !proveedores.Any())
                 {
@@ -98,7 +99,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var proveedor = await _repository.GetProveedoresById(id);
+                var proveedor = await _proveedoresRepository.GetProveedoresById(id);
 
                 if (proveedor == null)
                 {
@@ -169,7 +170,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.PostProveedores(proveedor);
+                var response = await _proveedoresRepository.PostProveedores(proveedor);
 
                 if (!response)
                 {
@@ -242,7 +243,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _repository.GetProveedoresById(proveedor.idProveedor);
+                var existente = await _proveedoresRepository.GetProveedoresById(proveedor.idProveedor);
 
                 if (existente == null)
                 {
@@ -257,7 +258,7 @@ namespace ElQuateDePatty.Controllers
                 existente.telefono = proveedor.telefono;
                 existente.direccion = proveedor.direccion;
 
-                var response = await _repository.PutProveedores(existente);
+                var response = await _proveedoresRepository.PutProveedores(existente);
 
                 if (!response)
                 {
@@ -329,7 +330,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var proveedor = await _repository.GetProveedoresById(id);
+                var proveedor = await _proveedoresRepository.GetProveedoresById(id);
 
                 if (proveedor == null)
                 {
@@ -340,7 +341,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _repository.DeleteProveedores(proveedor);
+                var response = await _proveedoresRepository.DeleteProveedores(proveedor);
 
                 if (!response)
                 {
@@ -389,6 +390,19 @@ namespace ElQuateDePatty.Controllers
                     message = "Ocurrió un error interno al eliminar el proveedor."
                 });
             }
+        }
+
+        [HttpGet("Filtrar")]
+        public async Task<IActionResult> FiltrarProveedores([FromQuery] ProveedorFiltroDTO filtro)
+        {
+            var data = await _proveedoresRepository.FiltrarProveedores(filtro);
+
+            return Ok(new
+            {
+                statusCode = 200,
+                message = "Proveedores filtrados correctamente",
+                data = data
+            });
         }
     }
 }

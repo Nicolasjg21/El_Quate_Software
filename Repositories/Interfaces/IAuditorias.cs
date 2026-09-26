@@ -6,7 +6,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
     {
         Task<List<Auditorias>> GetAuditorias();
 
-        Task<Auditorias> GetAuditoriasById(int id);
+        Task<Auditorias?> GetAuditoriasById(int id);
 
         Task<bool> PostAuditorias(Auditorias auditorias);
 

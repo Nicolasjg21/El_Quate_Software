@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Roles> GetRolesById(int id)
+        public async Task<Roles?> GetRolesById(int id)
         {
             var data = await context.Roles.FirstOrDefaultAsync(x => x.idRol == id);
             return data;

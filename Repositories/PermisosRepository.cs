@@ -20,7 +20,7 @@ namespace ElQuateDePatty.Repositories
             return data;
         }
 
-        public async Task<Permisos> GetPermisosById(int id)
+        public async Task<Permisos?> GetPermisosById(int id)
         {
             var data = await context.Permisos.FirstOrDefaultAsync(x => x.idPermiso == id);
             return data;
