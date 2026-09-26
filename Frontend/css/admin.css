@@ -1,0 +1,90 @@
+/* ==========================================================================
+   ADMIN — estilos compartidos de Usuarios y Proveedores
+   Reutiliza variables, botones, modales, campos y toast de layout.css.
+   ========================================================================== */
+
+.toolbar-admin { align-items: center; }
+.toolbar-admin .buscador input { width: 300px; max-width: 100%; }
+
+/* ---------- Tabla ---------- */
+.panel--tabla { padding: 8px 16px 12px 16px; }
+
+.tabla-admin { min-width: 980px; }
+.tabla-admin--compacta { min-width: 720px; }
+
+.tabla-admin thead th {
+  font-size: 12px;
+  color: var(--texto-principal);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 16px 10px;
+}
+
+.tabla-admin tbody td { padding: 13px 10px; font-size: 12px; }
+.tabla-admin tbody tr:nth-child(odd) { background-color: #F9FAFA; }
+.tabla-admin tbody tr:hover { background-color: #F3F4F5; }
+.tabla-admin tbody tr.fila-mensaje,
+.tabla-admin tbody tr.fila-mensaje:hover { background-color: transparent; }
+.tabla-admin tbody tr:last-child td { border-bottom: 1px solid var(--borde); }
+
+.tabla-admin .col-nombre { white-space: nowrap; }
+.tabla-admin .col-id { color: var(--texto-secundario); }
+
+/* ---------- Badges de rol ---------- */
+.pill--rol-admin { background-color: #FDECE6; color: var(--coral-oscuro); }
+.pill--rol-caja  { background-color: var(--neutro); color: var(--carbon); }
+.pill--rol-mesero{ background-color: #FDEBD3; color: #B9660F; }
+.pill--neutro    { background-color: var(--gris-claro); color: var(--texto-secundario); }
+
+/* ---------- Acciones por fila ---------- */
+.acciones-fila { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+
+.btn-icono {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radio-chico);
+  color: var(--texto-secundario);
+}
+.btn-icono svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn-icono:hover { background-color: var(--gris-claro); color: var(--texto-principal); }
+.btn-icono--peligro:hover { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
+.btn-icono:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
+
+/* ---------- Mensajes dentro de la tabla ---------- */
+.estado-tabla { text-align: center; padding: 40px 16px !important; color: var(--texto-secundario); }
+.estado-tabla p { font-size: 13px; }
+.estado-tabla .btn { margin-top: 14px; }
+
+/* ---------- Modales ---------- */
+.modal--admin { max-width: 480px; }
+.modal--admin.modal--corto { max-width: 400px; }
+.modal-cuerpo .campo-fila { align-items: start; }
+
+.modal-pie--doble .btn { flex: 1; }
+.modal-header--admin { padding-bottom: 14px; border-bottom: 1px solid var(--borde); }
+
+.campo select { background-color: #FFFFFF; }
+.campo input::placeholder { color: var(--texto-suave); }
+
+.btn--peligro { background-color: var(--rojo-texto); color: #FFFFFF; }
+.btn--peligro:hover { background-color: #B93722; }
+.btn--peligro:disabled { background-color: var(--texto-suave); cursor: not-allowed; }
+.btn--secundario:disabled { opacity: .6; cursor: not-allowed; }
+
+.confirmar-texto { font-size: 13px; color: var(--texto-secundario); line-height: 1.5; }
+.confirmar-texto strong { color: var(--texto-principal); }
+
+/* ---------- Toast de error ---------- */
+.toast--error { background-color: var(--rojo-texto); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 560px) {
+  .toolbar-admin .buscador { flex: 1 1 100%; }
+  .toolbar-admin .buscador input { width: 100%; }
+  .modal-pie--doble { flex-direction: column-reverse; }
+}

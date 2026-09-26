@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoría — El Cuate</title>
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/admin.css">
+<link rel="stylesheet" href="../css/auditoria.css">
+<link rel="stylesheet" href="../css/menu-responsive.css">
+</head>
+<body>
+
+<div class="app">
+
+  
+  <input type="checkbox" id="menu-toggle" class="menu-toggle" aria-label="Abrir o cerrar el menú">
+<!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-marca">
+      <img src="../assets/logo-sidebar.png" alt="El Cuate" class="sidebar-logo">
+      <div>
+        <p class="sidebar-nombre">El Cuate</p>
+        <p class="sidebar-slogan">Sistema POS</p>
+      </div>
+    </div>
+
+    <label for="menu-toggle" class="menu-boton" aria-label="Menú de navegación"></label>
+
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8962;</span>
+        Panel Principal
+      </a>
+      <a href="mesas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9638;</span>
+        Mesas
+      </a>
+      <a href="analiticas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128202;</span>
+        Ventas y Analíticas
+      </a>
+      <a href="inventario.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128230;</span>
+        Inventario
+      </a>
+      <a href="historiales.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128220;</span>
+        Historiales
+      </a>
+      <a href="auditoria.html" class="nav-item nav-item--activo">
+        <span class="nav-icono" aria-hidden="true">&#128337;</span>
+        Auditoría
+      </a>
+      <a href="proveedores.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128666;</span>
+        Proveedores
+      </a>
+      <a href="usuarios.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128101;</span>
+        Usuarios
+      </a>
+    </nav>
+
+    <div class="sidebar-pie">
+      <a href="#" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9881;</span>
+        Configuración
+      </a>
+      <a href="login.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8677;</span>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="contenido">
+
+    <header class="header">
+      <div>
+        <h1 class="header-titulo">Punto de Venta</h1>
+        <p class="header-subtitulo">Bienvenido a El Cuate Sistema POS</p>
+      </div>
+      <div class="header-usuario">
+        <div class="header-usuario-texto">
+          <p class="header-usuario-nombre">Usuario Administrador</p>
+          <p class="header-usuario-fecha" id="fecha-actual">—</p>
+        </div>
+        <img src="../assets/usuario.png" alt="Usuario Administrador" class="user-avatar">
+      </div>
+    </header>
+
+    <main class="cuerpo">
+
+      <div class="modulo-header">
+        <div>
+          <h2 class="modulo-titulo">Auditoría</h2>
+          <p class="modulo-subtitulo">Consulta y seguimiento de las actividades realizadas en el sistema.</p>
+        </div>
+      </div>
+
+      <!-- ============ BÚSQUEDA Y FILTROS ============ -->
+      <form class="panel filtros-panel" id="form-filtros" novalidate>
+        <div class="filtros-fila filtros-fila--busqueda">
+          <div class="campo">
+            <label for="buscar-auditoria">Buscar</label>
+            <div class="buscador">
+              <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+              <input type="text" id="buscar-auditoria" placeholder="Buscar en auditoría..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+        <div class="filtros-fila filtros-fila--campos">
+          <div class="campo">
+            <label for="filtro-tabla">Tabla</label>
+            <select id="filtro-tabla"><option value="">Todas</option></select>
+          </div>
+          <div class="campo">
+            <label for="filtro-accion">Acción</label>
+            <select id="filtro-accion"><option value="">Todas</option></select>
+          </div>
+          <div class="campo">
+            <label for="filtro-usuario">Usuario</label>
+            <select id="filtro-usuario"><option value="">Todos</option></select>
+          </div>
+          <div class="campo">
+            <label for="filtro-desde">Desde</label>
+            <input type="date" id="filtro-desde">
+            <span class="campo-mensaje-error"></span>
+          </div>
+          <div class="campo">
+            <label for="filtro-hasta">Hasta</label>
+            <input type="date" id="filtro-hasta">
+            <span class="campo-mensaje-error"></span>
+          </div>
+        </div>
+        <div class="filtros-acciones">
+          <button type="button" class="btn btn--secundario" id="btn-limpiar">Limpiar</button>
+          <button type="submit" class="btn btn--primario" id="btn-filtrar">Filtrar</button>
+        </div>
+      </form>
+
+      <!-- ============ REGISTROS ============ -->
+      <section class="panel panel--tabla" aria-labelledby="titulo-registros">
+        <div class="resultados-cabecera">
+          <div>
+            <h3 class="resultados-titulo" id="titulo-registros">Registros de auditoría</h3>
+            <p class="resultados-conteo" id="conteo-registros" aria-live="polite">Cargando...</p>
+          </div>
+          <svg class="resultados-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="tabla-scroll">
+          <table class="tabla tabla-admin tabla-auditoria">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Módulo</th>
+                <th>Acción</th>
+                <th>Detalle</th>
+                <th class="col-centro">Ver</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-auditoria"></tbody>
+          </table>
+        </div>
+        <div class="paginacion-barra">
+          <p class="tabla-pie" id="tabla-pie">Mostrando 0 de 0 registros</p>
+          <nav class="paginacion" id="paginacion" aria-label="Paginación de registros"></nav>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: DETALLE DE AUDITORÍA ============ -->
+<div class="overlay" id="overlay-detalle">
+  <div class="modal modal--auditoria" role="dialog" aria-modal="true" aria-labelledby="titulo-detalle">
+    <div class="modal-header modal-header--admin">
+      <p class="modal-titulo" id="titulo-detalle">Detalle de auditoría</p>
+      <button class="modal-cerrar" data-cerrar="overlay-detalle" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="auditoria-meta">
+        <div class="meta-campo"><span class="meta-etiqueta">ID de Auditoría</span><span class="meta-valor" id="det-id">—</span></div>
+        <div class="meta-campo"><span class="meta-etiqueta">Fecha</span><span class="meta-valor" id="det-fecha">—</span></div>
+        <div class="meta-campo"><span class="meta-etiqueta">Usuario</span><span class="meta-valor" id="det-usuario">—</span></div>
+        <div class="meta-campo"><span class="meta-etiqueta">Tabla</span><span class="meta-valor" id="det-tabla">—</span></div>
+        <div class="meta-campo"><span class="meta-etiqueta">Módulo</span><span class="meta-valor" id="det-modulo">—</span></div>
+        <div class="meta-campo"><span class="meta-etiqueta">Acción</span><span class="meta-valor" id="det-accion">—</span></div>
+        <div class="meta-campo meta-valor--descripcion"><span class="meta-etiqueta">Detalle</span><span class="meta-descripcion" id="det-descripcion">—</span></div>
+      </div>
+      <hr class="auditoria-separador">
+      <div id="det-datos"></div>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-detalle">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/admin-data.js"></script>
+<script src="../js/admin-ui.js"></script>
+<script src="../js/auditoria-data.js"></script>
+<script src="../js/auditoria.js"></script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historiales — El Cuate</title>
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/historiales.css">
+<link rel="stylesheet" href="../css/menu-responsive.css">
+</head>
+<body>
+
+<div class="app">
+
+  
+  <input type="checkbox" id="menu-toggle" class="menu-toggle" aria-label="Abrir o cerrar el menú">
+<!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-marca">
+      <img src="../assets/logo-sidebar.png" alt="El Cuate" class="sidebar-logo">
+      <div>
+        <p class="sidebar-nombre">El Cuate</p>
+        <p class="sidebar-slogan">Sistema POS</p>
+      </div>
+    </div>
+
+    <label for="menu-toggle" class="menu-boton" aria-label="Menú de navegación"></label>
+
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8962;</span>
+        Panel Principal
+      </a>
+      <a href="mesas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9638;</span>
+        Mesas
+      </a>
+      <a href="analiticas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128202;</span>
+        Ventas y Analíticas
+      </a>
+      <a href="inventario.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128230;</span>
+        Inventario
+      </a>
+      <a href="historiales.html" class="nav-item nav-item--activo">
+        <span class="nav-icono" aria-hidden="true">&#128220;</span>
+        Historiales
+      </a>
+      <a href="auditoria.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128337;</span>
+        Auditoría
+      </a>
+      <a href="proveedores.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128666;</span>
+        Proveedores
+      </a>
+      <a href="usuarios.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128101;</span>
+        Usuarios
+      </a>
+    </nav>
+
+    <div class="sidebar-pie">
+      <a href="#" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9881;</span>
+        Configuración
+      </a>
+      <a href="login.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8677;</span>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="contenido">
+
+    <header class="header">
+      <div>
+        <h1 class="header-titulo">Punto de Venta</h1>
+        <p class="header-subtitulo">Bienvenido a El Cuate Sistema POS</p>
+      </div>
+      <div class="header-usuario">
+        <div class="header-usuario-texto">
+          <p class="header-usuario-nombre">Usuario Administrador</p>
+          <p class="header-usuario-fecha" id="fecha-actual">—</p>
+        </div>
+        <img src="../assets/usuario.png" alt="Usuario Administrador" class="user-avatar">
+      </div>
+    </header>
+
+    <main class="cuerpo">
+
+      <div class="modulo-header">
+        <div>
+          <h2 class="modulo-titulo">Historiales</h2>
+          <p class="modulo-subtitulo">Consulta el historial completo de órdenes finalizadas y compras registradas.</p>
+        </div>
+      </div>
+
+      <!-- ============ PESTAÑAS ============ -->
+      <div class="historial-tabs" role="tablist">
+        <button class="historial-tab historial-tab--activo" id="tab-ordenes" role="tab" aria-selected="true" aria-controls="panel-ordenes">Órdenes Pagadas</button>
+        <button class="historial-tab" id="tab-compras" role="tab" aria-selected="false" aria-controls="panel-compras">Compras Realizadas</button>
+      </div>
+
+      <!-- ============ PANEL: ÓRDENES PAGADAS ============ -->
+      <section class="historial-panel historial-panel--activo" id="panel-ordenes" role="tabpanel" aria-labelledby="tab-ordenes">
+
+        <div class="toolbar">
+          <div class="buscador">
+            <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+            <input type="text" id="buscar-ordenes" placeholder="Buscar...">
+          </div>
+          <div class="filtros">
+            <button class="filtro-btn" data-filtro-ordenes="hoy">Hoy</button>
+            <button class="filtro-btn" data-filtro-ordenes="semana">Esta semana</button>
+            <button class="filtro-btn" data-filtro-ordenes="mes">Este mes</button>
+            <button class="filtro-btn filtro-btn--activo" data-filtro-ordenes="todos">Todos</button>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn btn--secundario" id="btn-exportar-ordenes">&#128190; Exportar</button>
+        </div>
+
+        <section class="panel">
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>ID Orden</th>
+                  <th class="col-centro">Mesa</th>
+                  <th>Mesero</th>
+                  <th>Fecha y Hora</th>
+                  <th class="col-derecha">Total Pagado</th>
+                  <th class="col-centro">Método de Pago</th>
+                  <th class="col-centro">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-ordenes"></tbody>
+            </table>
+          </div>
+          <p class="tabla-pie" id="tabla-ordenes-pie">Mostrando 0 de 0 órdenes</p>
+        </section>
+
+      </section>
+
+      <!-- ============ PANEL: COMPRAS REALIZADAS ============ -->
+      <section class="historial-panel" id="panel-compras" role="tabpanel" aria-labelledby="tab-compras">
+
+        <div class="toolbar">
+          <div class="buscador">
+            <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+            <input type="text" id="buscar-compras" placeholder="Buscar...">
+          </div>
+          <div class="filtros">
+            <button class="filtro-btn" data-filtro-compras="hoy">Hoy</button>
+            <button class="filtro-btn" data-filtro-compras="semana">Esta semana</button>
+            <button class="filtro-btn" data-filtro-compras="mes">Este mes</button>
+            <button class="filtro-btn filtro-btn--activo" data-filtro-compras="todos">Todos</button>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn btn--primario" id="btn-nueva-compra">+ Registrar Nueva Compra</button>
+          <button class="btn btn--secundario" id="btn-exportar-compras">&#128190; Exportar</button>
+        </div>
+
+        <section class="panel">
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>ID Compra</th>
+                  <th>Fecha</th>
+                  <th>Proveedor</th>
+                  <th class="col-centro">Total de Artículos</th>
+                  <th class="col-derecha">Costo Total</th>
+                  <th>Registrado por</th>
+                  <th class="col-centro">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-compras"></tbody>
+            </table>
+          </div>
+          <p class="tabla-pie" id="tabla-compras-pie">Mostrando 0 de 0 compras</p>
+        </section>
+
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: DETALLE DE LA ORDEN ============ -->
+<div class="overlay" id="overlay-detalle-orden">
+  <div class="modal modal--ancho">
+    <div class="modal-header">
+      <p class="modal-titulo">Detalle de la Orden</p>
+      <button class="modal-cerrar" data-cerrar="overlay-detalle-orden" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+
+      <div class="detalle-grid">
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">ID de Orden</span>
+          <span class="detalle-valor detalle-valor--mono" id="detalle-orden-id">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Fecha y Hora</span>
+          <span class="detalle-valor" id="detalle-orden-fecha">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Mesa</span>
+          <span class="detalle-valor" id="detalle-orden-mesa">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Mesero</span>
+          <span class="detalle-valor" id="detalle-orden-mesero">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Estado</span>
+          <span class="detalle-valor" id="detalle-orden-estado">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Método de Pago</span>
+          <span class="detalle-valor" id="detalle-orden-metodo">—</span>
+        </div>
+      </div>
+
+      <hr class="detalle-separador">
+
+      <div class="tabla-modal-scroll">
+        <table class="tabla-modal">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="col-centro">Cantidad</th>
+              <th class="col-derecha">Precio Unitario</th>
+              <th class="col-derecha">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="detalle-orden-items"></tbody>
+        </table>
+      </div>
+
+      <div class="resumen-financiero">
+        <div class="resumen-fila"><span>Subtotal</span><span id="detalle-orden-subtotal">$ 0</span></div>
+        <div class="resumen-fila"><span>Impuesto (INC)</span><span id="detalle-orden-impuesto">$ 0</span></div>
+        <div class="resumen-fila"><span>Propina</span><span id="detalle-orden-propina">$ 0</span></div>
+        <div class="resumen-fila resumen-fila--total"><span>TOTAL PAGADO</span><span class="resumen-fila-valor" id="detalle-orden-total">$ 0</span></div>
+      </div>
+
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario btn--ancho" data-cerrar="overlay-detalle-orden">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: REGISTRAR NUEVA COMPRA ============ -->
+<div class="overlay" id="overlay-nueva-compra">
+  <div class="modal modal--ancho">
+    <div class="modal-header">
+      <div>
+        <p class="modal-titulo">Registrar Nueva Compra</p>
+        <p class="modal-descripcion">Registre el ingreso de productos al inventario.</p>
+      </div>
+      <button class="modal-cerrar" data-cerrar="overlay-nueva-compra" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+
+      <div class="seccion-formulario">
+        <p class="seccion-titulo">Información General</p>
+        <div class="campo-fila">
+          <div class="campo">
+            <label for="input-proveedor-compra">Proveedor *</label>
+            <select id="input-proveedor-compra">
+              <option value="">Seleccionar proveedor</option>
+            </select>
+            <span class="campo-mensaje-error">Seleccione un proveedor.</span>
+          </div>
+          <div class="campo">
+            <label for="input-fecha-compra">Fecha de Compra *</label>
+            <input type="date" id="input-fecha-compra">
+            <span class="campo-mensaje-error">Ingrese una fecha válida.</span>
+          </div>
+        </div>
+        <div class="campo-fila">
+          <div class="campo">
+            <label for="input-factura-compra">Factura / Remisión</label>
+            <input type="text" id="input-factura-compra" placeholder="Ej. FAC-2026-000245">
+          </div>
+          <div class="campo">
+            <label>Registrado por</label>
+            <div class="campo-solo-lectura" id="input-registrado-por">Usuario Administrador</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="seccion-formulario">
+        <p class="seccion-titulo">Productos de la Compra</p>
+
+        <div class="toolbar" style="gap:10px;">
+          <div class="buscador buscador-producto">
+            <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+            <input type="text" id="buscar-producto-compra" placeholder="Buscar producto..." style="width:100%;" autocomplete="off">
+            <div class="sugerencias-productos" id="sugerencias-productos"></div>
+          </div>
+          <button class="btn btn--secundario" id="btn-nuevo-producto-compra">+ Nuevo Producto</button>
+        </div>
+
+        <div class="tabla-scroll">
+          <table class="tabla tabla-compra" style="min-width:640px;">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th class="col-cantidad">Cantidad</th>
+                <th class="col-costo">Costo Unitario</th>
+                <th class="col-subtotal">Subtotal</th>
+                <th class="col-acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-productos-compra"></tbody>
+          </table>
+        </div>
+        <div class="estado-vacio" id="estado-vacio-compra" style="padding:24px;">
+          <span class="estado-vacio-texto">No hay productos agregados. Busque y agregue productos a la compra.</span>
+        </div>
+
+        <button class="enlace-agregar" id="btn-agregar-otro-producto">+ Agregar otro producto</button>
+
+        <div class="resumen-formulario">
+          <div class="resumen-formulario-fila"><span>Productos diferentes</span><span id="resumen-productos-diferentes">0</span></div>
+          <div class="resumen-formulario-fila"><span>Total de unidades</span><span id="resumen-total-unidades">0</span></div>
+          <div class="resumen-formulario-fila resumen-formulario-fila--total"><span>Costo total de compra</span><span class="resumen-formulario-valor" id="resumen-costo-total">$ 0</span></div>
+        </div>
+      </div>
+
+      <div class="campo campo-textarea">
+        <label for="input-observaciones-compra">Observaciones</label>
+        <textarea id="input-observaciones-compra" placeholder="Notas sobre la compra, proveedor o factura..."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-nueva-compra">Cancelar</button>
+      <button class="btn btn--primario" id="btn-guardar-compra">Guardar Compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DETALLE DE LA COMPRA ============ -->
+<div class="overlay" id="overlay-detalle-compra">
+  <div class="modal modal--ancho">
+    <div class="modal-header">
+      <p class="modal-titulo">Detalle de la Compra</p>
+      <button class="modal-cerrar" data-cerrar="overlay-detalle-compra" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+
+      <div class="detalle-grid">
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">ID de Compra</span>
+          <span class="detalle-valor detalle-valor--mono" id="detalle-compra-id">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Fecha de Registro</span>
+          <span class="detalle-valor" id="detalle-compra-fecha">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Proveedor</span>
+          <span class="detalle-valor" id="detalle-compra-proveedor">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Usuario</span>
+          <span class="detalle-valor" id="detalle-compra-usuario">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Número de Factura</span>
+          <span class="detalle-valor" id="detalle-compra-factura">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Total Productos</span>
+          <span class="detalle-valor" id="detalle-compra-total-productos">—</span>
+        </div>
+        <div class="detalle-campo">
+          <span class="detalle-etiqueta">Costo Total</span>
+          <span class="detalle-valor" id="detalle-compra-costo-total">—</span>
+        </div>
+      </div>
+
+      <hr class="detalle-separador">
+
+      <div class="tabla-modal-scroll">
+        <table class="tabla-modal">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th class="col-centro">Cantidad Comprada</th>
+              <th class="col-derecha">Costo Unitario</th>
+              <th class="col-derecha">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="detalle-compra-items"></tbody>
+        </table>
+      </div>
+
+      <div class="resumen-financiero">
+        <div class="resumen-fila"><span>Total Productos Diferentes</span><span id="detalle-compra-productos-diferentes">0</span></div>
+        <div class="resumen-fila"><span>Total Unidades Compradas</span><span id="detalle-compra-total-unidades">0</span></div>
+        <div class="resumen-fila resumen-fila--total"><span>Costo Total de Compra</span><span class="resumen-fila-valor" id="detalle-compra-total">$ 0</span></div>
+      </div>
+
+      <div class="detalle-campo">
+        <span class="detalle-etiqueta">Observaciones</span>
+        <p class="detalle-observaciones" id="detalle-compra-observaciones">—</p>
+      </div>
+
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario btn--ancho" data-cerrar="overlay-detalle-compra">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/historial-data.js"></script>
+<script src="../js/historiales.js"></script>
+</body>
+</html>

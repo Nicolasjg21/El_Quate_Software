@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesas — El Cuate</title>
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/mesas.css">
+<link rel="stylesheet" href="../css/menu-responsive.css">
+</head>
+<body>
+
+<div class="app">
+
+  
+  <input type="checkbox" id="menu-toggle" class="menu-toggle" aria-label="Abrir o cerrar el menú">
+<!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-marca">
+      <img src="../assets/logo-sidebar.png" alt="El Cuate" class="sidebar-logo">
+      <div>
+        <p class="sidebar-nombre">El Cuate</p>
+        <p class="sidebar-slogan">Sistema POS</p>
+      </div>
+    </div>
+
+    <label for="menu-toggle" class="menu-boton" aria-label="Menú de navegación"></label>
+
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8962;</span>
+        Panel Principal
+      </a>
+      <a href="mesas.html" class="nav-item nav-item--activo">
+        <span class="nav-icono" aria-hidden="true">&#9638;</span>
+        Mesas
+      </a>
+      <a href="analiticas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128202;</span>
+        Ventas y Analíticas
+      </a>
+      <a href="inventario.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128230;</span>
+        Inventario
+      </a>
+      <a href="historiales.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128220;</span>
+        Historiales
+      </a>
+      <a href="auditoria.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128337;</span>
+        Auditoría
+      </a>
+      <a href="proveedores.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128666;</span>
+        Proveedores
+      </a>
+      <a href="usuarios.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128101;</span>
+        Usuarios
+      </a>
+    </nav>
+
+    <div class="sidebar-pie">
+      <a href="#" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9881;</span>
+        Configuración
+      </a>
+      <a href="login.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8677;</span>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="contenido">
+
+    <header class="header">
+      <div>
+        <h1 class="header-titulo">Punto de Venta</h1>
+        <p class="header-subtitulo">Bienvenido a El Cuate Sistema POS</p>
+      </div>
+      <div class="header-usuario">
+        <div class="header-usuario-texto">
+          <p class="header-usuario-nombre">Usuario Administrador</p>
+          <p class="header-usuario-fecha" id="fecha-actual">—</p>
+        </div>
+        <img src="../assets/usuario.png" alt="Usuario Administrador" class="user-avatar">
+      </div>
+    </header>
+
+    <main class="cuerpo">
+
+      <!-- ============ VISTA: LISTADO DE MESAS ============ -->
+      <section id="vista-mesas">
+
+        <div class="modulo-header">
+          <div>
+            <h2 class="modulo-titulo">Mesas</h2>
+            <p class="modulo-subtitulo">Administrar piso y estado de mesas</p>
+          </div>
+          <button class="btn btn--primario" id="btn-nueva-mesa">+ Nueva Mesa</button>
+        </div>
+
+        <div class="resumen-grid" style="margin-top:20px;">
+          <div class="resumen-card resumen-card--rojo">
+            <p class="resumen-etiqueta resumen-etiqueta--rojo"><span class="resumen-punto resumen-punto--rojo"></span>Ocupadas</p>
+            <p class="resumen-valor resumen-valor--rojo" id="conteo-ocupadas">0 <small>/ 0</small></p>
+          </div>
+          <div class="resumen-card resumen-card--verde">
+            <p class="resumen-etiqueta resumen-etiqueta--verde"><span class="resumen-punto resumen-punto--verde"></span>Libres</p>
+            <p class="resumen-valor resumen-valor--verde" id="conteo-libres">0 <small>/ 0</small></p>
+          </div>
+          <div class="resumen-card resumen-card--amarillo">
+            <p class="resumen-etiqueta resumen-etiqueta--amarillo"><span class="resumen-punto resumen-punto--amarillo"></span>Cerrando</p>
+            <p class="resumen-valor resumen-valor--amarillo" id="conteo-cerrando">0 <small>/ 0</small></p>
+          </div>
+        </div>
+
+        <div class="filtros" style="margin-top:18px;">
+          <button class="filtro-btn filtro-btn--activo" data-filtro="todas">Todas</button>
+          <button class="filtro-btn" data-filtro="libre">Libres</button>
+          <button class="filtro-btn" data-filtro="ocupada">Ocupadas</button>
+          <button class="filtro-btn" data-filtro="cerrando">Cerrando</button>
+        </div>
+
+        <div class="mesas-grid" id="mesas-grid" style="margin-top:18px;"></div>
+
+      </section>
+
+      <!-- ============ VISTA: DETALLE DE MESA ============ -->
+      <section id="vista-detalle" style="display:none;">
+
+        <button class="link-volver" id="btn-volver-mesas">&#8592; Volver a Mesas</button>
+
+        <div class="panel" style="margin-top:14px;">
+          <h2 class="modulo-titulo" id="detalle-titulo">Mesa</h2>
+          <p class="modulo-subtitulo" id="detalle-meta">&#128101; 0 personas &nbsp;&nbsp; &#128337; Abierto desde --:--</p>
+
+          <div class="tabla-scroll" style="margin-top:18px;">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="col-centro">Cant.</th>
+                  <th class="col-derecha">Precio</th>
+                  <th class="col-derecha">Subtotal</th>
+                  <th class="col-centro"></th>
+                </tr>
+              </thead>
+              <tbody id="detalle-items"></tbody>
+            </table>
+          </div>
+
+          <p id="detalle-vacio" class="modulo-subtitulo" style="display:none; padding:20px 0; text-align:center;">
+            Esta mesa aún no tiene productos. Usa "Agregar Productos" para iniciar la cuenta.
+          </p>
+
+          <button class="btn btn--secundario btn--ancho" id="btn-agregar-productos" style="margin-top:16px; border-color: var(--coral); color: var(--coral);">
+            + Agregar Productos
+          </button>
+
+          <div class="detalle-totales">
+            <div class="detalle-totales-fila">
+              <span>Subtotal</span>
+              <span id="detalle-subtotal">$ 0</span>
+            </div>
+            <div class="detalle-totales-fila">
+              <span>IVA (19%)</span>
+              <span id="detalle-iva">$ 0</span>
+            </div>
+            <div class="detalle-total-caja">
+              <span class="detalle-total-etiqueta">TOTAL A PAGAR</span>
+              <span class="detalle-total-valor" id="detalle-total">$ 0</span>
+            </div>
+          </div>
+
+          <button class="btn btn--primario btn--ancho" id="btn-confirmar-pago" style="margin-top:14px; padding:14px;">
+            Confirmar Pago
+          </button>
+          <button class="btn btn--primario btn--ancho" id="btn-marcar-pagada" style="margin-top:14px; padding:14px; display:none; background-color:var(--amarillo-punto);">
+            Marcar como Pagada y Liberar Mesa
+          </button>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: NUEVA MESA ============ -->
+<div class="overlay" id="overlay-nueva-mesa">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <p class="modal-titulo">Registrar Nueva Mesa</p>
+        <p class="modal-descripcion">Ingrese el número de la nueva mesa</p>
+      </div>
+      <button class="modal-cerrar" data-cerrar="overlay-nueva-mesa">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="campo">
+        <label for="input-numero-mesa">Número de Mesa</label>
+        <input type="number" id="input-numero-mesa" min="1" placeholder="Ej. 7">
+        <span class="campo-mensaje-error" id="error-numero-mesa">Ingresa un número de mesa válido y disponible.</span>
+      </div>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-nueva-mesa">Cancelar</button>
+      <button class="btn btn--primario" id="btn-registrar-mesa">Registrar Mesa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: AGREGAR PRODUCTOS ============ -->
+<div class="overlay" id="overlay-agregar-producto">
+  <div class="modal modal--ancho">
+    <div class="modal-header">
+      <div>
+        <p class="modal-titulo">Agregar Productos</p>
+        <p class="modal-descripcion">Selecciona del inventario disponible. El stock se descuenta al confirmar.</p>
+      </div>
+      <button class="modal-cerrar" data-cerrar="overlay-agregar-producto">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="buscador" style="width:100%;">
+        <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+        <input type="text" id="buscar-producto-picker" placeholder="Buscar producto..." style="width:100%;">
+      </div>
+      <div id="lista-productos-picker" class="picker-lista"></div>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-agregar-producto">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/mesas.js"></script>
+</body>
+</html>

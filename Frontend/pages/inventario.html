@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario — El Cuate</title>
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/inventario.css">
+<link rel="stylesheet" href="../css/menu-responsive.css">
+</head>
+<body>
+
+<div class="app">
+
+  
+  <input type="checkbox" id="menu-toggle" class="menu-toggle" aria-label="Abrir o cerrar el menú">
+<!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-marca">
+      <img src="../assets/logo-sidebar.png" alt="El Cuate" class="sidebar-logo">
+      <div>
+        <p class="sidebar-nombre">El Cuate</p>
+        <p class="sidebar-slogan">Sistema POS</p>
+      </div>
+    </div>
+
+    <label for="menu-toggle" class="menu-boton" aria-label="Menú de navegación"></label>
+
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8962;</span>
+        Panel Principal
+      </a>
+      <a href="mesas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9638;</span>
+        Mesas
+      </a>
+      <a href="analiticas.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128202;</span>
+        Ventas y Analíticas
+      </a>
+      <a href="inventario.html" class="nav-item nav-item--activo">
+        <span class="nav-icono" aria-hidden="true">&#128230;</span>
+        Inventario
+      </a>
+      <a href="historiales.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128220;</span>
+        Historiales
+      </a>
+      <a href="auditoria.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128337;</span>
+        Auditoría
+      </a>
+      <a href="proveedores.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128666;</span>
+        Proveedores
+      </a>
+      <a href="usuarios.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#128101;</span>
+        Usuarios
+      </a>
+    </nav>
+
+    <div class="sidebar-pie">
+      <a href="#" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#9881;</span>
+        Configuración
+      </a>
+      <a href="login.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true">&#8677;</span>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="contenido">
+
+    <header class="header">
+      <div>
+        <h1 class="header-titulo">Punto de Venta</h1>
+        <p class="header-subtitulo">Bienvenido a El Cuate Sistema POS</p>
+      </div>
+      <div class="header-usuario">
+        <div class="header-usuario-texto">
+          <p class="header-usuario-nombre">Usuario Administrador</p>
+          <p class="header-usuario-fecha" id="fecha-actual">—</p>
+        </div>
+        <img src="../assets/usuario.png" alt="Usuario Administrador" class="user-avatar">
+      </div>
+    </header>
+
+    <main class="cuerpo">
+
+      <div class="modulo-header">
+        <div>
+          <h2 class="modulo-titulo">Inventario</h2>
+          <p class="modulo-subtitulo">Gestione productos, niveles de existencias y precios</p>
+        </div>
+      </div>
+
+      <div class="resumen-grid">
+        <div class="resumen-card resumen-card--naranja">
+          <p class="resumen-etiqueta resumen-etiqueta--naranja">Valor Total del Inventario</p>
+          <p class="resumen-valor resumen-valor--naranja" id="kpi-valor-total">$ 0</p>
+        </div>
+        <div class="resumen-card resumen-card--amarillo">
+          <p class="resumen-etiqueta resumen-etiqueta--amarillo">Artículos con Stock Bajo</p>
+          <p class="resumen-valor resumen-valor--amarillo" id="kpi-stock-bajo">0</p>
+        </div>
+        <div class="resumen-card resumen-card--rojo">
+          <p class="resumen-etiqueta resumen-etiqueta--rojo">Sin Existencias</p>
+          <p class="resumen-valor resumen-valor--rojo" id="kpi-sin-stock">0</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="buscador">
+          <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+          <input type="text" id="buscar-inventario" placeholder="Buscar por nombre o código de producto...">
+        </div>
+        <select class="select" id="filtro-categoria">
+          <option value="todas">Todas las Categorías</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn btn--primario" id="btn-nuevo-producto">+ Nuevo Producto</button>
+      </div>
+
+      <section class="panel">
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Código</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th class="col-derecha">Costo</th>
+                <th class="col-derecha">Precio de Venta</th>
+                <th class="col-derecha">Stock</th>
+                <th>Proveedor</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-inventario"></tbody>
+          </table>
+        </div>
+        <p class="tabla-pie" id="tabla-pie">Mostrando 0 de 0 productos</p>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODAL: NUEVO PRODUCTO ============ -->
+<div class="overlay" id="overlay-nuevo-producto">
+  <div class="modal modal--ancho">
+    <div class="modal-header">
+      <p class="modal-titulo">Registrar Nuevo Producto</p>
+      <button class="modal-cerrar" data-cerrar="overlay-nuevo-producto">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+
+      <div class="campo">
+        <label>Imagen del Producto</label>
+        <label for="input-imagen-producto" class="imagen-placeholder" id="imagen-placeholder">
+          <span id="imagen-placeholder-icono">&#128444;</span>
+          <span id="imagen-placeholder-texto">Placeholder</span>
+        </label>
+        <input type="file" id="input-imagen-producto" accept="image/*" style="display:none;">
+      </div>
+
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="input-nombre-producto">Nombre del Producto *</label>
+          <input type="text" id="input-nombre-producto" placeholder="Ej. Granos Premium Arabica">
+          <span class="campo-mensaje-error">El nombre es obligatorio.</span>
+        </div>
+        <div class="campo">
+          <label for="input-sku-producto">SKU / Código de Barras *</label>
+          <input type="text" id="input-sku-producto" placeholder="Ej. CF-001">
+          <span class="campo-mensaje-error">El código es obligatorio.</span>
+        </div>
+      </div>
+
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="input-categoria-producto">Categoría *</label>
+          <select id="input-categoria-producto">
+            <option value="">Selecciona una categoría</option>
+          </select>
+          <span class="campo-mensaje-error">Selecciona una categoría.</span>
+        </div>
+        <div class="campo">
+          <label for="input-categoria-nueva">O crea una categoría nueva</label>
+          <input type="text" id="input-categoria-nueva" placeholder="Ej. Postres">
+        </div>
+      </div>
+
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="input-costo-producto">Costo de Compra *</label>
+          <div class="campo-prefijo"><span>$</span><input type="number" id="input-costo-producto" min="0" placeholder="0"></div>
+          <span class="campo-mensaje-error">Ingresa un costo válido.</span>
+        </div>
+        <div class="campo">
+          <label for="input-precio-producto">Precio de Venta *</label>
+          <div class="campo-prefijo"><span>$</span><input type="number" id="input-precio-producto" min="0" placeholder="0"></div>
+          <span class="campo-mensaje-error">Ingresa un precio válido.</span>
+        </div>
+      </div>
+
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="input-stock-inicial">Stock Inicial</label>
+          <input type="number" id="input-stock-inicial" min="0" placeholder="0">
+        </div>
+        <div class="campo">
+          <label for="input-stock-minimo">Stock Mínimo de Alerta</label>
+          <input type="number" id="input-stock-minimo" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="input-proveedor-producto">Proveedor</label>
+        <input type="text" id="input-proveedor-producto" placeholder="Ej. Bavaria S.A.">
+      </div>
+
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-nuevo-producto">Cancelar</button>
+      <button class="btn btn--primario" id="btn-guardar-producto">Guardar Producto</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/inventario.js"></script>
+</body>
+</html>
