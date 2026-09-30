@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Analiticas;
+using ElQuateDePatty.DTOs.Compras;
 using ElQuateDePatty.Models;
 
 namespace ElQuateDePatty.Repositories.Interfaces

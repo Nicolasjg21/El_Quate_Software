@@ -1,5 +1,6 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Analiticas;
+using ElQuateDePatty.DTOs.Compras;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -55,71 +56,71 @@ namespace ElQuateDePatty.Repositories
             // -----------------------------------------
             // 1. FILTRO POR FECHA DESDE
             // -----------------------------------------
-            if (filtro.FechaDesde.HasValue)
+            if (filtro.fechaDesde.HasValue)
             {
                 query = query.Where(c =>
-                    c.fecha >= filtro.FechaDesde.Value);
+                    c.fecha >= filtro.fechaDesde.Value);
             }
 
             // -----------------------------------------
             // 2. FILTRO POR FECHA HASTA
             // -----------------------------------------
-            if (filtro.FechaHasta.HasValue)
+            if (filtro.fechaHasta.HasValue)
             {
                 query = query.Where(c =>
-                    c.fecha <= filtro.FechaHasta.Value);
+                    c.fecha <= filtro.fechaHasta.Value);
             }
 
             // -----------------------------------------
             // 3. FILTRO POR PROVEEDOR
             // -----------------------------------------
-            if (filtro.IdProveedor.HasValue)
+            if (filtro.idProveedor.HasValue)
             {
                 query = query.Where(c =>
-                    c.idProveedor == filtro.IdProveedor.Value);
+                    c.idProveedor == filtro.idProveedor.Value);
             }
 
             // -----------------------------------------
             // 4. FILTRO POR TOTAL DE ARTÍCULOS
             // -----------------------------------------
-            if (filtro.TotalArticulosMinimo.HasValue)
+            if (filtro.totalArticulosMinimo.HasValue)
             {
                 query = query.Where(c =>
                     context.DetalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (int?)dc.cantidad) >=
-                        filtro.TotalArticulosMinimo.Value);
+                        filtro.totalArticulosMinimo.Value);
             }
 
-            if (filtro.TotalArticulosMaximo.HasValue)
+            if (filtro.totalArticulosMaximo.HasValue)
             {
                 query = query.Where(c =>
                     context.DetalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (int?)dc.cantidad) <=
-                        filtro.TotalArticulosMaximo.Value);
+                        filtro.totalArticulosMaximo.Value);
             }
 
             // -----------------------------------------
             // 5. FILTRO POR COSTO TOTAL
             // cantidad × precio de compra
             // -----------------------------------------
-            if (filtro.CostoTotalMinimo.HasValue)
+            if (filtro.costoTotalMinimo.HasValue)
             {
                 query = query.Where(c =>
                     context.DetalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (decimal?)(dc.cantidad * dc.precioCompra)) >=
-                        filtro.CostoTotalMinimo.Value);
+                        filtro.costoTotalMinimo.Value);
             }
 
-            if (filtro.CostoTotalMaximo.HasValue)
+            if (filtro.costoTotalMaximo.HasValue)
             {
                 query = query.Where(c =>
                     context.DetalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (decimal?)(dc.cantidad * dc.precioCompra)) <=
-                        filtro.CostoTotalMaximo.Value);
+                        filtro.costoTotalMaximo.Value);
             }
 
             return await query.ToListAsync();
@@ -129,16 +130,16 @@ namespace ElQuateDePatty.Repositories
         {
             var query = context.Compras.AsQueryable();
 
-            if (filtro.FechaDesde.HasValue)
+            if (filtro.fechaDesde.HasValue)
             {
                 query = query.Where(c =>
-                    c.fecha >= filtro.FechaDesde.Value);
+                    c.fecha >= filtro.fechaDesde.Value);
             }
 
-            if (filtro.FechaHasta.HasValue)
+            if (filtro.fechaHasta.HasValue)
             {
                 query = query.Where(c =>
-                    c.fecha <= filtro.FechaHasta.Value);
+                    c.fecha <= filtro.fechaHasta.Value);
             }
 
             return await query

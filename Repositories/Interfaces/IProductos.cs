@@ -1,4 +1,4 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Productos;
 using ElQuateDePatty.Models;
 
 namespace ElQuateDePatty.Repositories.Interfaces
@@ -15,6 +15,6 @@ namespace ElQuateDePatty.Repositories.Interfaces
 
         Task<bool> DeleteProductos(Productos productos);
 
-        Task<List<Productos>> FiltrarProductos(ProductoFiltroDTO filtro);
+        Task<List<ProductoRespuestaDTO>> FiltrarProductos(ProductoFiltroDTO filtro);
     }
 }

@@ -1,4 +1,5 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Analiticas;
+using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;

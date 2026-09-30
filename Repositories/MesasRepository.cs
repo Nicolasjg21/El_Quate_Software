@@ -1,5 +1,5 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -61,10 +61,10 @@ namespace ElQuateDePatty.Repositories
         {
             var query = context.Mesas.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(filtro.Estado))
+            if (!string.IsNullOrWhiteSpace(filtro.estado))
             {
                 query = query.Where(m =>
-                    m.estado == filtro.Estado);
+                    m.estado == filtro.estado);
             }
 
             return await query.ToListAsync();

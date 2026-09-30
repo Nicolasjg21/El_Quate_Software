@@ -1,4 +1,4 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Analiticas;
 
 namespace ElQuateDePatty.Repositories.Interfaces
 {

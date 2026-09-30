@@ -1,5 +1,5 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Proveedores;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -56,28 +56,28 @@ namespace ElQuateDePatty.Repositories
             // -----------------------------------------
             // 1. FILTRO POR NOMBRE
             // -----------------------------------------
-            if (!string.IsNullOrWhiteSpace(filtro.NombreProveedor))
+            if (!string.IsNullOrWhiteSpace(filtro.nombreProveedor))
             {
                 query = query.Where(p =>
-                    p.nombreProveedor.Contains(filtro.NombreProveedor));
+                    p.nombreProveedor.Contains(filtro.nombreProveedor));
             }
 
             // -----------------------------------------
             // 2. FILTRO POR TELÉFONO
             // -----------------------------------------
-            if (!string.IsNullOrWhiteSpace(filtro.Telefono))
+            if (!string.IsNullOrWhiteSpace(filtro.telefono))
             {
                 query = query.Where(p =>
-                    p.telefono.Contains(filtro.Telefono));
+                    p.telefono.Contains(filtro.telefono));
             }
 
             // -----------------------------------------
             // 3. FILTRO POR DIRECCIÓN
             // -----------------------------------------
-            if (!string.IsNullOrWhiteSpace(filtro.Direccion))
+            if (!string.IsNullOrWhiteSpace(filtro.direccion))
             {
                 query = query.Where(p =>
-                    p.direccion.Contains(filtro.Direccion));
+                    p.direccion.Contains(filtro.direccion));
             }
 
             return await query.ToListAsync();

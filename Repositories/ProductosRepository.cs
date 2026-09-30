@@ -1,5 +1,5 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Productos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ namespace ElQuateDePatty.Repositories
         }
 
         // GET BY ID
-        public async Task<Productos> GetProductosById(int id)
+        public async Task<Productos?> GetProductosById(int id)
         {
             var data = await context.Productos
                 .FirstOrDefaultAsync(x => x.idProducto == id);
@@ -59,7 +59,7 @@ namespace ElQuateDePatty.Repositories
         }
 
         // FILTROS DE PRODUCTOS
-        public async Task<List<Productos>> FiltrarProductos(
+        public async Task<List<ProductoRespuestaDTO>> FiltrarProductos(
             ProductoFiltroDTO filtro)
         {
             var query = context.Productos.AsQueryable();
@@ -67,95 +67,96 @@ namespace ElQuateDePatty.Repositories
             // -----------------------------------------
             // 1. FILTRO POR NOMBRE
             // -----------------------------------------
-            if (!string.IsNullOrWhiteSpace(filtro.Nombre))
+            if (!string.IsNullOrWhiteSpace(filtro.nombre))
             {
                 query = query.Where(p =>
-                    p.nombreProducto.Contains(filtro.Nombre));
+                    p.nombreProducto.Contains(filtro.nombre));
             }
 
             // -----------------------------------------
             // 2. FILTRO POR CATEGORÍA
             // -----------------------------------------
-            if (filtro.IdCategoria.HasValue)
+            if (filtro.idCategoria.HasValue)
             {
                 query = query.Where(p =>
-                    p.idCategoria == filtro.IdCategoria.Value);
+                    p.idCategoria == filtro.idCategoria.Value);
             }
 
             // -----------------------------------------
             // 3. FILTRO POR PRECIO DE VENTA
             // -----------------------------------------
-            if (filtro.PrecioVentaMinimo.HasValue)
+            if (filtro.precioVentaMinimo.HasValue)
             {
                 query = query.Where(p =>
-                    p.precioVenta >= filtro.PrecioVentaMinimo.Value);
+                    p.precioVenta >= filtro.precioVentaMinimo.Value);
             }
 
-            if (filtro.PrecioVentaMaximo.HasValue)
+            if (filtro.precioVentaMaximo.HasValue)
             {
                 query = query.Where(p =>
-                    p.precioVenta <= filtro.PrecioVentaMaximo.Value);
+                    p.precioVenta <= filtro.precioVentaMaximo.Value);
             }
 
             // -----------------------------------------
             // 4. FILTRO POR COSTO
             // Costo = promedio del precio de compra
-            // registrado en DetalleCompras
             // -----------------------------------------
-            if (filtro.CostoMinimo.HasValue)
+            if (filtro.costoMinimo.HasValue)
             {
                 query = query.Where(p =>
                     context.DetalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .Select(dc => (decimal?)dc.precioCompra)
-                        .Average() >= filtro.CostoMinimo.Value);
+                        .Average() >= filtro.costoMinimo.Value);
             }
 
-            if (filtro.CostoMaximo.HasValue)
+            if (filtro.costoMaximo.HasValue)
             {
                 query = query.Where(p =>
                     context.DetalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .Select(dc => (decimal?)dc.precioCompra)
-                        .Average() <= filtro.CostoMaximo.Value);
+                        .Average() <= filtro.costoMaximo.Value);
             }
 
             // -----------------------------------------
             // 5. FILTRO POR PROVEEDOR
-            // Productos que hayan sido comprados
-            // a un proveedor determinado
             // -----------------------------------------
-            if (filtro.IdProveedor.HasValue)
+            if (filtro.idProveedor.HasValue)
             {
                 query = query.Where(p =>
                     context.DetalleCompras.Any(dc =>
                         dc.idProducto == p.idProducto &&
-                        context.Compras.Any(c =>
-                            c.idCompra == dc.idCompra &&
-                            c.idProveedor == filtro.IdProveedor.Value)));
+                        dc.compra.idProveedor == filtro.idProveedor.Value));
             }
 
             // -----------------------------------------
             // 6. FILTRO SIN STOCK
-            // Stock actual = 0
-            // Se obtiene desde el último movimiento
-            // registrado en Kardex.
+            // Se toma el último movimiento del Kardex.
             // -----------------------------------------
-            if (filtro.SinStock.HasValue)
+            if (filtro.sinStock.HasValue)
             {
-                if (filtro.SinStock.Value)
+                if (filtro.sinStock.Value)
                 {
                     query = query.Where(p =>
-                        !context.Kardex.Any(k =>
-                            k.idProducto == p.idProducto &&
-                            k.stockNuevo > 0));
+                        (
+                            context.Kardex
+                                .Where(k => k.idProducto == p.idProducto)
+                                .OrderByDescending(k => k.fecha)
+                                .Select(k => (int?)k.stockNuevo)
+                                .FirstOrDefault() ?? 0
+                        ) == 0);
                 }
                 else
                 {
                     query = query.Where(p =>
-                        context.Kardex.Any(k =>
-                            k.idProducto == p.idProducto &&
-                            k.stockNuevo > 0));
+                        (
+                            context.Kardex
+                                .Where(k => k.idProducto == p.idProducto)
+                                .OrderByDescending(k => k.fecha)
+                                .Select(k => (int?)k.stockNuevo)
+                                .FirstOrDefault() ?? 0
+                        ) > 0);
                 }
             }
 
@@ -163,29 +164,75 @@ namespace ElQuateDePatty.Repositories
             // 7. FILTRO STOCK BAJO
             // Stock actual <= cantidadMinima
             // -----------------------------------------
-            if (filtro.StockBajo.HasValue)
+            if (filtro.stockBajo.HasValue)
             {
-                if (filtro.StockBajo.Value)
+                if (filtro.stockBajo.Value)
                 {
                     query = query.Where(p =>
-                        context.Kardex
-                            .Where(k => k.idProducto == p.idProducto)
-                            .OrderByDescending(k => k.fecha)
-                            .Select(k => (int?)k.stockNuevo)
-                            .FirstOrDefault() <= p.cantidadMinima);
+                        (
+                            context.Kardex
+                                .Where(k => k.idProducto == p.idProducto)
+                                .OrderByDescending(k => k.fecha)
+                                .Select(k => (int?)k.stockNuevo)
+                                .FirstOrDefault() ?? 0
+                        ) <= p.cantidadMinima);
                 }
                 else
                 {
                     query = query.Where(p =>
-                        context.Kardex
-                            .Where(k => k.idProducto == p.idProducto)
-                            .OrderByDescending(k => k.fecha)
-                            .Select(k => (int?)k.stockNuevo)
-                            .FirstOrDefault() > p.cantidadMinima);
+                        (
+                            context.Kardex
+                                .Where(k => k.idProducto == p.idProducto)
+                                .OrderByDescending(k => k.fecha)
+                                .Select(k => (int?)k.stockNuevo)
+                                .FirstOrDefault() ?? 0
+                        ) > p.cantidadMinima);
                 }
             }
 
-            return await query.ToListAsync();
+            // -----------------------------------------
+            // RESPUESTA
+            // -----------------------------------------
+            return await query
+                .Select(p => new ProductoRespuestaDTO
+                {
+                    idProducto = p.idProducto,
+
+                    nombreProducto = p.nombreProducto,
+
+                    precioVenta = p.precioVenta,
+
+                    categoria = p.categoria != null
+                        ? p.categoria.nombreCategoria
+                        : null,
+
+                    costoPromedio = context.DetalleCompras
+                        .Where(dc => dc.idProducto == p.idProducto)
+                        .Select(dc => (decimal?)dc.precioCompra)
+                        .Average() ?? 0,
+
+                    stockActual = context.Kardex
+                        .Where(k => k.idProducto == p.idProducto)
+                        .OrderByDescending(k => k.fecha)
+                        .Select(k => (int?)k.stockNuevo)
+                        .FirstOrDefault() ?? 0,
+
+                    stockBajo =
+                        (
+                            context.Kardex
+                                .Where(k => k.idProducto == p.idProducto)
+                                .OrderByDescending(k => k.fecha)
+                                .Select(k => (int?)k.stockNuevo)
+                                .FirstOrDefault() ?? 0
+                        ) <= p.cantidadMinima,
+
+                    proveedor = context.DetalleCompras
+                        .Where(dc => dc.idProducto == p.idProducto)
+                        .OrderByDescending(dc => dc.idDetalleCompra)
+                        .Select(dc => dc.compra.proveedor.nombreProveedor)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
         }
     }
 }

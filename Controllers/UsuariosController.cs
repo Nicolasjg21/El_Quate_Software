@@ -1,4 +1,4 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Usuarios;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -278,16 +278,6 @@ namespace ElQuateDePatty.Controllers
                 existente.idRol = dto.idRol;
                 existente.email = dto.email;
 
-                // Si se envía una nueva contraseña, se actualiza.
-                // Si viene vacía, se conserva la contraseña actual.
-                if (!string.IsNullOrWhiteSpace(dto.password))
-                {
-                    existente.passwordHash =
-                        _passwordHasher.HashPassword(
-                            existente,
-                            dto.password);
-                }
-
                 var response =
                     await _usuariosRepository.PutUsuarios(existente);
 
@@ -326,6 +316,103 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 500,
                     message = "Ocurrió un error interno al actualizar el usuario."
+                });
+            }
+        }
+
+        // PUT: api/Usuarios/CambiarPassword/1
+        [HttpPut("CambiarPassword/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CambiarPassword(
+            int id,
+            [FromBody] CambiarPasswordDTO dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos enviados no son válidos.",
+                        errors = ModelState
+                    });
+                }
+
+                if (id <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El ID debe ser mayor que cero."
+                    });
+                }
+
+                var usuario = await _usuariosRepository.GetUsuariosById(id);
+
+                if (usuario == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "No se encontró el usuario."
+                    });
+                }
+
+                var resultado = _passwordHasher.VerifyHashedPassword(
+                    usuario,
+                    usuario.passwordHash,
+                    dto.passwordActual);
+
+                if (resultado == PasswordVerificationResult.Failed)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "La contraseña actual es incorrecta."
+                    });
+                }
+
+                if (dto.nuevaPassword != dto.confirmarPassword)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "La nueva contraseña y la confirmación no coinciden."
+                    });
+                }
+
+                usuario.passwordHash = _passwordHasher.HashPassword(
+                    usuario,
+                    dto.nuevaPassword);
+
+                var response = await _usuariosRepository.PutUsuarios(usuario);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible actualizar la contraseña."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Contraseña actualizada correctamente."
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al actualizar la contraseña."
                 });
             }
         }

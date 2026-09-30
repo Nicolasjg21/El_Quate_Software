@@ -1,5 +1,5 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,19 +24,19 @@ namespace ElQuateDePatty.Repositories
             // -----------------------------------------
             // FILTRO POR FECHA DESDE
             // -----------------------------------------
-            if (filtro.FechaDesde.HasValue)
+            if (filtro.fechaDesde.HasValue)
             {
                 comprobantes = comprobantes.Where(c =>
-                    c.fecha >= filtro.FechaDesde.Value);
+                    c.fecha >= filtro.fechaDesde.Value);
             }
 
             // -----------------------------------------
             // FILTRO POR FECHA HASTA
             // -----------------------------------------
-            if (filtro.FechaHasta.HasValue)
+            if (filtro.fechaHasta.HasValue)
             {
                 comprobantes = comprobantes.Where(c =>
-                    c.fecha <= filtro.FechaHasta.Value);
+                    c.fecha <= filtro.fechaHasta.Value);
             }
 
             // -----------------------------------------
@@ -77,10 +77,10 @@ namespace ElQuateDePatty.Repositories
 
             return new VentaAnaliticaDTO
             {
-                TotalVentas = totalVentas,
-                TotalIngresos = totalIngresos,
-                PromedioVenta = promedioVenta,
-                TotalProductosVendidos = totalProductosVendidos
+                totalVentas = totalVentas,
+                totalIngresos = totalIngresos,
+                promedioVenta = promedioVenta,
+                totalProductosVendidos = totalProductosVendidos
             };
         }
     }

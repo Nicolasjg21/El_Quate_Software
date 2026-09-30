@@ -1,5 +1,6 @@
 ﻿using ElQuateDePatty.Context;
-using ElQuateDePatty.DTOs;
+using ElQuateDePatty.DTOs.Analiticas;
+using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -60,62 +61,62 @@ namespace ElQuateDePatty.Repositories
                 .AsQueryable();
 
             // Mesa
-            if (filtro.NumeroMesa.HasValue)
+            if (filtro.numeroMesa.HasValue)
             {
                 query = query.Where(p =>
-                    p.cuenta.mesa.numeroMesa == filtro.NumeroMesa.Value);
+                    p.cuenta.mesa.numeroMesa == filtro.numeroMesa.Value);
             }
 
             // Usuario
-            if (filtro.IdUsuario.HasValue)
+            if (filtro.idUsuario.HasValue)
             {
                 query = query.Where(p =>
-                    p.idUsuario == filtro.IdUsuario.Value);
+                    p.idUsuario == filtro.idUsuario.Value);
             }
 
             // Fecha
-            if (filtro.Fecha.HasValue)
+            if (filtro.fecha.HasValue)
             {
-                var fecha = filtro.Fecha.Value.Date;
+                var fecha = filtro.fecha.Value.Date;
 
                 query = query.Where(p =>
                     p.fecha.Date == fecha);
             }
 
             // Hora Inicio
-            if (filtro.HoraInicio.HasValue)
+            if (filtro.horaInicio.HasValue)
             {
                 query = query.Where(p =>
-                    p.fecha.TimeOfDay >= filtro.HoraInicio.Value);
+                    p.fecha.TimeOfDay >= filtro.horaInicio.Value);
             }
 
             // Hora Fin
-            if (filtro.HoraFin.HasValue)
+            if (filtro.horaFin.HasValue)
             {
                 query = query.Where(p =>
-                    p.fecha.TimeOfDay <= filtro.HoraFin.Value);
+                    p.fecha.TimeOfDay <= filtro.horaFin.Value);
             }
 
             // Total mínimo
-            if (filtro.TotalMinimo.HasValue)
+            if (filtro.totalMinimo.HasValue)
             {
                 query = query.Where(p =>
-                    p.cuenta.total >= filtro.TotalMinimo.Value);
+                    p.cuenta.total >= filtro.totalMinimo.Value);
             }
 
             // Total máximo
-            if (filtro.TotalMaximo.HasValue)
+            if (filtro.totalMaximo.HasValue)
             {
                 query = query.Where(p =>
-                    p.cuenta.total <= filtro.TotalMaximo.Value);
+                    p.cuenta.total <= filtro.totalMaximo.Value);
             }
 
             // Método de pago
-            if (filtro.IdMetodoPago.HasValue)
+            if (filtro.idMetodoPago.HasValue)
             {
                 query = query.Where(p =>
                     p.cuenta.comprobantes.Any(c =>
-                        c.idMetodo == filtro.IdMetodoPago.Value));
+                        c.idMetodo == filtro.idMetodoPago.Value));
             }
 
             return await query.ToListAsync();
@@ -125,16 +126,16 @@ namespace ElQuateDePatty.Repositories
         {
             var query = context.Pedidos.AsQueryable();
 
-            if (filtro.FechaDesde.HasValue)
+            if (filtro.fechaDesde.HasValue)
             {
                 query = query.Where(p =>
-                    p.fecha >= filtro.FechaDesde.Value);
+                    p.fecha >= filtro.fechaDesde.Value);
             }
 
-            if (filtro.FechaHasta.HasValue)
+            if (filtro.fechaHasta.HasValue)
             {
                 query = query.Where(p =>
-                    p.fecha <= filtro.FechaHasta.Value);
+                    p.fecha <= filtro.fechaHasta.Value);
             }
 
             return await query

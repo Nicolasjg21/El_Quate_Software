@@ -1,4 +1,4 @@
-﻿using ElQuateDePatty.DTOs;
+﻿using ElQuateDePatty.DTOs.Proveedores;
 using ElQuateDePatty.Models;
 
 namespace ElQuateDePatty.Repositories.Interfaces
