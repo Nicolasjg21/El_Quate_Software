@@ -1,7 +1,8 @@
-﻿using ElQuateDePatty.DTOs.Analiticas;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class PedidosController : ControllerBase
     {
-        private readonly IPedidosRepository _pedidosRepository;
+        private readonly IPedidosRepository pedidosRepository;
+        private readonly ILogger<PedidosController> logger;
 
-        public PedidosController(IPedidosRepository repository)
+        public PedidosController(
+            IPedidosRepository repository,
+            ILogger<PedidosController> logger)
         {
-            _pedidosRepository = repository;
+            pedidosRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetPedidos")]
@@ -29,7 +34,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var pedidos = await _pedidosRepository.GetPedidos();
+                var pedidos = await pedidosRepository.GetPedidos();
 
                 if (pedidos == null || !pedidos.Any())
                 {
@@ -44,35 +49,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Pedidos obtenidos correctamente.",
-                    data = pedidos
+                    data = pedidos.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -100,7 +83,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var pedido = await _pedidosRepository.GetPedidosById(id);
+                var pedido = await pedidosRepository.GetPedidosById(id);
 
                 if (pedido == null)
                 {
@@ -115,35 +98,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Pedido obtenido correctamente.",
-                    data = pedido
+                    data = pedido.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -157,10 +118,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostPedidos([FromBody] Pedidos pedido)
+        public async Task<IActionResult> PostPedidos([FromBody] PedidoCrearDTO dto)
         {
             try
             {
+                var pedido = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -171,7 +134,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _pedidosRepository.PostPedidos(pedido);
+                var response = await pedidosRepository.PostPedidos(pedido);
 
                 if (!response)
                 {
@@ -186,27 +149,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Pedido registrado correctamente.",
-                    data = pedido
+                    data = pedido.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -221,7 +180,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutPedidos([FromBody] Pedidos pedido)
+        public async Task<IActionResult> PutPedidos([FromBody] PedidoActualizarDTO pedido)
         {
             try
             {
@@ -244,7 +203,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _pedidosRepository.GetPedidosById(pedido.idPedido);
+                var existente = await pedidosRepository.GetPedidosById(pedido.idPedido);
 
                 if (existente == null)
                 {
@@ -260,7 +219,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fecha = pedido.fecha;
                 existente.estadoPedido = pedido.estadoPedido;
 
-                var response = await _pedidosRepository.PutPedidos(existente);
+                var response = await pedidosRepository.PutPedidos(existente);
 
                 if (!response)
                 {
@@ -275,40 +234,27 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Pedido actualizado correctamente.",
-                    data = existente
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -332,7 +278,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var pedido = await _pedidosRepository.GetPedidosById(id);
+                var pedido = await pedidosRepository.GetPedidosById(id);
 
                 if (pedido == null)
                 {
@@ -343,7 +289,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _pedidosRepository.DeletePedidos(pedido);
+                var response = await pedidosRepository.DeletePedidos(pedido);
 
                 if (!response)
                 {
@@ -360,32 +306,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Pedido eliminado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -398,7 +332,7 @@ namespace ElQuateDePatty.Controllers
         [HttpPost("filtrar")]
         public async Task<IActionResult> FiltrarPedidos([FromBody] PedidoFiltroDTO filtro)
         {
-            var resultado = await _pedidosRepository.FiltrarPedidos(filtro);
+            var resultado = await pedidosRepository.FiltrarPedidos(filtro);
 
             return Ok(resultado);
         }
@@ -406,13 +340,13 @@ namespace ElQuateDePatty.Controllers
         [HttpGet("Historial")]
         public async Task<IActionResult> FiltrarHistorialPedidos([FromQuery] PeriodoFiltroDTO filtro)
         {
-            var data = await _pedidosRepository.FiltrarHistorialPedidos(filtro);
+            var data = await pedidosRepository.FiltrarHistorialPedidos(filtro);
 
             return Ok(new
             {
                 statusCode = 200,
                 message = "Historial de pedidos consultado correctamente",
-                data = data
+                data = data.ToRespuestaDTO()
             });
         }
     }

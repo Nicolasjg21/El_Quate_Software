@@ -1,5 +1,7 @@
-﻿using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Roles;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.Services;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +13,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class RolesController : ControllerBase
     {
-        private readonly IRolesRepository _rolesRepository;
+        private readonly IRolesRepository rolesRepository;
+        private readonly ILogger<RolesController> logger;
 
-        public RolesController(IRolesRepository repository)
+        public RolesController(
+            IRolesRepository repository,
+            ILogger<RolesController> logger)
         {
-            _rolesRepository = repository;
+            rolesRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetRoles")]
@@ -27,7 +33,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var roles = await _rolesRepository.GetRoles();
+                var roles = await rolesRepository.GetRoles();
 
                 if (roles == null || !roles.Any())
                 {
@@ -42,35 +48,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Roles obtenidos correctamente.",
-                    data = roles
+                    data = roles.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -98,7 +82,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var rol = await _rolesRepository.GetRolesById(id);
+                var rol = await rolesRepository.GetRolesById(id);
 
                 if (rol == null)
                 {
@@ -113,35 +97,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Rol obtenido correctamente.",
-                    data = rol
+                    data = rol.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -151,14 +113,17 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostRoles")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostRoles([FromBody] Roles rol)
+        public async Task<IActionResult> PostRoles([FromBody] RolCrearDTO dto)
         {
             try
             {
+                var rol = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -169,7 +134,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _rolesRepository.PostRoles(rol);
+                var response = await rolesRepository.PostRoles(rol);
 
                 if (!response)
                 {
@@ -184,27 +149,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Rol registrado correctamente.",
-                    data = rol
+                    data = rol.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -214,12 +175,13 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutRoles")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutRoles([FromBody] Roles rol)
+        public async Task<IActionResult> PutRoles([FromBody] RolActualizarDTO rol)
         {
             try
             {
@@ -242,7 +204,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _rolesRepository.GetRolesById(rol.idRol);
+                var existente = await rolesRepository.GetRolesById(rol.idRol);
 
                 if (existente == null)
                 {
@@ -255,7 +217,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreRol = rol.nombreRol;
 
-                var response = await _rolesRepository.PutRoles(existente);
+                var response = await rolesRepository.PutRoles(existente);
 
                 if (!response)
                 {
@@ -270,45 +232,33 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Rol actualizado correctamente.",
-                    data = existente
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
 
         [HttpDelete("DeleteRoles/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -327,7 +277,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var rol = await _rolesRepository.GetRolesById(id);
+                var rol = await rolesRepository.GetRolesById(id);
 
                 if (rol == null)
                 {
@@ -338,7 +288,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _rolesRepository.DeleteRoles(rol);
+                var response = await rolesRepository.DeleteRoles(rol);
 
                 if (!response)
                 {
@@ -355,32 +305,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Rol eliminado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

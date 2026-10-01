@@ -10,12 +10,12 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class AnaliticasController : ControllerBase
     {
-        private readonly IAnaliticasRepository _analiticasRepository;
+        private readonly IAnaliticasRepository analiticasRepository;
 
         public AnaliticasController(
             IAnaliticasRepository repository)
         {
-            _analiticasRepository = repository;
+            analiticasRepository = repository;
         }
 
         [HttpGet("Ventas")]
@@ -23,7 +23,7 @@ namespace ElQuateDePatty.Controllers
             [FromQuery] PeriodoFiltroDTO filtro)
         {
             var data =
-                await _analiticasRepository.ObtenerAnaliticasVentas(filtro);
+                await analiticasRepository.ObtenerAnaliticasVentas(filtro);
 
             return Ok(new
             {

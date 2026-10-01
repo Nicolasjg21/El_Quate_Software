@@ -1,20 +1,23 @@
-﻿public class UsuarioRespuestaDTO
+﻿namespace ElQuateDePatty.DTOs.Usuarios
 {
-    public int idUsuario { get; set; }
+    public class UsuarioRespuestaDTO
+    {
+        public int idUsuario { get; set; }
 
-    public string nombres { get; set; } = string.Empty;
+        public string nombres { get; set; } = string.Empty;
 
-    public string apellidos { get; set; } = string.Empty;
+        public string apellidos { get; set; } = string.Empty;
 
-    public string documento { get; set; } = string.Empty;
+        public string documento { get; set; } = string.Empty;
 
-    public int idTipoDocumento { get; set; }
+        public int idTipoDocumento { get; set; }
 
-    public string telefono { get; set; } = string.Empty;
+        public string telefono { get; set; } = string.Empty;
 
-    public bool estado { get; set; }
+        public bool estado { get; set; }
 
-    public int idRol { get; set; }
+        public int idRol { get; set; }
 
-    public string email { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
+    }
 }

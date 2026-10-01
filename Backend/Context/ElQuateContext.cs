@@ -5,28 +5,28 @@ namespace ElQuateDePatty.Context
 {
     public class ElQuateDePattyContext : DbContext
     {
-        public ElQuateDePattyContext(DbContextOptions options) : base(options)
+        public ElQuateDePattyContext(DbContextOptions<ElQuateDePattyContext> options) : base(options)
         {
         }
 
-        public DbSet<Auditorias> Auditorias { get; set; }
-        public DbSet<Categorias> Categorias { get; set; }
-        public DbSet<Comprobantes> Comprobantes { get; set; }
-        public DbSet<Compras> Compras { get; set; }
-        public DbSet<Cuentas> Cuentas { get; set; }
-        public DbSet<DetalleCompras> DetalleCompras { get; set; }
-        public DbSet<DetallePedidos> DetallePedidos { get; set; }
-        public DbSet<Kardex> Kardex { get; set; }
-        public DbSet<Mesas> Mesas { get; set; }
-        public DbSet<MetodosPago> MetodosPago { get; set; }
-        public DbSet<Pedidos> Pedidos { get; set; }
-        public DbSet<Permisos> Permisos { get; set; }
-        public DbSet<Productos> Productos { get; set; }
-        public DbSet<Proveedores> Proveedores { get; set; }
-        public DbSet<Roles> Roles { get; set; }
-        public DbSet<RolesPermisos> RolesPermisos { get; set; }
-        public DbSet<TipoDocumento> TipoDocumento { get; set; }
-        public DbSet<Usuarios> Usuarios { get; set; }
+        public DbSet<Auditorias> auditorias { get; set; }
+        public DbSet<Categorias> categorias { get; set; }
+        public DbSet<Comprobantes> comprobantes { get; set; }
+        public DbSet<Compras> compras { get; set; }
+        public DbSet<Cuentas> cuentas { get; set; }
+        public DbSet<DetalleCompras> detalleCompras { get; set; }
+        public DbSet<DetallePedidos> detallePedidos { get; set; }
+        public DbSet<Kardex> kardex { get; set; }
+        public DbSet<Mesas> mesas { get; set; }
+        public DbSet<MetodosPago> metodosPago { get; set; }
+        public DbSet<Pedidos> pedidos { get; set; }
+        public DbSet<Permisos> permisos { get; set; }
+        public DbSet<Productos> productos { get; set; }
+        public DbSet<Proveedores> proveedores { get; set; }
+        public DbSet<Roles> roles { get; set; }
+        public DbSet<RolesPermisos> rolesPermisos { get; set; }
+        public DbSet<TipoDocumento> tipoDocumento { get; set; }
+        public DbSet<Usuarios> usuarios { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -263,8 +263,6 @@ namespace ElQuateDePatty.Context
             // =========================================================
             // DetalleCompras
             // =========================================================
-
-            //Cambio prueba
 
             modelBuilder.Entity<DetalleCompras>(entity =>
             {

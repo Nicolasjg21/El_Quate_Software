@@ -1,5 +1,6 @@
-﻿using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.TipoDocumento;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +12,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class TipoDocumentoController : ControllerBase
     {
-        private readonly ITipoDocumentoRepository _tipoDocumentoRepository;
+        private readonly ITipoDocumentoRepository tipoDocumentoRepository;
+        private readonly ILogger<TipoDocumentoController> logger;
 
-        public TipoDocumentoController(ITipoDocumentoRepository repository)
+        public TipoDocumentoController(
+            ITipoDocumentoRepository repository,
+            ILogger<TipoDocumentoController> logger)
         {
-            _tipoDocumentoRepository = repository;
+            tipoDocumentoRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetTipoDocumento")]
@@ -27,7 +32,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var tipos = await _tipoDocumentoRepository.GetTipoDocumento();
+                var tipos = await tipoDocumentoRepository.GetTipoDocumento();
 
                 if (tipos == null || !tipos.Any())
                 {
@@ -42,35 +47,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Tipos de documento obtenidos correctamente.",
-                    data = tipos
+                    data = tipos.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -98,7 +81,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var tipo = await _tipoDocumentoRepository.GetTipoDocumentoById(id);
+                var tipo = await tipoDocumentoRepository.GetTipoDocumentoById(id);
 
                 if (tipo == null)
                 {
@@ -113,35 +96,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Tipo de documento obtenido correctamente.",
-                    data = tipo
+                    data = tipo.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -155,10 +116,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostTipoDocumento([FromBody] TipoDocumento tipo)
+        public async Task<IActionResult> PostTipoDocumento([FromBody] TipoDocumentoCrearDTO dto)
         {
             try
             {
+                var tipo = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -169,7 +132,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _tipoDocumentoRepository.PostTipoDocumento(tipo);
+                var response = await tipoDocumentoRepository.PostTipoDocumento(tipo);
 
                 if (!response)
                 {
@@ -184,27 +147,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Tipo de documento registrado correctamente.",
-                    data = tipo
+                    data = tipo.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -219,7 +178,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutTipoDocumento([FromBody] TipoDocumento tipo)
+        public async Task<IActionResult> PutTipoDocumento([FromBody] TipoDocumentoActualizarDTO tipo)
         {
             try
             {
@@ -242,7 +201,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _tipoDocumentoRepository.GetTipoDocumentoById(tipo.idTipoDocumento);
+                var existente = await tipoDocumentoRepository.GetTipoDocumentoById(tipo.idTipoDocumento);
 
                 if (existente == null)
                 {
@@ -255,7 +214,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreTipo = tipo.nombreTipo;
 
-                var response = await _tipoDocumentoRepository.PutTipoDocumento(existente);
+                var response = await tipoDocumentoRepository.PutTipoDocumento(existente);
 
                 if (!response)
                 {
@@ -270,40 +229,27 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Tipo de documento actualizado correctamente.",
-                    data = existente
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -327,7 +273,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var tipo = await _tipoDocumentoRepository.GetTipoDocumentoById(id);
+                var tipo = await tipoDocumentoRepository.GetTipoDocumentoById(id);
 
                 if (tipo == null)
                 {
@@ -338,7 +284,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _tipoDocumentoRepository.DeleteTipoDocumento(tipo);
+                var response = await tipoDocumentoRepository.DeleteTipoDocumento(tipo);
 
                 if (!response)
                 {
@@ -355,32 +301,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Tipo de documento eliminado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

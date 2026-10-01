@@ -16,35 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Permisos>> GetPermisos()
         {
-            var data = await context.Permisos.ToListAsync();
+            var data = await context.permisos.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Permisos?> GetPermisosById(int id)
         {
-            var data = await context.Permisos.FirstOrDefaultAsync(x => x.idPermiso == id);
+            var data = await context.permisos.FirstOrDefaultAsync(x => x.idPermiso == id);
             return data;
         }
 
         public async Task<bool> PostPermisos(Permisos permisos)
         {
-            await context.Permisos.AddAsync(permisos);
-            await context.BoolAsync();
-            return true;
+            await context.permisos.AddAsync(permisos);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutPermisos(Permisos permisos)
         {
-            context.Permisos.Update(permisos);
+            context.permisos.Update(permisos);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeletePermisos(Permisos permisos)
         {
-            context.Permisos.Remove(permisos);
-            await context.BoolAsync();
-            return true;
+            context.permisos.Remove(permisos);
+            return await context.BoolAsync();
         }
     }
 }

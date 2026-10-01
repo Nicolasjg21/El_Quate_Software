@@ -16,35 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Comprobantes>> GetComprobantes()
         {
-            var data = await context.Comprobantes.ToListAsync();
+            var data = await context.comprobantes.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Comprobantes?> GetComprobantesById(int id)
         {
-            var data = await context.Comprobantes.FirstOrDefaultAsync(x => x.idComprobante == id);
+            var data = await context.comprobantes.FirstOrDefaultAsync(x => x.idComprobante == id);
             return data;
         }
 
         public async Task<bool> PostComprobantes(Comprobantes comprobantes)
         {
-            await context.Comprobantes.AddAsync(comprobantes);
-            await context.BoolAsync();
-            return true;
+            await context.comprobantes.AddAsync(comprobantes);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutComprobantes(Comprobantes comprobantes)
         {
-            context.Comprobantes.Update(comprobantes);
+            context.comprobantes.Update(comprobantes);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteComprobantes(Comprobantes comprobantes)
         {
-            context.Comprobantes.Remove(comprobantes);
-            await context.BoolAsync();
-            return true;
+            context.comprobantes.Remove(comprobantes);
+            return await context.BoolAsync();
         }
     }
 }

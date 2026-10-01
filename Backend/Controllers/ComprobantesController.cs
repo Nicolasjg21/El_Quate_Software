@@ -1,4 +1,6 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Comprobantes;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -8,16 +10,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class ComprobantesController : ControllerBase
     {
-        private readonly IComprobantesRepository _comprobantesRepository;
+        private readonly IComprobantesRepository comprobantesRepository;
+        private readonly ILogger<ComprobantesController> logger;
 
-        public ComprobantesController(IComprobantesRepository comprobantesRepository)
+        public ComprobantesController(
+            IComprobantesRepository comprobantesRepository,
+            ILogger<ComprobantesController> logger)
         {
-            _comprobantesRepository = comprobantesRepository;
+            this.comprobantesRepository = comprobantesRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetComprobantes")]
@@ -30,7 +35,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _comprobantesRepository.GetComprobantes();
+                var response = await comprobantesRepository.GetComprobantes();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de comprobantes." });
@@ -39,23 +44,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Consulta de comprobantes realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -73,27 +68,17 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _comprobantesRepository.GetComprobantesById(id);
+                var response = await comprobantesRepository.GetComprobantesById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "El comprobante solicitado no existe." });
 
-                return Ok(new { statusCode = 200, message = "Comprobante encontrado correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Comprobante encontrado correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -103,30 +88,37 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostComprobante([FromBody] Comprobantes comprobantes)
+        public async Task<IActionResult> PostComprobante([FromBody] ComprobanteCrearDTO dto)
         {
             try
             {
+                var comprobantes = dto.ToEntity();
+
                 if (!ModelState.IsValid || comprobantes == null)
                     return BadRequest(new { statusCode = 400, message = "Los datos del comprobante no son válidos." });
 
-                var response = await _comprobantesRepository.PostComprobantes(comprobantes);
+                var response = await comprobantesRepository.PostComprobantes(comprobantes);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible registrar el comprobante." });
 
-                return Ok(new { statusCode = 200, message = "Comprobante registrado correctamente." });
+                return Ok(new { statusCode = 200, message = "Comprobante registrado correctamente.",
+                    data = comprobantes.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -137,7 +129,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutComprobante([FromBody] Comprobantes comprobantes)
+        public async Task<IActionResult> PutComprobante([FromBody] ComprobanteActualizarDTO comprobantes)
         {
             try
             {
@@ -148,7 +140,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos del comprobante no son válidos."
                     });
 
-                var existente = await _comprobantesRepository
+                var existente = await comprobantesRepository
                     .GetComprobantesById(comprobantes.idComprobante);
 
                 if (existente == null)
@@ -163,7 +155,7 @@ namespace ElQuateDePatty.Controllers
                 existente.total = comprobantes.total;
                 existente.idMetodo = comprobantes.idMetodo;
 
-                var response = await _comprobantesRepository
+                var response = await comprobantesRepository
                     .PutComprobantes(existente);
 
                 if (!response)
@@ -179,29 +171,24 @@ namespace ElQuateDePatty.Controllers
                     message = "Comprobante actualizado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -219,28 +206,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var comprobante = await _comprobantesRepository.GetComprobantesById(id);
+                var comprobante = await comprobantesRepository.GetComprobantesById(id);
 
                 if (comprobante == null)
                     return NotFound(new { statusCode = 404, message = "El comprobante que se desea eliminar no existe." });
 
-                var response = await _comprobantesRepository.DeleteComprobantes(comprobante);
+                var response = await comprobantesRepository.DeleteComprobantes(comprobante);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el comprobante." });
 
                 return Ok(new { statusCode = 200, message = "Comprobante eliminado correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }

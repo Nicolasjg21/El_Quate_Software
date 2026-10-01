@@ -16,44 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Cuentas>> GetCuentas()
         {
-            var data = await context.Cuentas.ToListAsync();
+            var data = await context.cuentas.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Cuentas?> GetCuentasById(int id)
         {
-            var data = await context.Cuentas.FirstOrDefaultAsync(x => x.idCuenta == id);
+            var data = await context.cuentas.FirstOrDefaultAsync(x => x.idCuenta == id);
             return data;
         }
 
         public async Task<bool> PostCuentas(Cuentas cuentas)
         {
-            Console.WriteLine("================================");
-            Console.WriteLine("idMesa: " + cuentas.idMesa);
-            Console.WriteLine("estado: " + cuentas.estado);
-            Console.WriteLine("fechaApertura: " + cuentas.fechaApertura.ToString("yyyy-MM-dd HH:mm:ss"));
-            Console.WriteLine("fechaCierre: " + (cuentas.fechaCierre?.ToString("yyyy-MM-dd HH:mm:ss") ?? "NULL"));
-            Console.WriteLine("total: " + cuentas.total);
-            Console.WriteLine("================================");
-
-            await context.Cuentas.AddAsync(cuentas);
-            await context.BoolAsync();
-
-            return true;
+            await context.cuentas.AddAsync(cuentas);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutCuentas(Cuentas cuentas)
         {
-            context.Cuentas.Update(cuentas);
+            context.cuentas.Update(cuentas);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteCuentas(Cuentas cuentas)
         {
-            context.Cuentas.Remove(cuentas);
-            await context.BoolAsync();
-            return true;
+            context.cuentas.Remove(cuentas);
+            return await context.BoolAsync();
         }
     }
 }

@@ -13,5 +13,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
         Task<bool> PutRolesPermisos(RolesPermisos rolesPermisos);
 
         Task<bool> DeleteRolesPermisos(RolesPermisos rolesPermisos);
+
+        Task<List<string>> ObtenerNombresPermisosPorRol(int idRol);
     }
 }

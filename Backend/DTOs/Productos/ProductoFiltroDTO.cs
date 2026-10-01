@@ -1,7 +1,10 @@
-﻿namespace ElQuateDePatty.DTOs.Productos
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ElQuateDePatty.DTOs.Productos
 {
     public class ProductoFiltroDTO
     {
+        [StringLength(200, ErrorMessage = "El campo nombre no puede superar 200 caracteres.")]
         public string? nombre { get; set; }
 
         public int? idCategoria { get; set; }

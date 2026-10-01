@@ -16,35 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<TipoDocumento>> GetTipoDocumento()
         {
-            var data = await context.TipoDocumento.ToListAsync();
+            var data = await context.tipoDocumento.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<TipoDocumento?> GetTipoDocumentoById(int id)
         {
-            var data = await context.TipoDocumento.FirstOrDefaultAsync(x => x.idTipoDocumento == id);
+            var data = await context.tipoDocumento.FirstOrDefaultAsync(x => x.idTipoDocumento == id);
             return data;
         }
 
         public async Task<bool> PostTipoDocumento(TipoDocumento tipoDocumento)
         {
-            await context.TipoDocumento.AddAsync(tipoDocumento);
-            await context.BoolAsync();
-            return true;
+            await context.tipoDocumento.AddAsync(tipoDocumento);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutTipoDocumento(TipoDocumento tipoDocumento)
         {
-            context.TipoDocumento.Update(tipoDocumento);
+            context.tipoDocumento.Update(tipoDocumento);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteTipoDocumento(TipoDocumento tipoDocumento)
         {
-            context.TipoDocumento.Remove(tipoDocumento);
-            await context.BoolAsync();
-            return true;
+            context.tipoDocumento.Remove(tipoDocumento);
+            return await context.BoolAsync();
         }
     }
 }

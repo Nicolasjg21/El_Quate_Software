@@ -1,4 +1,9 @@
-﻿using ElQuateDePatty.Context;
+﻿using ElQuateDePatty.DTOs.Comprobantes;
+using ElQuateDePatty.DTOs.Cuentas;
+using ElQuateDePatty.DTOs.Mesas;
+using ElQuateDePatty.DTOs.MetodosPago;
+using ElQuateDePatty.DTOs.Usuarios;
+using ElQuateDePatty.Context;
 using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
@@ -18,46 +23,39 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Pedidos>> GetPedidos()
         {
-            var data = await context.Pedidos.ToListAsync();
+            var data = await context.pedidos.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Pedidos?> GetPedidosById(int id)
         {
-            var data = await context.Pedidos.FirstOrDefaultAsync(x => x.idPedido == id);
+            var data = await context.pedidos.FirstOrDefaultAsync(x => x.idPedido == id);
             return data;
         }
 
         public async Task<bool> PostPedidos(Pedidos pedidos)
         {
-            await context.Pedidos.AddAsync(pedidos);
-            await context.BoolAsync();
-            return true;
+            await context.pedidos.AddAsync(pedidos);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutPedidos(Pedidos pedidos)
         {
-            context.Pedidos.Update(pedidos);
+            context.pedidos.Update(pedidos);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeletePedidos(Pedidos pedidos)
         {
-            context.Pedidos.Remove(pedidos);
-            await context.BoolAsync();
-            return true;
+            context.pedidos.Remove(pedidos);
+            return await context.BoolAsync();
         }
 
-        public async Task<List<Pedidos>> FiltrarPedidos(PedidoFiltroDTO filtro)
+        public async Task<List<PedidoFiltradoRespuestaDTO>> FiltrarPedidos(PedidoFiltroDTO filtro)
         {
-            var query = context.Pedidos
-                .Include(p => p.cuenta)
-                    .ThenInclude(c => c.mesa)
-                .Include(p => p.usuario)
-                .Include(p => p.cuenta)
-                    .ThenInclude(c => c.comprobantes)
-                        .ThenInclude(c => c.metodoPago)
+            var query = context.pedidos
+                .AsNoTracking()
                 .AsQueryable();
 
             // Mesa
@@ -77,10 +75,11 @@ namespace ElQuateDePatty.Repositories
             // Fecha
             if (filtro.fecha.HasValue)
             {
-                var fecha = filtro.fecha.Value.Date;
+                var fechaInicio = filtro.fecha.Value.Date;
+                var fechaFin = fechaInicio.AddDays(1);
 
                 query = query.Where(p =>
-                    p.fecha.Date == fecha);
+                    p.fecha >= fechaInicio && p.fecha < fechaFin);
             }
 
             // Hora Inicio
@@ -119,12 +118,63 @@ namespace ElQuateDePatty.Repositories
                         c.idMetodo == filtro.idMetodoPago.Value));
             }
 
-            return await query.ToListAsync();
+            return await query
+                .Select(p => new PedidoFiltradoRespuestaDTO
+                {
+                    idPedido = p.idPedido,
+                    idCuenta = p.idCuenta,
+                    idUsuario = p.idUsuario,
+                    fecha = p.fecha,
+                    estadoPedido = p.estadoPedido,
+                    cuenta = new CuentaFiltradaDTO
+                    {
+                        idCuenta = p.cuenta.idCuenta,
+                        idMesa = p.cuenta.idMesa,
+                        estado = p.cuenta.estado,
+                        fechaApertura = p.cuenta.fechaApertura,
+                        fechaCierre = p.cuenta.fechaCierre,
+                        total = p.cuenta.total,
+                        mesa = new MesaRespuestaDTO
+                        {
+                            idMesa = p.cuenta.mesa.idMesa,
+                            numeroMesa = p.cuenta.mesa.numeroMesa,
+                            estado = p.cuenta.mesa.estado
+                        },
+                        comprobantes = p.cuenta.comprobantes
+                            .Select(c => new ComprobanteFiltradoDTO
+                            {
+                                idComprobante = c.idComprobante,
+                                idCuenta = c.idCuenta,
+                                fecha = c.fecha,
+                                total = c.total,
+                                idMetodo = c.idMetodo,
+                                metodoPago = new MetodoPagoRespuestaDTO
+                                {
+                                    idMetodo = c.metodoPago.idMetodo,
+                                    nombreMetodo = c.metodoPago.nombreMetodo
+                                }
+                            })
+                            .ToList()
+                    },
+                    usuario = new UsuarioRespuestaDTO
+                    {
+                        idUsuario = p.usuario.idUsuario,
+                        nombres = p.usuario.nombres,
+                        apellidos = p.usuario.apellidos,
+                        documento = p.usuario.documento,
+                        idTipoDocumento = p.usuario.idTipoDocumento,
+                        telefono = p.usuario.telefono,
+                        estado = p.usuario.estado,
+                        idRol = p.usuario.idRol,
+                        email = p.usuario.email
+                    }
+                })
+                .ToListAsync();
         }
 
         public async Task<List<Pedidos>> FiltrarHistorialPedidos(PeriodoFiltroDTO filtro)
         {
-            var query = context.Pedidos.AsQueryable();
+            var query = context.pedidos.AsNoTracking().AsQueryable();
 
             if (filtro.fechaDesde.HasValue)
             {

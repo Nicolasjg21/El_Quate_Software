@@ -16,35 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Roles>> GetRoles()
         {
-            var data = await context.Roles.ToListAsync();
+            var data = await context.roles.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Roles?> GetRolesById(int id)
         {
-            var data = await context.Roles.FirstOrDefaultAsync(x => x.idRol == id);
+            var data = await context.roles.FirstOrDefaultAsync(x => x.idRol == id);
             return data;
         }
 
         public async Task<bool> PostRoles(Roles roles)
         {
-            await context.Roles.AddAsync(roles);
-            await context.BoolAsync();
-            return true;
+            await context.roles.AddAsync(roles);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutRoles(Roles roles)
         {
-            context.Roles.Update(roles);
+            context.roles.Update(roles);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteRoles(Roles roles)
         {
-            context.Roles.Remove(roles);
-            await context.BoolAsync();
-            return true;
+            context.roles.Remove(roles);
+            return await context.BoolAsync();
         }
     }
 }

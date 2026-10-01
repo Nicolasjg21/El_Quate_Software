@@ -1,9 +1,13 @@
 ﻿using ElQuateDePatty.DTOs.Usuarios;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElQuateDePatty.Controllers
 {
@@ -12,15 +16,24 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class UsuariosController : ControllerBase
     {
-        private readonly IUsuariosRepository _usuariosRepository;
-        private readonly PasswordHasher<Usuarios> _passwordHasher;
+        private readonly IUsuariosRepository usuariosRepository;
+        private readonly IPasswordHasher<Usuarios> passwordHasher;
+        private readonly IAuthorizationService authorizationService;
+        private readonly ITokenService tokenService;
+        private readonly ILogger<UsuariosController> logger;
 
         public UsuariosController(
             IUsuariosRepository repository,
-            PasswordHasher<Usuarios> passwordHasher)
+            IPasswordHasher<Usuarios> passwordHasher,
+            IAuthorizationService authorizationService,
+            ITokenService tokenService,
+            ILogger<UsuariosController> logger)
         {
-            _usuariosRepository = repository;
-            _passwordHasher = passwordHasher;
+            usuariosRepository = repository;
+            this.passwordHasher = passwordHasher;
+            this.authorizationService = authorizationService;
+            this.tokenService = tokenService;
+            this.logger = logger;
         }
 
         // GET: api/Usuarios/GetUsuarios
@@ -33,7 +46,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var usuarios = await _usuariosRepository.GetUsuarios();
+                var usuarios = await usuariosRepository.GetUsuarios();
 
                 if (usuarios == null || !usuarios.Any())
                 {
@@ -44,34 +57,16 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var respuesta = usuarios.Select(usuario =>
-                    new UsuarioRespuestaDTO
-                    {
-                        idUsuario = usuario.idUsuario,
-                        nombres = usuario.nombres,
-                        apellidos = usuario.apellidos,
-                        documento = usuario.documento,
-                        idTipoDocumento = usuario.idTipoDocumento,
-                        telefono = usuario.telefono,
-                        estado = usuario.estado,
-                        idRol = usuario.idRol,
-                        email = usuario.email
-                    }).ToList();
-
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuarios obtenidos correctamente.",
-                    data = respuesta
+                    data = usuarios.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al obtener los usuarios."
-                });
+                return ErrorInterno(ex, "Ocurrió un error interno al obtener los usuarios.");
             }
         }
 
@@ -95,7 +90,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var usuario = await _usuariosRepository.GetUsuariosById(id);
+                var usuario = await usuariosRepository.GetUsuariosById(id);
 
                 if (usuario == null)
                 {
@@ -106,41 +101,27 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var respuesta = new UsuarioRespuestaDTO
-                {
-                    idUsuario = usuario.idUsuario,
-                    nombres = usuario.nombres,
-                    apellidos = usuario.apellidos,
-                    documento = usuario.documento,
-                    idTipoDocumento = usuario.idTipoDocumento,
-                    telefono = usuario.telefono,
-                    estado = usuario.estado,
-                    idRol = usuario.idRol,
-                    email = usuario.email
-                };
-
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuario obtenido correctamente.",
-                    data = respuesta
+                    data = usuario.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al obtener el usuario."
-                });
+                return ErrorInterno(ex, "Ocurrió un error interno al obtener el usuario.");
             }
         }
 
         // POST: api/Usuarios/PostUsuarios
         [HttpPost("PostUsuarios")]
+        [RequierePermiso(PermisosSistema.usuariosGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PostUsuarios(
             [FromBody] UsuarioCrearDTO dto)
@@ -153,16 +134,16 @@ namespace ElQuateDePatty.Controllers
                     {
                         statusCode = 400,
                         message = "Los datos enviados no son válidos.",
-                        errors = ModelState
+                        errors = new ValidationProblemDetails(ModelState).Errors
                     });
                 }
 
-                if (string.IsNullOrWhiteSpace(dto.password))
+                if (await usuariosRepository.ExisteEmail(dto.email))
                 {
-                    return BadRequest(new
+                    return Conflict(new
                     {
-                        statusCode = 400,
-                        message = "La contraseña es obligatoria."
+                        statusCode = 409,
+                        message = "Ya existe un usuario registrado con ese correo electrónico."
                     });
                 }
 
@@ -178,13 +159,9 @@ namespace ElQuateDePatty.Controllers
                     email = dto.email
                 };
 
-                usuario.passwordHash =
-                    _passwordHasher.HashPassword(
-                        usuario,
-                        dto.password);
+                usuario.passwordHash = passwordHasher.HashPassword(usuario, dto.password);
 
-                var response =
-                    await _usuariosRepository.PostUsuarios(usuario);
+                var response = await usuariosRepository.PostUsuarios(usuario);
 
                 if (!response)
                 {
@@ -195,42 +172,38 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var respuesta = new UsuarioRespuestaDTO
-                {
-                    idUsuario = usuario.idUsuario,
-                    nombres = usuario.nombres,
-                    apellidos = usuario.apellidos,
-                    documento = usuario.documento,
-                    idTipoDocumento = usuario.idTipoDocumento,
-                    telefono = usuario.telefono,
-                    estado = usuario.estado,
-                    idRol = usuario.idRol,
-                    email = usuario.email
-                };
-
                 return StatusCode(201, new
                 {
                     statusCode = 201,
                     message = "Usuario registrado correctamente.",
-                    data = respuesta
+                    data = usuario.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
-                return StatusCode(500, new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al registrar el usuario."
+                    statusCode = 409,
+                    message = "No fue posible guardar el usuario: el correo ya existe o el rol/tipo de documento indicado no es válido."
                 });
+            }
+            catch (Exception ex)
+            {
+                return ErrorInterno(ex, "Ocurrió un error interno al registrar el usuario.");
             }
         }
 
         // PUT: api/Usuarios/PutUsuarios/1
         [HttpPut("PutUsuarios/{id}")]
+        [RequierePermiso(PermisosSistema.usuariosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PutUsuarios(
             int id,
@@ -244,7 +217,7 @@ namespace ElQuateDePatty.Controllers
                     {
                         statusCode = 400,
                         message = "Los datos enviados no son válidos.",
-                        errors = ModelState
+                        errors = new ValidationProblemDetails(ModelState).Errors
                     });
                 }
 
@@ -257,8 +230,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente =
-                    await _usuariosRepository.GetUsuariosById(id);
+                var existente = await usuariosRepository.GetUsuariosById(id);
 
                 if (existente == null)
                 {
@@ -266,6 +238,15 @@ namespace ElQuateDePatty.Controllers
                     {
                         statusCode = 404,
                         message = "No se encontró el usuario que desea actualizar."
+                    });
+                }
+
+                if (await usuariosRepository.ExisteEmail(dto.email, id))
+                {
+                    return Conflict(new
+                    {
+                        statusCode = 409,
+                        message = "Ya existe un usuario registrado con ese correo electrónico."
                     });
                 }
 
@@ -278,8 +259,7 @@ namespace ElQuateDePatty.Controllers
                 existente.idRol = dto.idRol;
                 existente.email = dto.email;
 
-                var response =
-                    await _usuariosRepository.PutUsuarios(existente);
+                var response = await usuariosRepository.PutUsuarios(existente);
 
                 if (!response)
                 {
@@ -290,42 +270,37 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var respuesta = new UsuarioRespuestaDTO
-                {
-                    idUsuario = existente.idUsuario,
-                    nombres = existente.nombres,
-                    apellidos = existente.apellidos,
-                    documento = existente.documento,
-                    idTipoDocumento = existente.idTipoDocumento,
-                    telefono = existente.telefono,
-                    estado = existente.estado,
-                    idRol = existente.idRol,
-                    email = existente.email
-                };
-
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Usuario actualizado correctamente.",
-                    data = respuesta
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
-                return StatusCode(500, new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al actualizar el usuario."
+                    statusCode = 409,
+                    message = "No fue posible guardar el usuario: el correo ya existe o el rol/tipo de documento indicado no es válido."
                 });
+            }
+            catch (Exception ex)
+            {
+                return ErrorInterno(ex, "Ocurrió un error interno al actualizar el usuario.");
             }
         }
 
         // PUT: api/Usuarios/CambiarPassword/1
         [HttpPut("CambiarPassword/{id}")]
+        [EnableRateLimiting("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CambiarPassword(
             int id,
@@ -339,7 +314,7 @@ namespace ElQuateDePatty.Controllers
                     {
                         statusCode = 400,
                         message = "Los datos enviados no son válidos.",
-                        errors = ModelState
+                        errors = new ValidationProblemDetails(ModelState).Errors
                     });
                 }
 
@@ -352,7 +327,20 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var usuario = await _usuariosRepository.GetUsuariosById(id);
+                var esPropietario = User.ObtenerIdUsuario() == id;
+                var esAdministrador = (await authorizationService
+                    .AuthorizeAsync(User, PoliticasAutorizacion.Permiso(PermisosSistema.usuariosGestionar))).Succeeded;
+
+                if (!esPropietario && !esAdministrador)
+                {
+                    return StatusCode(403, new
+                    {
+                        statusCode = 403,
+                        message = "No tiene permisos para cambiar la contraseña de otro usuario."
+                    });
+                }
+
+                var usuario = await usuariosRepository.GetUsuariosById(id);
 
                 if (usuario == null)
                 {
@@ -363,7 +351,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var resultado = _passwordHasher.VerifyHashedPassword(
+                var resultado = passwordHasher.VerifyHashedPassword(
                     usuario,
                     usuario.passwordHash,
                     dto.passwordActual);
@@ -386,11 +374,9 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                usuario.passwordHash = _passwordHasher.HashPassword(
-                    usuario,
-                    dto.nuevaPassword);
+                usuario.passwordHash = passwordHasher.HashPassword(usuario, dto.nuevaPassword);
 
-                var response = await _usuariosRepository.PutUsuarios(usuario);
+                var response = await usuariosRepository.PutUsuarios(usuario);
 
                 if (!response)
                 {
@@ -401,28 +387,42 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
+                // Al cambiar la contraseña el sello de seguridad cambia y el token actual
+                // deja de ser válido; se entrega uno nuevo cuando quien cambia es el propio usuario.
+                if (esPropietario)
+                {
+                    var nuevoToken = tokenService.GenerarToken(usuario);
+
+                    return Ok(new
+                    {
+                        statusCode = 200,
+                        message = "Contraseña actualizada correctamente.",
+                        token = nuevoToken.token,
+                        expiraEn = nuevoToken.expiraEn
+                    });
+                }
+
                 return Ok(new
                 {
                     statusCode = 200,
                     message = "Contraseña actualizada correctamente."
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al actualizar la contraseña."
-                });
+                return ErrorInterno(ex, "Ocurrió un error interno al actualizar la contraseña.");
             }
         }
 
         // DELETE: api/Usuarios/DeleteUsuarios/1
         [HttpDelete("DeleteUsuarios/{id}")]
+        [RequierePermiso(PermisosSistema.usuariosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteUsuarios(int id)
         {
@@ -437,8 +437,16 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var usuario =
-                    await _usuariosRepository.GetUsuariosById(id);
+                if (User.ObtenerIdUsuario() == id)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No puede eliminar su propio usuario."
+                    });
+                }
+
+                var usuario = await usuariosRepository.GetUsuariosById(id);
 
                 if (usuario == null)
                 {
@@ -449,8 +457,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response =
-                    await _usuariosRepository.DeleteUsuarios(usuario);
+                var response = await usuariosRepository.DeleteUsuarios(usuario);
 
                 if (!response)
                 {
@@ -467,14 +474,31 @@ namespace ElQuateDePatty.Controllers
                     message = "Usuario eliminado correctamente."
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
-                return StatusCode(500, new
+                logger.LogWarning(ex, "No se pudo eliminar el usuario {IdUsuario} por registros asociados", id);
+
+                return Conflict(new
                 {
-                    statusCode = 500,
-                    message = "Ocurrió un error interno al eliminar el usuario."
+                    statusCode = 409,
+                    message = "No es posible eliminar el usuario porque tiene registros asociados. Puede desactivarlo."
                 });
             }
+            catch (Exception ex)
+            {
+                return ErrorInterno(ex, "Ocurrió un error interno al eliminar el usuario.");
+            }
+        }
+
+        private IActionResult ErrorInterno(Exception ex, string mensaje)
+        {
+            logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+            return StatusCode(500, new
+            {
+                statusCode = 500,
+                message = mensaje
+            });
         }
     }
 }

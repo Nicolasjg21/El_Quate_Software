@@ -1,5 +1,7 @@
-﻿using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Permisos;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.Services;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +13,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class PermisosController : ControllerBase
     {
-        private readonly IPermisosRepository _permisosRepository;
+        private readonly IPermisosRepository permisosRepository;
+        private readonly ILogger<PermisosController> logger;
 
-        public PermisosController(IPermisosRepository repository)
+        public PermisosController(
+            IPermisosRepository repository,
+            ILogger<PermisosController> logger)
         {
-            _permisosRepository = repository;
+            permisosRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetPermisos")]
@@ -27,7 +33,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var permisos = await _permisosRepository.GetPermisos();
+                var permisos = await permisosRepository.GetPermisos();
 
                 if (permisos == null || !permisos.Any())
                 {
@@ -42,35 +48,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Permisos obtenidos correctamente.",
-                    data = permisos
+                    data = permisos.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -98,7 +82,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var permiso = await _permisosRepository.GetPermisosById(id);
+                var permiso = await permisosRepository.GetPermisosById(id);
 
                 if (permiso == null)
                 {
@@ -113,35 +97,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Permiso obtenido correctamente.",
-                    data = permiso
+                    data = permiso.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -151,14 +113,17 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostPermisos")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostPermisos([FromBody] Permisos permiso)
+        public async Task<IActionResult> PostPermisos([FromBody] PermisoCrearDTO dto)
         {
             try
             {
+                var permiso = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -169,7 +134,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _permisosRepository.PostPermisos(permiso);
+                var response = await permisosRepository.PostPermisos(permiso);
 
                 if (!response)
                 {
@@ -184,27 +149,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Permiso registrado correctamente.",
-                    data = permiso
+                    data = permiso.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -214,12 +175,13 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutPermisos")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutPermisos([FromBody] Permisos permiso)
+        public async Task<IActionResult> PutPermisos([FromBody] PermisoActualizarDTO permiso)
         {
             try
             {
@@ -242,7 +204,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _permisosRepository.GetPermisosById(permiso.idPermiso);
+                var existente = await permisosRepository.GetPermisosById(permiso.idPermiso);
 
                 if (existente == null)
                 {
@@ -255,7 +217,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombrePermiso = permiso.nombrePermiso;
 
-                var response = await _permisosRepository.PutPermisos(existente);
+                var response = await permisosRepository.PutPermisos(existente);
 
                 if (!response)
                 {
@@ -270,45 +232,33 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Permiso actualizado correctamente.",
-                    data = existente
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
 
         [HttpDelete("DeletePermisos/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -327,7 +277,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var permiso = await _permisosRepository.GetPermisosById(id);
+                var permiso = await permisosRepository.GetPermisosById(id);
 
                 if (permiso == null)
                 {
@@ -338,7 +288,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _permisosRepository.DeletePermisos(permiso);
+                var response = await permisosRepository.DeletePermisos(permiso);
 
                 if (!response)
                 {
@@ -355,32 +305,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Permiso eliminado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

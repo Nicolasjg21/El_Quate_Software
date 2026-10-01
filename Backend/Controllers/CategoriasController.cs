@@ -1,4 +1,6 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Categorias;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -8,16 +10,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class CategoriasController : ControllerBase
     {
-        private readonly ICategoriasRepository _categoriasRepository;
+        private readonly ICategoriasRepository categoriasRepository;
+        private readonly ILogger<CategoriasController> logger;
 
-        public CategoriasController(ICategoriasRepository categoriasRepository)
+        public CategoriasController(
+            ICategoriasRepository categoriasRepository,
+            ILogger<CategoriasController> logger)
         {
-            _categoriasRepository = categoriasRepository;
+            this.categoriasRepository = categoriasRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetCategorias")]
@@ -30,7 +35,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _categoriasRepository.GetCategorias();
+                var response = await categoriasRepository.GetCategorias();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new
@@ -43,35 +48,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = StatusCodes.Status200OK,
                     message = "Consulta de categorías realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = StatusCodes.Status404NotFound,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,
@@ -97,7 +80,7 @@ namespace ElQuateDePatty.Controllers
                         message = "El identificador debe ser mayor que cero."
                     });
 
-                var response = await _categoriasRepository.GetCategoriasById(id);
+                var response = await categoriasRepository.GetCategoriasById(id);
 
                 if (response == null)
                     return NotFound(new
@@ -110,23 +93,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = StatusCodes.Status200OK,
                     message = "Categoría encontrada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -140,10 +113,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostCategoria([FromBody] Categorias categorias)
+        public async Task<IActionResult> PostCategoria([FromBody] CategoriaCrearDTO dto)
         {
             try
             {
+                var categorias = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -154,7 +129,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la categoría son obligatorios."
                     });
 
-                var response = await _categoriasRepository.PostCategorias(categorias);
+                var response = await categoriasRepository.PostCategorias(categorias);
 
                 if (!response)
                     return BadRequest(new
@@ -166,19 +141,24 @@ namespace ElQuateDePatty.Controllers
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Categoría registrada correctamente."
+                    message = "Categoría registrada correctamente.",
+                    data = categorias.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -193,7 +173,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutCategoria([FromBody] Categorias categorias)
+        public async Task<IActionResult> PutCategoria([FromBody] CategoriaActualizarDTO categorias)
         {
             try
             {
@@ -207,7 +187,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la categoría no son válidos."
                     });
 
-                var existente = await _categoriasRepository.GetCategoriasById(categorias.idCategoria);
+                var existente = await categoriasRepository.GetCategoriasById(categorias.idCategoria);
 
                 if (existente == null)
                     return NotFound(new
@@ -218,7 +198,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreCategoria = categorias.nombreCategoria;
 
-                var response = await _categoriasRepository.PutCategorias(existente);
+                var response = await categoriasRepository.PutCategorias(existente);
 
                 if (!response)
                     return BadRequest(new
@@ -233,21 +213,24 @@ namespace ElQuateDePatty.Controllers
                     message = "Categoría actualizada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -269,7 +252,7 @@ namespace ElQuateDePatty.Controllers
                         message = "El identificador debe ser mayor que cero."
                     });
 
-                var categoria = await _categoriasRepository.GetCategoriasById(id);
+                var categoria = await categoriasRepository.GetCategoriasById(id);
 
                 if (categoria == null)
                     return NotFound(new
@@ -278,7 +261,7 @@ namespace ElQuateDePatty.Controllers
                         message = "La categoría que se desea eliminar no existe."
                     });
 
-                var response = await _categoriasRepository.DeleteCategorias(categoria);
+                var response = await categoriasRepository.DeleteCategorias(categoria);
 
                 if (!response)
                     return BadRequest(new
@@ -293,20 +276,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Categoría eliminada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

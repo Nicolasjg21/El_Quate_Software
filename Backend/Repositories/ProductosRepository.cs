@@ -18,14 +18,14 @@ namespace ElQuateDePatty.Repositories
         // GET - Obtener todos los productos
         public async Task<List<Productos>> GetProductos()
         {
-            var data = await context.Productos.ToListAsync();
+            var data = await context.productos.AsNoTracking().ToListAsync();
             return data;
         }
 
         // GET BY ID
         public async Task<Productos?> GetProductosById(int id)
         {
-            var data = await context.Productos
+            var data = await context.productos
                 .FirstOrDefaultAsync(x => x.idProducto == id);
 
             return data;
@@ -34,16 +34,14 @@ namespace ElQuateDePatty.Repositories
         // POST
         public async Task<bool> PostProductos(Productos productos)
         {
-            await context.Productos.AddAsync(productos);
-            await context.BoolAsync();
-
-            return true;
+            await context.productos.AddAsync(productos);
+            return await context.BoolAsync();
         }
 
         // PUT
         public async Task<bool> PutProductos(Productos productos)
         {
-            context.Productos.Update(productos);
+            context.productos.Update(productos);
             await context.BoolAsync();
 
             return true;
@@ -52,17 +50,15 @@ namespace ElQuateDePatty.Repositories
         // DELETE
         public async Task<bool> DeleteProductos(Productos productos)
         {
-            context.Productos.Remove(productos);
-            await context.BoolAsync();
-
-            return true;
+            context.productos.Remove(productos);
+            return await context.BoolAsync();
         }
 
         // FILTROS DE PRODUCTOS
         public async Task<List<ProductoRespuestaDTO>> FiltrarProductos(
             ProductoFiltroDTO filtro)
         {
-            var query = context.Productos.AsQueryable();
+            var query = context.productos.AsNoTracking().AsQueryable();
 
             // -----------------------------------------
             // 1. FILTRO POR NOMBRE
@@ -104,7 +100,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.costoMinimo.HasValue)
             {
                 query = query.Where(p =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .Select(dc => (decimal?)dc.precioCompra)
                         .Average() >= filtro.costoMinimo.Value);
@@ -113,7 +109,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.costoMaximo.HasValue)
             {
                 query = query.Where(p =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .Select(dc => (decimal?)dc.precioCompra)
                         .Average() <= filtro.costoMaximo.Value);
@@ -125,7 +121,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.idProveedor.HasValue)
             {
                 query = query.Where(p =>
-                    context.DetalleCompras.Any(dc =>
+                    context.detalleCompras.Any(dc =>
                         dc.idProducto == p.idProducto &&
                         dc.compra.idProveedor == filtro.idProveedor.Value));
             }
@@ -140,9 +136,9 @@ namespace ElQuateDePatty.Repositories
                 {
                     query = query.Where(p =>
                         (
-                            context.Kardex
+                            context.kardex
                                 .Where(k => k.idProducto == p.idProducto)
-                                .OrderByDescending(k => k.fecha)
+                                .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
                                 .Select(k => (int?)k.stockNuevo)
                                 .FirstOrDefault() ?? 0
                         ) == 0);
@@ -151,9 +147,9 @@ namespace ElQuateDePatty.Repositories
                 {
                     query = query.Where(p =>
                         (
-                            context.Kardex
+                            context.kardex
                                 .Where(k => k.idProducto == p.idProducto)
-                                .OrderByDescending(k => k.fecha)
+                                .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
                                 .Select(k => (int?)k.stockNuevo)
                                 .FirstOrDefault() ?? 0
                         ) > 0);
@@ -170,9 +166,9 @@ namespace ElQuateDePatty.Repositories
                 {
                     query = query.Where(p =>
                         (
-                            context.Kardex
+                            context.kardex
                                 .Where(k => k.idProducto == p.idProducto)
-                                .OrderByDescending(k => k.fecha)
+                                .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
                                 .Select(k => (int?)k.stockNuevo)
                                 .FirstOrDefault() ?? 0
                         ) <= p.cantidadMinima);
@@ -181,9 +177,9 @@ namespace ElQuateDePatty.Repositories
                 {
                     query = query.Where(p =>
                         (
-                            context.Kardex
+                            context.kardex
                                 .Where(k => k.idProducto == p.idProducto)
-                                .OrderByDescending(k => k.fecha)
+                                .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
                                 .Select(k => (int?)k.stockNuevo)
                                 .FirstOrDefault() ?? 0
                         ) > p.cantidadMinima);
@@ -193,46 +189,50 @@ namespace ElQuateDePatty.Repositories
             // -----------------------------------------
             // RESPUESTA
             // -----------------------------------------
-            return await query
-                .Select(p => new ProductoRespuestaDTO
+            var filas = await query
+                .Select(p => new
                 {
-                    idProducto = p.idProducto,
-
-                    nombreProducto = p.nombreProducto,
-
-                    precioVenta = p.precioVenta,
+                    p.idProducto,
+                    p.nombreProducto,
+                    p.precioVenta,
+                    p.cantidadMinima,
 
                     categoria = p.categoria != null
                         ? p.categoria.nombreCategoria
                         : null,
 
-                    costoPromedio = context.DetalleCompras
+                    costoPromedio = context.detalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .Select(dc => (decimal?)dc.precioCompra)
                         .Average() ?? 0,
 
-                    stockActual = context.Kardex
+                    stockActual = context.kardex
                         .Where(k => k.idProducto == p.idProducto)
-                        .OrderByDescending(k => k.fecha)
+                        .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
                         .Select(k => (int?)k.stockNuevo)
                         .FirstOrDefault() ?? 0,
 
-                    stockBajo =
-                        (
-                            context.Kardex
-                                .Where(k => k.idProducto == p.idProducto)
-                                .OrderByDescending(k => k.fecha)
-                                .Select(k => (int?)k.stockNuevo)
-                                .FirstOrDefault() ?? 0
-                        ) <= p.cantidadMinima,
-
-                    proveedor = context.DetalleCompras
+                    proveedor = context.detalleCompras
                         .Where(dc => dc.idProducto == p.idProducto)
                         .OrderByDescending(dc => dc.idDetalleCompra)
                         .Select(dc => dc.compra.proveedor.nombreProveedor)
                         .FirstOrDefault()
                 })
                 .ToListAsync();
+
+            return filas
+                .Select(f => new ProductoRespuestaDTO
+                {
+                    idProducto = f.idProducto,
+                    nombreProducto = f.nombreProducto,
+                    precioVenta = f.precioVenta,
+                    categoria = f.categoria,
+                    costoPromedio = f.costoPromedio,
+                    stockActual = f.stockActual,
+                    stockBajo = f.stockActual <= f.cantidadMinima,
+                    proveedor = f.proveedor
+                })
+                .ToList();
         }
     }
 }

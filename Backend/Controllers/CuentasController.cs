@@ -1,4 +1,6 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Cuentas;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -8,16 +10,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class CuentasController : ControllerBase
     {
-        private readonly ICuentasRepository _cuentasRepository;
+        private readonly ICuentasRepository cuentasRepository;
+        private readonly ILogger<CuentasController> logger;
 
-        public CuentasController(ICuentasRepository cuentasRepository)
+        public CuentasController(
+            ICuentasRepository cuentasRepository,
+            ILogger<CuentasController> logger)
         {
-            _cuentasRepository = cuentasRepository;
+            this.cuentasRepository = cuentasRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetCuentas")]
@@ -30,7 +35,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _cuentasRepository.GetCuentas();
+                var response = await cuentasRepository.GetCuentas();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de cuentas." });
@@ -39,23 +44,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Consulta de cuentas realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -73,27 +68,17 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _cuentasRepository.GetCuentasById(id);
+                var response = await cuentasRepository.GetCuentasById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "La cuenta solicitada no existe." });
 
-                return Ok(new { statusCode = 200, message = "Cuenta encontrada correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Cuenta encontrada correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -103,30 +88,37 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostCuenta([FromBody] Cuentas cuentas)
+        public async Task<IActionResult> PostCuenta([FromBody] CuentaCrearDTO dto)
         {
             try
             {
+                var cuentas = dto.ToEntity();
+
                 if (!ModelState.IsValid || cuentas == null)
                     return BadRequest(new { statusCode = 400, message = "Los datos de la cuenta no son válidos." });
 
-                var response = await _cuentasRepository.PostCuentas(cuentas);
+                var response = await cuentasRepository.PostCuentas(cuentas);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible registrar la cuenta." });
 
-                return Ok(new { statusCode = 200, message = "Cuenta registrada correctamente." });
+                return Ok(new { statusCode = 200, message = "Cuenta registrada correctamente.",
+                    data = cuentas.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -137,7 +129,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutCuenta([FromBody] Cuentas cuentas)
+        public async Task<IActionResult> PutCuenta([FromBody] CuentaActualizarDTO cuentas)
         {
             try
             {
@@ -150,7 +142,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _cuentasRepository
+                var existente = await cuentasRepository
                     .GetCuentasById(cuentas.idCuenta);
 
                 if (existente == null)
@@ -168,7 +160,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fechaCierre = cuentas.fechaCierre;
                 existente.total = cuentas.total;
 
-                var response = await _cuentasRepository
+                var response = await cuentasRepository
                     .PutCuentas(existente);
 
                 if (!response)
@@ -186,24 +178,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Cuenta actualizada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -225,28 +213,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var cuenta = await _cuentasRepository.GetCuentasById(id);
+                var cuenta = await cuentasRepository.GetCuentasById(id);
 
                 if (cuenta == null)
                     return NotFound(new { statusCode = 404, message = "La cuenta que se desea eliminar no existe." });
 
-                var response = await _cuentasRepository.DeleteCuentas(cuenta);
+                var response = await cuentasRepository.DeleteCuentas(cuenta);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar la cuenta." });
 
                 return Ok(new { statusCode = 200, message = "Cuenta eliminada correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }

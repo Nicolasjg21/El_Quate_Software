@@ -16,7 +16,7 @@ namespace ElQuateDePatty.Repositories.Interfaces
 
         Task<bool> DeletePedidos(Pedidos pedidos);
 
-        Task<List<Pedidos>> FiltrarPedidos(PedidoFiltroDTO filtro);
+        Task<List<PedidoFiltradoRespuestaDTO>> FiltrarPedidos(PedidoFiltroDTO filtro);
 
         Task<List<Pedidos>> FiltrarHistorialPedidos(PeriodoFiltroDTO filtro);
     }

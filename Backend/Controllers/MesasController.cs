@@ -1,25 +1,29 @@
-﻿using ElQuateDePatty.DTOs.Mesas;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class MesasController : ControllerBase
     {
-        private readonly IMesasRepository _mesasRepository;
+        private readonly IMesasRepository mesasRepository;
+        private readonly ILogger<MesasController> logger;
 
-        public MesasController(IMesasRepository mesasRepository)
+        public MesasController(
+            IMesasRepository mesasRepository,
+            ILogger<MesasController> logger)
         {
-            _mesasRepository = mesasRepository;
+            this.mesasRepository = mesasRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetMesas")]
@@ -32,27 +36,17 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _mesasRepository.GetMesas();
+                var response = await mesasRepository.GetMesas();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de mesas." });
 
-                return Ok(new { statusCode = 200, message = "Consulta de mesas realizada correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Consulta de mesas realizada correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -70,27 +64,17 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _mesasRepository.GetMesasById(id);
+                var response = await mesasRepository.GetMesasById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "La mesa solicitada no existe." });
 
-                return Ok(new { statusCode = 200, message = "Mesa encontrada correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Mesa encontrada correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -114,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _mesasRepository.GetMesasByEstado(estado);
+                var response = await mesasRepository.GetMesasByEstado(estado);
 
                 if (response == null || response.Count == 0)
                 {
@@ -129,35 +113,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Consulta de mesas por estado realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -172,7 +134,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PutMesa([FromBody] Mesas mesas)
+        public async Task<IActionResult> PutMesa([FromBody] MesaActualizarDTO mesas)
         {
             try
             {
@@ -185,7 +147,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _mesasRepository
+                var existente = await mesasRepository
                     .GetMesasById(mesas.idMesa);
 
                 if (existente == null)
@@ -197,10 +159,10 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                // Aquí copiamos los campos de Mesas.
-                // Necesito tu modelo Mesas para ponerlos exactamente.
+                existente.numeroMesa = mesas.numeroMesa;
+                existente.estado = mesas.estado;
 
-                var response = await _mesasRepository
+                var response = await mesasRepository
                     .PutMesas(existente);
 
                 if (!response)
@@ -218,24 +180,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Mesa actualizada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -257,28 +215,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var mesa = await _mesasRepository.GetMesasById(id);
+                var mesa = await mesasRepository.GetMesasById(id);
 
                 if (mesa == null)
                     return NotFound(new { statusCode = 404, message = "La mesa que se desea eliminar no existe." });
 
-                var response = await _mesasRepository.DeleteMesas(mesa);
+                var response = await mesasRepository.DeleteMesas(mesa);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar la mesa." });
 
                 return Ok(new { statusCode = 200, message = "Mesa eliminada correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -286,13 +248,13 @@ namespace ElQuateDePatty.Controllers
         [HttpGet("Filtrar")]
         public async Task<IActionResult> FiltrarMesas([FromQuery] MesaFiltroDTO filtro)
         {
-            var data = await _mesasRepository.FiltrarMesas(filtro);
+            var data = await mesasRepository.FiltrarMesas(filtro);
 
             return Ok(new
             {
                 statusCode = 200,
                 message = "Mesas filtradas correctamente",
-                data = data
+                data = data.ToRespuestaDTO()
             });
         }
     }

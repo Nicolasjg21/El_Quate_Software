@@ -18,40 +18,38 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Compras>> GetCompras()
         {
-            var data = await context.Compras.ToListAsync();
+            var data = await context.compras.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Compras?> GetComprasById(int id)
         {
-            var data = await context.Compras.FirstOrDefaultAsync(x => x.idCompra == id);
+            var data = await context.compras.FirstOrDefaultAsync(x => x.idCompra == id);
             return data;
         }
 
         public async Task<bool> PostCompras(Compras compras)
         {
-            await context.Compras.AddAsync(compras);
-            await context.BoolAsync();
-            return true;
+            await context.compras.AddAsync(compras);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutCompras(Compras compras)
         {
-            context.Compras.Update(compras);
+            context.compras.Update(compras);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteCompras(Compras compras)
         {
-            context.Compras.Remove(compras);
-            await context.BoolAsync();
-            return true;
+            context.compras.Remove(compras);
+            return await context.BoolAsync();
         }
 
         public async Task<List<Compras>> FiltrarCompras(CompraFiltroDTO filtro)
         {
-            var query = context.Compras.AsQueryable();
+            var query = context.compras.AsNoTracking().AsQueryable();
 
             // -----------------------------------------
             // 1. FILTRO POR FECHA DESDE
@@ -86,7 +84,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.totalArticulosMinimo.HasValue)
             {
                 query = query.Where(c =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (int?)dc.cantidad) >=
                         filtro.totalArticulosMinimo.Value);
@@ -95,7 +93,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.totalArticulosMaximo.HasValue)
             {
                 query = query.Where(c =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (int?)dc.cantidad) <=
                         filtro.totalArticulosMaximo.Value);
@@ -108,7 +106,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.costoTotalMinimo.HasValue)
             {
                 query = query.Where(c =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (decimal?)(dc.cantidad * dc.precioCompra)) >=
                         filtro.costoTotalMinimo.Value);
@@ -117,7 +115,7 @@ namespace ElQuateDePatty.Repositories
             if (filtro.costoTotalMaximo.HasValue)
             {
                 query = query.Where(c =>
-                    context.DetalleCompras
+                    context.detalleCompras
                         .Where(dc => dc.idCompra == c.idCompra)
                         .Sum(dc => (decimal?)(dc.cantidad * dc.precioCompra)) <=
                         filtro.costoTotalMaximo.Value);
@@ -128,7 +126,7 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Compras>> FiltrarHistorialCompras(PeriodoFiltroDTO filtro)
         {
-            var query = context.Compras.AsQueryable();
+            var query = context.compras.AsNoTracking().AsQueryable();
 
             if (filtro.fechaDesde.HasValue)
             {

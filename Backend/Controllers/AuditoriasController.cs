@@ -1,4 +1,7 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Auditorias;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.Services;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -11,14 +14,19 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class AuditoriasController : ControllerBase
     {
-        private readonly IAuditoriasRepository _auditoriasRepository;
+        private readonly IAuditoriasRepository auditoriasRepository;
+        private readonly ILogger<AuditoriasController> logger;
 
-        public AuditoriasController(IAuditoriasRepository auditoriasRepository)
+        public AuditoriasController(
+            IAuditoriasRepository auditoriasRepository,
+            ILogger<AuditoriasController> logger)
         {
-            _auditoriasRepository = auditoriasRepository;
+            this.auditoriasRepository = auditoriasRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetAuditorias")]
+        [RequierePermiso(PermisosSistema.auditoriasConsultar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -28,7 +36,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _auditoriasRepository.GetAuditorias();
+                var response = await auditoriasRepository.GetAuditorias();
 
                 if (response == null || response.Count == 0)
                 {
@@ -43,35 +51,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = StatusCodes.Status200OK,
                     message = "Consulta de auditorías realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = StatusCodes.Status404NotFound,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,
@@ -81,6 +67,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpGet("GetAuditoriaById/{id}")]
+        [RequierePermiso(PermisosSistema.auditoriasConsultar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -97,7 +84,7 @@ namespace ElQuateDePatty.Controllers
                         message = "El identificador debe ser mayor que cero."
                     });
 
-                var response = await _auditoriasRepository.GetAuditoriasById(id);
+                var response = await auditoriasRepository.GetAuditoriasById(id);
 
                 if (response == null)
                     return NotFound(new
@@ -110,35 +97,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = StatusCodes.Status200OK,
                     message = "Auditoría encontrada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = StatusCodes.Status404NotFound,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,
@@ -152,10 +117,25 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostAuditoria([FromBody] Auditorias auditoria)
+        public async Task<IActionResult> PostAuditoria([FromBody] AuditoriaCrearDTO dto)
         {
             try
             {
+                var auditoria = dto.ToEntity();
+
+                var idUsuarioActual = User.ObtenerIdUsuario();
+
+                if (idUsuarioActual == null)
+                {
+                    return Unauthorized(new
+                    {
+                        statusCode = 401,
+                        message = "No fue posible identificar al usuario autenticado."
+                    });
+                }
+
+                auditoria.idUsuario = idUsuarioActual.Value;
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -166,7 +146,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la auditoría son obligatorios."
                     });
 
-                var response = await _auditoriasRepository.PostAuditorias(auditoria);
+                var response = await auditoriasRepository.PostAuditorias(auditoria);
 
                 if (!response)
                     return BadRequest(new
@@ -178,27 +158,24 @@ namespace ElQuateDePatty.Controllers
                 return Ok(new
                 {
                     statusCode = StatusCodes.Status200OK,
-                    message = "Auditoría registrada correctamente."
+                    message = "Auditoría registrada correctamente.",
+                    data = auditoria.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,
@@ -208,12 +185,13 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutAuditoria")]
+        [RequierePermiso(PermisosSistema.auditoriasModificar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutAuditoria([FromBody] Auditorias auditoria)
+        public async Task<IActionResult> PutAuditoria([FromBody] AuditoriaActualizarDTO auditoria)
         {
             try
             {
@@ -227,7 +205,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la auditoría no son válidos."
                     });
 
-                var existente = await _auditoriasRepository.GetAuditoriasById(auditoria.idAuditoria);
+                var existente = await auditoriasRepository.GetAuditoriasById(auditoria.idAuditoria);
 
                 if (existente == null)
                     return NotFound(new
@@ -243,7 +221,7 @@ namespace ElQuateDePatty.Controllers
                 existente.datosAnteriores = auditoria.datosAnteriores;
                 existente.datosNuevos = auditoria.datosNuevos;
 
-                var response = await _auditoriasRepository.PutAuditorias(existente);
+                var response = await auditoriasRepository.PutAuditorias(existente);
 
                 if (!response)
                     return BadRequest(new
@@ -258,34 +236,30 @@ namespace ElQuateDePatty.Controllers
                     message = "Auditoría actualizada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return StatusCode(500, new
                 {
-                    statusCode = StatusCodes.Status500InternalServerError,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
 
         [HttpDelete("DeleteAuditoria/{id}")]
+        [RequierePermiso(PermisosSistema.auditoriasModificar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -302,7 +276,7 @@ namespace ElQuateDePatty.Controllers
                         message = "El identificador debe ser mayor que cero."
                     });
 
-                var auditoria = await _auditoriasRepository.GetAuditoriasById(id);
+                var auditoria = await auditoriasRepository.GetAuditoriasById(id);
 
                 if (auditoria == null)
                     return NotFound(new
@@ -311,7 +285,7 @@ namespace ElQuateDePatty.Controllers
                         message = "La auditoría que se desea eliminar no existe."
                     });
 
-                var response = await _auditoriasRepository.DeleteAuditorias(auditoria);
+                var response = await auditoriasRepository.DeleteAuditorias(auditoria);
 
                 if (!response)
                     return BadRequest(new
@@ -326,32 +300,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Auditoría eliminada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = StatusCodes.Status400BadRequest,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = StatusCodes.Status401Unauthorized,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = StatusCodes.Status404NotFound,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     statusCode = StatusCodes.Status500InternalServerError,

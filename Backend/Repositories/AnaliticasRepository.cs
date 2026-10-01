@@ -18,7 +18,8 @@ namespace ElQuateDePatty.Repositories
         public async Task<VentaAnaliticaDTO> ObtenerAnaliticasVentas(
             PeriodoFiltroDTO filtro)
         {
-            var comprobantes = context.Comprobantes
+            var comprobantes = context.comprobantes
+                .AsNoTracking()
                 .AsQueryable();
 
             // -----------------------------------------
@@ -66,13 +67,9 @@ namespace ElQuateDePatty.Repositories
                 .Select(c => c.idCuenta);
 
             var totalProductosVendidos =
-                await context.DetallePedidos
-                    .Where(dp =>
-                        context.Pedidos.Any(p =>
-                            p.idPedido == dp.idPedido &&
-                            context.Cuentas.Any(c =>
-                                c.idCuenta == p.idCuenta &&
-                                idsCuentas.Contains(c.idCuenta))))
+                await context.detallePedidos
+                    .AsNoTracking()
+                    .Where(dp => idsCuentas.Contains(dp.pedido.idCuenta))
                     .SumAsync(dp => (int?)dp.cantidad) ?? 0;
 
             return new VentaAnaliticaDTO

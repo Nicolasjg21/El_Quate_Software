@@ -1,4 +1,6 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.DetallePedidos;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -8,16 +10,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class DetallePedidosController : ControllerBase
     {
-        private readonly IDetallePedidosRepository _detallePedidosRepository;
+        private readonly IDetallePedidosRepository detallePedidosRepository;
+        private readonly ILogger<DetallePedidosController> logger;
 
-        public DetallePedidosController(IDetallePedidosRepository detallePedidosRepository)
+        public DetallePedidosController(
+            IDetallePedidosRepository detallePedidosRepository,
+            ILogger<DetallePedidosController> logger)
         {
-            _detallePedidosRepository = detallePedidosRepository;
+            this.detallePedidosRepository = detallePedidosRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetDetallePedidos")]
@@ -30,27 +35,17 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _detallePedidosRepository.GetDetallePedidos();
+                var response = await detallePedidosRepository.GetDetallePedidos();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de detalles de pedidos." });
 
-                return Ok(new { statusCode = 200, message = "Consulta realizada correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Consulta realizada correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -68,27 +63,17 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _detallePedidosRepository.GetDetallePedidosById(id);
+                var response = await detallePedidosRepository.GetDetallePedidosById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "El detalle de pedido solicitado no existe." });
 
-                return Ok(new { statusCode = 200, message = "Detalle de pedido encontrado correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Detalle de pedido encontrado correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -98,10 +83,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PostDetallePedido([FromBody] DetallePedidos detallePedidos)
+        public async Task<IActionResult> PostDetallePedido([FromBody] DetallePedidoCrearDTO dto)
         {
             try
             {
+                var detallePedidos = dto.ToEntity();
+
                 if (!ModelState.IsValid || detallePedidos == null)
                 {
                     return BadRequest(new
@@ -111,7 +98,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _detallePedidosRepository
+                var response = await detallePedidosRepository
                     .PostDetallePedidos(detallePedidos);
 
                 if (!response)
@@ -126,32 +113,28 @@ namespace ElQuateDePatty.Controllers
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Detalle de pedido registrado correctamente."
+                    message = "Detalle de pedido registrado correctamente.",
+                    data = detallePedidos.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -162,7 +145,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PutDetallePedido([FromBody] DetallePedidos detallePedidos)
+        public async Task<IActionResult> PutDetallePedido([FromBody] DetallePedidoActualizarDTO detallePedidos)
         {
             try
             {
@@ -175,7 +158,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _detallePedidosRepository
+                var existente = await detallePedidosRepository
                     .GetDetallePedidosById(detallePedidos.idDetalle);
 
                 if (existente == null)
@@ -192,7 +175,7 @@ namespace ElQuateDePatty.Controllers
                 existente.cantidad = detallePedidos.cantidad;
                 existente.precioUnitario = detallePedidos.precioUnitario;
 
-                var response = await _detallePedidosRepository
+                var response = await detallePedidosRepository
                     .PutDetallePedidos(existente);
 
                 if (!response)
@@ -210,24 +193,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Detalle de pedido actualizado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -249,28 +228,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var detalle = await _detallePedidosRepository.GetDetallePedidosById(id);
+                var detalle = await detallePedidosRepository.GetDetallePedidosById(id);
 
                 if (detalle == null)
                     return NotFound(new { statusCode = 404, message = "El detalle de pedido que se desea eliminar no existe." });
 
-                var response = await _detallePedidosRepository.DeleteDetallePedidos(detalle);
+                var response = await detallePedidosRepository.DeleteDetallePedidos(detalle);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el detalle de pedido." });
 
                 return Ok(new { statusCode = 200, message = "Detalle de pedido eliminado correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }

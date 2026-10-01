@@ -1,4 +1,7 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.Kardex;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.Services;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -8,16 +11,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class KardexController : ControllerBase
     {
-        private readonly IKardexRepository _kardexRepository;
+        private readonly IKardexRepository kardexRepository;
+        private readonly ILogger<KardexController> logger;
 
-        public KardexController(IKardexRepository kardexRepository)
+        public KardexController(
+            IKardexRepository kardexRepository,
+            ILogger<KardexController> logger)
         {
-            _kardexRepository = kardexRepository;
+            this.kardexRepository = kardexRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetKardex")]
@@ -30,27 +36,17 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _kardexRepository.GetKardex();
+                var response = await kardexRepository.GetKardex();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información del kardex." });
 
-                return Ok(new { statusCode = 200, message = "Consulta de kardex realizada correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Consulta de kardex realizada correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -68,27 +64,17 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _kardexRepository.GetKardexById(id);
+                var response = await kardexRepository.GetKardexById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "El movimiento solicitado no existe." });
 
-                return Ok(new { statusCode = 200, message = "Movimiento encontrado correctamente.", data = response });
+                return Ok(new { statusCode = 200, message = "Movimiento encontrado correctamente.", data = response.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -98,41 +84,62 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PostKardex([FromBody] Kardex kardex)
+        public async Task<IActionResult> PostKardex([FromBody] KardexCrearDTO dto)
         {
             try
             {
+                var kardex = dto.ToEntity();
+
+                var idUsuarioActual = User.ObtenerIdUsuario();
+
+                if (idUsuarioActual == null)
+                {
+                    return Unauthorized(new
+                    {
+                        statusCode = 401,
+                        message = "No fue posible identificar al usuario autenticado."
+                    });
+                }
+
+                kardex.idUsuario = idUsuarioActual.Value;
+
                 if (!ModelState.IsValid || kardex == null)
                     return BadRequest(new { statusCode = 400, message = "Los datos del movimiento no son válidos." });
 
-                var response = await _kardexRepository.PostKardex(kardex);
+                var response = await kardexRepository.PostKardex(kardex);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible registrar el movimiento." });
 
-                return Ok(new { statusCode = 200, message = "Movimiento registrado correctamente." });
+                return Ok(new { statusCode = 200, message = "Movimiento registrado correctamente.",
+                    data = kardex.ToRespuestaDTO() });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
 
         [HttpPut("PutKardex")]
+        [RequierePermiso(PermisosSistema.kardexModificar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> PutKardex([FromBody] Kardex kardex)
+        public async Task<IActionResult> PutKardex([FromBody] KardexActualizarDTO kardex)
         {
             try
             {
@@ -145,7 +152,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _kardexRepository
+                var existente = await kardexRepository
                     .GetKardexById(kardex.idMovimiento);
 
                 if (existente == null)
@@ -166,7 +173,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fecha = kardex.fecha;
                 existente.idUsuario = kardex.idUsuario;
 
-                var response = await _kardexRepository
+                var response = await kardexRepository
                     .PutKardex(existente);
 
                 if (!response)
@@ -184,24 +191,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Movimiento actualizado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -211,6 +214,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteKardex/{id}")]
+        [RequierePermiso(PermisosSistema.kardexModificar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -223,28 +227,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var kardex = await _kardexRepository.GetKardexById(id);
+                var kardex = await kardexRepository.GetKardexById(id);
 
                 if (kardex == null)
                     return NotFound(new { statusCode = 404, message = "El movimiento que se desea eliminar no existe." });
 
-                var response = await _kardexRepository.DeleteKardex(kardex);
+                var response = await kardexRepository.DeleteKardex(kardex);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar el movimiento." });
 
                 return Ok(new { statusCode = 200, message = "Movimiento eliminado correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }

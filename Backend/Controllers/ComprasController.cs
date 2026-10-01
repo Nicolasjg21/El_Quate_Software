@@ -1,4 +1,6 @@
-﻿using ElQuateDePatty.DTOs.Analiticas;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Compras;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
@@ -10,16 +12,19 @@ namespace ElQuateDePatty.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [RequireHttps]
     [Authorize]
 
     public class ComprasController : ControllerBase
     {
-        private readonly IComprasRepository _comprasRepository;
+        private readonly IComprasRepository comprasRepository;
+        private readonly ILogger<ComprasController> logger;
 
-        public ComprasController(IComprasRepository comprasRepository)
+        public ComprasController(
+            IComprasRepository comprasRepository,
+            ILogger<ComprasController> logger)
         {
-            _comprasRepository = comprasRepository;
+            this.comprasRepository = comprasRepository;
+            this.logger = logger;
         }
 
         [HttpGet("GetCompras")]
@@ -32,7 +37,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var response = await _comprasRepository.GetCompras();
+                var response = await comprasRepository.GetCompras();
 
                 if (response == null || response.Count == 0)
                     return NotFound(new
@@ -45,23 +50,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Consulta de compras realizada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -83,7 +78,7 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var response = await _comprasRepository.GetComprasById(id);
+                var response = await comprasRepository.GetComprasById(id);
 
                 if (response == null)
                     return NotFound(new { statusCode = 404, message = "La compra solicitada no existe." });
@@ -92,23 +87,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Compra encontrada correctamente.",
-                    data = response
+                    data = response.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -118,10 +103,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostCompra([FromBody] Compras compras)
+        public async Task<IActionResult> PostCompra([FromBody] CompraCrearDTO dto)
         {
             try
             {
+                var compras = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -132,7 +119,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la compra son obligatorios."
                     });
 
-                var response = await _comprasRepository.PostCompras(compras);
+                var response = await comprasRepository.PostCompras(compras);
 
                 if (!response)
                     return BadRequest(new
@@ -144,32 +131,28 @@ namespace ElQuateDePatty.Controllers
                 return Ok(new
                 {
                     statusCode = 200,
-                    message = "Compra registrada correctamente."
+                    message = "Compra registrada correctamente.",
+                    data = compras.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -180,7 +163,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutCompra([FromBody] Compras compras)
+        public async Task<IActionResult> PutCompra([FromBody] CompraActualizarDTO compras)
         {
             try
             {
@@ -191,7 +174,7 @@ namespace ElQuateDePatty.Controllers
                         message = "Los datos de la compra no son válidos."
                     });
 
-                var existente = await _comprasRepository.GetComprasById(compras.idCompra);
+                var existente = await comprasRepository.GetComprasById(compras.idCompra);
 
                 if (existente == null)
                     return NotFound(new
@@ -204,7 +187,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fecha = compras.fecha;
                 existente.total = compras.total;
 
-                var response = await _comprasRepository.PutCompras(existente);
+                var response = await comprasRepository.PutCompras(existente);
 
                 if (!response)
                     return BadRequest(new
@@ -219,29 +202,24 @@ namespace ElQuateDePatty.Controllers
                     message = "Compra actualizada correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -259,32 +237,32 @@ namespace ElQuateDePatty.Controllers
                 if (id <= 0)
                     return BadRequest(new { statusCode = 400, message = "El identificador debe ser mayor que cero." });
 
-                var compra = await _comprasRepository.GetComprasById(id);
+                var compra = await comprasRepository.GetComprasById(id);
 
                 if (compra == null)
                     return NotFound(new { statusCode = 404, message = "La compra que se desea eliminar no existe." });
 
-                var response = await _comprasRepository.DeleteCompras(compra);
+                var response = await comprasRepository.DeleteCompras(compra);
 
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible eliminar la compra." });
 
                 return Ok(new { statusCode = 200, message = "Compra eliminada correctamente." });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new { statusCode = 400, message = ex.Message });
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { statusCode = 401, message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { statusCode = 404, message = ex.Message });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new { statusCode = 500, message = "Ocurrió un error interno en el servidor." });
             }
         }
@@ -292,26 +270,26 @@ namespace ElQuateDePatty.Controllers
         [HttpGet("Filtrar")]
         public async Task<IActionResult> FiltrarCompras([FromQuery] CompraFiltroDTO filtro)
         {
-            var data = await _comprasRepository.FiltrarCompras(filtro);
+            var data = await comprasRepository.FiltrarCompras(filtro);
 
             return Ok(new
             {
                 statusCode = 200,
                 message = "Compras filtradas correctamente",
-                data = data
+                data = data.ToRespuestaDTO()
             });
         }
 
         [HttpGet("Historial")]
         public async Task<IActionResult> FiltrarHistorialCompras([FromQuery] PeriodoFiltroDTO filtro)
         {
-            var data = await _comprasRepository.FiltrarHistorialCompras(filtro);
+            var data = await comprasRepository.FiltrarHistorialCompras(filtro);
 
             return Ok(new
             {
                 statusCode = 200,
                 message = "Historial de compras consultado correctamente",
-                data = data
+                data = data.ToRespuestaDTO()
             });
         }
     }

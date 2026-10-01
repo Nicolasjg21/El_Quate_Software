@@ -16,35 +16,33 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<DetalleCompras>> GetDetalleCompras()
         {
-            var data = await context.DetalleCompras.ToListAsync();
+            var data = await context.detalleCompras.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<DetalleCompras?> GetDetalleComprasById(int id)
         {
-            var data = await context.DetalleCompras.FirstOrDefaultAsync(x => x.idDetalleCompra == id);
+            var data = await context.detalleCompras.FirstOrDefaultAsync(x => x.idDetalleCompra == id);
             return data;
         }
 
         public async Task<bool> PostDetalleCompras(DetalleCompras detalleCompras)
         {
-            await context.DetalleCompras.AddAsync(detalleCompras);
-            await context.BoolAsync();
-            return true;
+            await context.detalleCompras.AddAsync(detalleCompras);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutDetalleCompras(DetalleCompras detalleCompras)
         {
-            context.DetalleCompras.Update(detalleCompras);
+            context.detalleCompras.Update(detalleCompras);
             await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteDetalleCompras(DetalleCompras detalleCompras)
         {
-            context.DetalleCompras.Remove(detalleCompras);
-            await context.BoolAsync();
-            return true;
+            context.detalleCompras.Remove(detalleCompras);
+            return await context.BoolAsync();
         }
     }
 }

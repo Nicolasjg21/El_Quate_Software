@@ -1,13 +1,13 @@
-﻿using ElQuateDePatty.Context;
+﻿using ElQuateDePatty.DTOs.Usuarios;
 using ElQuateDePatty.Models;
-using ElQuateSoftware.Models;
-using Microsoft.AspNetCore.Mvc;
+using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace ElQuateDePatty.Controllers
 {
@@ -15,134 +15,162 @@ namespace ElQuateDePatty.Controllers
     [ApiController]
     public class AutenticadorController : ControllerBase
     {
-        private readonly ElQuateDePattyContext context;
-        private readonly IConfiguration configuration;
-        private readonly PasswordHasher<Usuarios> passwordHasher;
+        private const string mensajeCredencialesInvalidas = "Usuario o contraseña incorrectos.";
+
+        private readonly IUsuariosRepository usuariosRepository;
+        private readonly IPasswordHasher<Usuarios> passwordHasher;
+        private static string? hashFicticio;
+
+        private readonly ITokenService tokenService;
+        private readonly IRastreadorIntentosLogin rastreadorIntentos;
+        private readonly IRevocacionTokenService revocacionTokenService;
+        private readonly ILogger<AutenticadorController> logger;
 
         public AutenticadorController(
-            ElQuateDePattyContext context,
-            IConfiguration configuration,
-            PasswordHasher<Usuarios> passwordHasher)
+            IUsuariosRepository usuariosRepository,
+            IPasswordHasher<Usuarios> passwordHasher,
+            ITokenService tokenService,
+            IRastreadorIntentosLogin rastreadorIntentos,
+            IRevocacionTokenService revocacionTokenService,
+            ILogger<AutenticadorController> logger)
         {
-            this.context = context;
-            this.configuration = configuration;
+            this.usuariosRepository = usuariosRepository;
             this.passwordHasher = passwordHasher;
+            this.tokenService = tokenService;
+            this.rastreadorIntentos = rastreadorIntentos;
+            this.revocacionTokenService = revocacionTokenService;
+            this.logger = logger;
         }
 
         [HttpPost("Login")]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        [AllowAnonymous]
+        [EnableRateLimiting("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
-            // Validar que lleguen los datos
-            if (login == null ||
-                string.IsNullOrWhiteSpace(login.Email) ||
-                string.IsNullOrWhiteSpace(login.Password))
+            try
             {
-                return BadRequest(new
+                if (login == null ||
+                    string.IsNullOrWhiteSpace(login.email) ||
+                    string.IsNullOrWhiteSpace(login.password))
                 {
-                    statusCode = 400,
-                    message = "El correo y la contraseña son obligatorios."
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "El correo y la contraseña son obligatorios."
+                    });
+                }
+
+                var email = login.email.Trim();
+
+                if (rastreadorIntentos.EstaBloqueado(email))
+                {
+                    return StatusCode(429, new
+                    {
+                        statusCode = 429,
+                        message = "Demasiados intentos fallidos. Intente nuevamente en unos minutos."
+                    });
+                }
+
+                var usuario = await usuariosRepository.GetUsuariosByEmail(email);
+
+                if (usuario == null)
+                {
+                    // Se verifica contra un hash ficticio (calculado una sola vez) para igualar
+                    // el tiempo de respuesta y evitar la enumeración de usuarios por temporización.
+                    hashFicticio ??= passwordHasher.HashPassword(new Usuarios(), Guid.NewGuid().ToString());
+
+                    passwordHasher.VerifyHashedPassword(new Usuarios(), hashFicticio, login.password);
+
+                    rastreadorIntentos.RegistrarFallo(email);
+
+                    return Credenciales();
+                }
+
+                var resultado = passwordHasher.VerifyHashedPassword(
+                    usuario,
+                    usuario.passwordHash,
+                    login.password);
+
+                if (resultado == PasswordVerificationResult.Failed)
+                {
+                    rastreadorIntentos.RegistrarFallo(email);
+
+                    return Credenciales();
+                }
+
+                rastreadorIntentos.Limpiar(email);
+
+                // El estado se revela únicamente cuando la contraseña es correcta.
+                if (!usuario.estado)
+                {
+                    return Unauthorized(new
+                    {
+                        statusCode = 401,
+                        message = "El usuario se encuentra inactivo."
+                    });
+                }
+
+                if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
+                {
+                    usuario.passwordHash = passwordHasher.HashPassword(usuario, login.password);
+                    await usuariosRepository.PutUsuarios(usuario);
+                }
+
+                var token = tokenService.GenerarToken(usuario);
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Inicio de sesión exitoso.",
+                    token = token.token,
+                    expiraEn = token.expiraEn
                 });
             }
-
-            // Buscar usuario por correo
-            var usuario = await context.Usuarios
-                .FirstOrDefaultAsync(u => u.email == login.Email);
-
-            // Usuario no encontrado
-            if (usuario == null)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = "Usuario o contraseña incorrectos."
-                });
-            }
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
 
-            // Verificar que el usuario esté activo
-            if (!usuario.estado)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = "El usuario se encuentra inactivo."
-                });
-            }
-
-            // Verificar contraseña utilizando el hash almacenado
-            var resultado = passwordHasher.VerifyHashedPassword(
-                usuario,
-                usuario.passwordHash,
-                login.Password
-            );
-
-            if (resultado == PasswordVerificationResult.Failed)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = "Usuario o contraseña incorrectos."
-                });
-            }
-
-            // Obtener la clave JWT
-            var jwtKey = configuration["Jwt:Key"];
-
-            if (string.IsNullOrWhiteSpace(jwtKey))
-            {
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = "La clave JWT no está configurada."
+                    message = "Ocurrió un error interno al iniciar sesión."
                 });
             }
+        }
 
-            var secretKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)
-            );
+        [HttpPost("Logout")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public IActionResult Logout()
+        {
+            var idSesion = User.FindFirst(SelloSeguridad.claimSesion)?.Value;
+            var exp = User.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
 
-            var signinCredentials = new SigningCredentials(
-                secretKey,
-                SecurityAlgorithms.HmacSha256
-            );
-
-            // Crear claims
-            var claims = new List<Claim>
+            if (!string.IsNullOrEmpty(idSesion) &&
+                long.TryParse(exp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var segundos))
             {
-                new Claim(
-                    ClaimTypes.Name,
-                    usuario.email
-                ),
+                revocacionTokenService.Revocar(idSesion, DateTimeOffset.FromUnixTimeSeconds(segundos));
+            }
 
-                new Claim(
-                    ClaimTypes.NameIdentifier,
-                    usuario.idUsuario.ToString()
-                ),
-
-                new Claim(
-                    ClaimTypes.Role,
-                    usuario.idRol.ToString()
-                )
-            };
-
-            // Crear token
-            var tokenOptions = new JwtSecurityToken(
-                issuer: configuration["Jwt:Issuer"],
-                audience: configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(30),
-                signingCredentials: signinCredentials
-            );
-
-            // Convertir token a string
-            var tokenString = new JwtSecurityTokenHandler()
-                .WriteToken(tokenOptions);
-
-            // Devolver token
             return Ok(new
             {
                 statusCode = 200,
-                message = "Inicio de sesión exitoso.",
-                token = tokenString
+                message = "Sesión cerrada correctamente."
+            });
+        }
+
+        private IActionResult Credenciales()
+        {
+            return Unauthorized(new
+            {
+                statusCode = 401,
+                message = mensajeCredencialesInvalidas
             });
         }
     }

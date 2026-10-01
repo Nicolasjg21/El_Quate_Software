@@ -1,4 +1,7 @@
-﻿using ElQuateDePatty.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.RolesPermisos;
+using ElQuateDePatty.Mappers;
+using ElQuateDePatty.Services;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,11 +13,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class RolesPermisosController : ControllerBase
     {
-        private readonly IRolesPermisosRepository _rolesPermisosRepository;
+        private readonly IRolesPermisosRepository rolesPermisosRepository;
+        private readonly ILogger<RolesPermisosController> logger;
 
-        public RolesPermisosController(IRolesPermisosRepository repository)
+        public RolesPermisosController(
+            IRolesPermisosRepository repository,
+            ILogger<RolesPermisosController> logger)
         {
-            _rolesPermisosRepository = repository;
+            rolesPermisosRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetRolesPermisos")]
@@ -26,7 +33,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var rolesPermisos = await _rolesPermisosRepository.GetRolesPermisos();
+                var rolesPermisos = await rolesPermisosRepository.GetRolesPermisos();
 
                 if (rolesPermisos == null || !rolesPermisos.Any())
                 {
@@ -41,11 +48,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Relaciones entre roles y permisos obtenidas correctamente.",
-                    data = rolesPermisos
+                    data = rolesPermisos.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -74,7 +83,7 @@ namespace ElQuateDePatty.Controllers
                 }
 
                 var rolesPermisos =
-                    await _rolesPermisosRepository.GetRolesPermisosById(idRol, idPermiso);
+                    await rolesPermisosRepository.GetRolesPermisosById(idRol, idPermiso);
 
                 if (rolesPermisos == null)
                 {
@@ -89,11 +98,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Relación obtenida correctamente.",
-                    data = rolesPermisos
+                    data = rolesPermisos.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -103,15 +114,18 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostRolesPermisos")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PostRolesPermisos(
-            [FromBody] RolesPermisos rolesPermisos)
+            [FromBody] RolPermisoCrearDTO dto)
         {
             try
             {
+                var rolesPermisos = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -131,7 +145,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _rolesPermisosRepository.GetRolesPermisosById(
+                var existente = await rolesPermisosRepository.GetRolesPermisosById(
                     rolesPermisos.idRol,
                     rolesPermisos.idPermiso);
 
@@ -145,7 +159,7 @@ namespace ElQuateDePatty.Controllers
                 }
 
                 var response =
-                    await _rolesPermisosRepository.PostRolesPermisos(rolesPermisos);
+                    await rolesPermisosRepository.PostRolesPermisos(rolesPermisos);
 
                 if (!response)
                 {
@@ -160,11 +174,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Relación entre rol y permiso registrada correctamente.",
-                    data = rolesPermisos
+                    data = rolesPermisos.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -174,13 +200,14 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutRolesPermisos")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PutRolesPermisos(
-            [FromBody] RolesPermisos rolesPermisos)
+            [FromBody] RolPermisoCrearDTO rolesPermisos)
         {
             try
             {
@@ -203,7 +230,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _rolesPermisosRepository.GetRolesPermisosById(
+                var existente = await rolesPermisosRepository.GetRolesPermisosById(
                     rolesPermisos.idRol,
                     rolesPermisos.idPermiso);
 
@@ -217,7 +244,7 @@ namespace ElQuateDePatty.Controllers
                 }
 
                 var response =
-                    await _rolesPermisosRepository.PutRolesPermisos(rolesPermisos);
+                    await rolesPermisosRepository.PutRolesPermisos(existente);
 
                 if (!response)
                 {
@@ -232,11 +259,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Relación actualizada correctamente.",
-                    data = rolesPermisos
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -246,6 +285,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteRolesPermisos/{idRol}/{idPermiso}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -267,7 +307,7 @@ namespace ElQuateDePatty.Controllers
                 }
 
                 var rolesPermisos =
-                    await _rolesPermisosRepository.GetRolesPermisosById(idRol, idPermiso);
+                    await rolesPermisosRepository.GetRolesPermisosById(idRol, idPermiso);
 
                 if (rolesPermisos == null)
                 {
@@ -279,7 +319,7 @@ namespace ElQuateDePatty.Controllers
                 }
 
                 var response =
-                    await _rolesPermisosRepository.DeleteRolesPermisos(rolesPermisos);
+                    await rolesPermisosRepository.DeleteRolesPermisos(rolesPermisos);
 
                 if (!response)
                 {
@@ -296,8 +336,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Relación eliminada correctamente."
                 });
             }
-            catch (Exception)
+            catch (DbUpdateException ex)
             {
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

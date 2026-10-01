@@ -17,19 +17,20 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<List<Mesas>> GetMesas()
         {
-            var data = await context.Mesas.ToListAsync();
+            var data = await context.mesas.AsNoTracking().ToListAsync();
             return data;
         }
 
         public async Task<Mesas?> GetMesasById(int id)
         {
-            var data = await context.Mesas.FirstOrDefaultAsync(x => x.idMesa == id);
+            var data = await context.mesas.FirstOrDefaultAsync(x => x.idMesa == id);
             return data;
         }
 
         public async Task<List<Mesas>> GetMesasByEstado(string estado)
         {
-            var data = await context.Mesas
+            var data = await context.mesas
+                .AsNoTracking()
                 .Where(x => x.estado == estado)
                 .ToListAsync();
 
@@ -38,28 +39,26 @@ namespace ElQuateDePatty.Repositories
 
         public async Task<bool> PostMesas(Mesas mesas)
         {
-            await context.Mesas.AddAsync(mesas);
-            await context.SaveChangesAsync();
-            return true;
+            await context.mesas.AddAsync(mesas);
+            return await context.BoolAsync();
         }
 
         public async Task<bool> PutMesas(Mesas mesas)
         {
-            context.Mesas.Update(mesas);
-            await context.SaveChangesAsync();
+            context.mesas.Update(mesas);
+            await context.BoolAsync();
             return true;
         }
 
         public async Task<bool> DeleteMesas(Mesas mesas)
         {
-            context.Mesas.Remove(mesas);
-            await context.SaveChangesAsync();
-            return true;
+            context.mesas.Remove(mesas);
+            return await context.BoolAsync();
         }
 
         public async Task<List<Mesas>> FiltrarMesas(MesaFiltroDTO filtro)
         {
-            var query = context.Mesas.AsQueryable();
+            var query = context.mesas.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filtro.estado))
             {

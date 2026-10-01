@@ -1,5 +1,6 @@
-﻿using ElQuateDePatty.Models;
-using ElQuateDePatty.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.DTOs.MetodosPago;
+using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +12,15 @@ namespace ElQuateDePatty.Controllers
     [Authorize]
     public class MetodosPagoController : ControllerBase
     {
-        private readonly IMetodosPagoRepository _metodosPagoRepository;
+        private readonly IMetodosPagoRepository metodosPagoRepository;
+        private readonly ILogger<MetodosPagoController> logger;
 
-        public MetodosPagoController(IMetodosPagoRepository repository)
+        public MetodosPagoController(
+            IMetodosPagoRepository repository,
+            ILogger<MetodosPagoController> logger)
         {
-            _metodosPagoRepository = repository;
+            metodosPagoRepository = repository;
+            this.logger = logger;
         }
 
         [HttpGet("GetMetodosPago")]
@@ -27,7 +32,7 @@ namespace ElQuateDePatty.Controllers
         {
             try
             {
-                var metodos = await _metodosPagoRepository.GetMetodosPago();
+                var metodos = await metodosPagoRepository.GetMetodosPago();
 
                 if (metodos == null || !metodos.Any())
                 {
@@ -42,35 +47,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Métodos de pago obtenidos correctamente.",
-                    data = metodos
+                    data = metodos.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -98,7 +81,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var metodo = await _metodosPagoRepository.GetMetodosPagoById(id);
+                var metodo = await metodosPagoRepository.GetMetodosPagoById(id);
 
                 if (metodo == null)
                 {
@@ -113,35 +96,13 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Método de pago obtenido correctamente.",
-                    data = metodo
+                    data = metodo.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -155,10 +116,12 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PostMetodosPago([FromBody] MetodosPago metodo)
+        public async Task<IActionResult> PostMetodosPago([FromBody] MetodoPagoCrearDTO dto)
         {
             try
             {
+                var metodo = dto.ToEntity();
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(new
@@ -169,7 +132,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _metodosPagoRepository.PostMetodosPago(metodo);
+                var response = await metodosPagoRepository.PostMetodosPago(metodo);
 
                 if (!response)
                 {
@@ -184,27 +147,23 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 201,
                     message = "Método de pago registrado correctamente.",
-                    data = metodo
+                    data = metodo.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
@@ -219,7 +178,7 @@ namespace ElQuateDePatty.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> PutMetodosPago([FromBody] MetodosPago metodo)
+        public async Task<IActionResult> PutMetodosPago([FromBody] MetodoPagoActualizarDTO metodo)
         {
             try
             {
@@ -242,7 +201,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var existente = await _metodosPagoRepository.GetMetodosPagoById(metodo.idMetodo);
+                var existente = await metodosPagoRepository.GetMetodosPagoById(metodo.idMetodo);
 
                 if (existente == null)
                 {
@@ -255,7 +214,7 @@ namespace ElQuateDePatty.Controllers
 
                 existente.nombreMetodo = metodo.nombreMetodo;
 
-                var response = await _metodosPagoRepository.PutMetodosPago(existente);
+                var response = await metodosPagoRepository.PutMetodosPago(existente);
 
                 if (!response)
                 {
@@ -270,40 +229,27 @@ namespace ElQuateDePatty.Controllers
                 {
                     statusCode = 200,
                     message = "Método de pago actualizado correctamente.",
-                    data = existente
+                    data = existente.ToRespuestaDTO()
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,
-                    message = ex.Message,
-                    detalle = ex.InnerException?.Message
+                    message = "Ocurrió un error interno en el servidor."
                 });
             }
         }
@@ -327,7 +273,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var metodo = await _metodosPagoRepository.GetMetodosPagoById(id);
+                var metodo = await metodosPagoRepository.GetMetodosPagoById(id);
 
                 if (metodo == null)
                 {
@@ -338,7 +284,7 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                var response = await _metodosPagoRepository.DeleteMetodosPago(metodo);
+                var response = await metodosPagoRepository.DeleteMetodosPago(metodo);
 
                 if (!response)
                 {
@@ -355,32 +301,20 @@ namespace ElQuateDePatty.Controllers
                     message = "Método de pago eliminado correctamente."
                 });
             }
-            catch (ArgumentException ex)
+            catch (DbUpdateException ex)
             {
-                return BadRequest(new
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
                 {
-                    statusCode = 400,
-                    message = ex.Message
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
                 });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new
-                {
-                    statusCode = 401,
-                    message = ex.Message
-                });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    statusCode = 404,
-                    message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
                 return StatusCode(500, new
                 {
                     statusCode = 500,

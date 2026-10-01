@@ -13,5 +13,11 @@ namespace ElQuateDePatty.Repositories.Interfaces
         Task<bool> PutUsuarios(Usuarios usuarios);
 
         Task<bool> DeleteUsuarios(Usuarios usuarios);
+
+        Task<Usuarios?> GetUsuariosByEmail(string email);
+
+        Task<bool> ExisteEmail(string email, int? idUsuarioExcluido = null);
+
+        Task<Usuarios?> ObtenerUsuarioActivoParaSesion(int idUsuario);
     }
 }
