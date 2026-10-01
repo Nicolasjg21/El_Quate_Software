@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace ElQuateDePatty.DTOs.Productos
 {
@@ -8,7 +8,7 @@ namespace ElQuateDePatty.DTOs.Productos
         [StringLength(200, ErrorMessage = "El campo nombreProducto no puede superar 200 caracteres.")]
         public string nombreProducto { get; set; } = string.Empty;
 
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "El campo precioVenta debe estar entre 0 y 99999999.99.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "El campo precioVenta debe estar entre 0 y 99999999.99.")]
         public decimal precioVenta { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "El campo cantidadMinima no puede ser negativo.")]
