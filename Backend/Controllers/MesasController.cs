@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using ElQuateDePatty.Services;
+using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.Models;
@@ -129,6 +130,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutMesa")]
+        [RequierePermiso(PermisosSistema.mesasGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -203,6 +205,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteMesa/{id}")]
+        [RequierePermiso(PermisosSistema.mesasGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
