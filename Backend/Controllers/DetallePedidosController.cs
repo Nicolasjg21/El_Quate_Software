@@ -1,5 +1,4 @@
-﻿using ElQuateDePatty.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.DTOs.DetallePedidos;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
@@ -80,7 +79,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostDetallePedido")]
-        [RequierePermiso(PermisosSistema.pedidosGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -142,7 +140,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutDetallePedido")]
-        [RequierePermiso(PermisosSistema.pedidosGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -219,7 +216,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteDetallePedido/{id}")]
-        [RequierePermiso(PermisosSistema.pedidosGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]

@@ -1,5 +1,4 @@
-﻿using ElQuateDePatty.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.DTOs.Categorias;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
@@ -110,7 +109,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostCategoria")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -170,7 +168,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutCategoria")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -239,7 +236,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteCategoria/{id}")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

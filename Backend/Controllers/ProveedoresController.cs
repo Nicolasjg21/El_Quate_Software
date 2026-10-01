@@ -1,5 +1,4 @@
-﻿using ElQuateDePatty.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.DTOs.Proveedores;
 using ElQuateDePatty.Models;
@@ -114,7 +113,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostProveedores")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -176,7 +174,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutProveedores")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -261,7 +258,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteProveedores/{id}")]
-        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

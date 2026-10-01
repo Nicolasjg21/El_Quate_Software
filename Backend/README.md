@@ -18,15 +18,8 @@ En desarrollo use `dotnet user-secrets`.
 ## Autorización
 
 Se basa en los permisos de la base de datos (`Roles` → `RolesPermisos` → `Permisos`), con caché de 60 s.
-Permisos (solo las acciones que modifican datos; las consultas GET requieren únicamente estar autenticado):
-
-| Permiso | Protege | Mesero | Cajero | Admin |
-|---|---|---|---|---|
-| `mesas.gestionar`, `cuentas.gestionar`, `pedidos.gestionar` | Mesas, Cuentas, Pedidos, DetallePedidos | sí | sí | sí |
-| `cobros.gestionar` | Comprobantes, MetodosPago | no | sí | sí |
-| `inventario.gestionar` | Productos, Categorias, Proveedores, Compras, DetalleCompras | no | no | sí |
-| `usuarios.gestionar`, `seguridad.gestionar`, `kardex.modificar`, `auditorias.*` | Usuarios, Roles/Permisos, Kardex (Put/Delete), Auditorías | no | no | sí |
- Cargue `Database/permisos-iniciales.sql` y asígnelos al rol administrador
+Permisos usados: `usuarios.gestionar`, `seguridad.gestionar`, `kardex.modificar`,
+`auditorias.consultar`, `auditorias.modificar`. Cargue `Database/permisos-iniciales.sql` y asígnelos al rol administrador
 **antes** de desplegar, o esos endpoints devolverán 403.
 
 ## Sesiones

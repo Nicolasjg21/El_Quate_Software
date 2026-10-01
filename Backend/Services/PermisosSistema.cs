@@ -15,15 +15,5 @@ namespace ElQuateDePatty.Services
         public const string auditoriasConsultar = "auditorias.consultar";
 
         public const string auditoriasModificar = "auditorias.modificar";
-
-        public const string mesasGestionar = "mesas.gestionar";
-
-        public const string cuentasGestionar = "cuentas.gestionar";
-
-        public const string pedidosGestionar = "pedidos.gestionar";
-
-        public const string cobrosGestionar = "cobros.gestionar";
-
-        public const string inventarioGestionar = "inventario.gestionar";
     }
 }

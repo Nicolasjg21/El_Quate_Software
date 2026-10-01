@@ -1,5 +1,4 @@
-﻿using ElQuateDePatty.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.DTOs.Cuentas;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
@@ -85,7 +84,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostCuenta")]
-        [RequierePermiso(PermisosSistema.cuentasGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -126,7 +124,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutCuenta")]
-        [RequierePermiso(PermisosSistema.cuentasGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -204,7 +201,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteCuenta/{id}")]
-        [RequierePermiso(PermisosSistema.cuentasGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

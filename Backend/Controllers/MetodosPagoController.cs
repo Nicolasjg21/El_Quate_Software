@@ -1,5 +1,4 @@
-﻿using ElQuateDePatty.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ElQuateDePatty.DTOs.MetodosPago;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
@@ -113,7 +112,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostMetodosPago")]
-        [RequierePermiso(PermisosSistema.cobrosGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -175,7 +173,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutMetodosPago")]
-        [RequierePermiso(PermisosSistema.cobrosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -258,7 +255,6 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteMetodosPago/{id}")]
-        [RequierePermiso(PermisosSistema.cobrosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
