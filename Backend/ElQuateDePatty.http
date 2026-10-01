@@ -1,0 +1,10 @@
+@ElQuateDePatty_HostAddress = http://localhost:5079
+
+### Login
+POST {{ElQuateDePatty_HostAddress}}/api/Autenticador/Login
+Content-Type: application/json
+
+{
+  "email": "usuario@ejemplo.com",
+  "password": "********"
+}
