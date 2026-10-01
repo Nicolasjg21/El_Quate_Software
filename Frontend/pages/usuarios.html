@@ -7,6 +7,9 @@
 <link rel="stylesheet" href="../css/layout.css">
 <link rel="stylesheet" href="../css/admin.css">
 <link rel="stylesheet" href="../css/menu-responsive.css">
+  <script src="../js/config.js"></script>
+  <script src="../js/api-cliente.js"></script>
+  <script src="../js/auth.js"></script>
 </head>
 <body>
 
@@ -149,24 +152,24 @@
       <div class="campo-fila">
         <div class="campo">
           <label for="u-nombres">Nombres *</label>
-          <input type="text" id="u-nombres" placeholder="Ej. María" autocomplete="off">
+          <input type="text" id="u-nombres" maxlength="200" placeholder="Ej. María" autocomplete="off">
           <span class="campo-mensaje-error"></span>
         </div>
         <div class="campo">
           <label for="u-apellidos">Apellidos *</label>
-          <input type="text" id="u-apellidos" placeholder="Ej. García" autocomplete="off">
+          <input type="text" id="u-apellidos" maxlength="200" placeholder="Ej. García" autocomplete="off">
           <span class="campo-mensaje-error"></span>
         </div>
       </div>
       <div class="campo-fila">
         <div class="campo">
           <label for="u-documento">Documento *</label>
-          <input type="text" id="u-documento" placeholder="Ej. 1023456789" autocomplete="off">
+          <input type="text" id="u-documento" maxlength="50" placeholder="Ej. 1023456789" autocomplete="off">
           <span class="campo-mensaje-error"></span>
         </div>
         <div class="campo">
           <label for="u-telefono">Teléfono *</label>
-          <input type="text" id="u-telefono" placeholder="Ej. 310 456 7821" autocomplete="off">
+          <input type="text" id="u-telefono" maxlength="20" placeholder="Ej. 310 456 7821" autocomplete="off">
           <span class="campo-mensaje-error"></span>
         </div>
       </div>
@@ -182,6 +185,13 @@
           <span class="campo-mensaje-error"></span>
         </div>
       </div>
+      <div class="campo-fila" id="fila-password">
+        <div class="campo">
+          <label for="u-password">Contraseña * (mín. 8 caracteres)</label>
+          <input type="password" id="u-password" placeholder="Mínimo 8 caracteres" maxlength="128" autocomplete="new-password">
+          <span class="campo-mensaje-error"></span>
+        </div>
+      </div>
       <div class="campo-fila">
         <div class="campo">
           <label for="u-estado">Estado *</label>
@@ -194,7 +204,7 @@
         </div>
         <div class="campo">
           <label for="u-email">Correo Electrónico *</label>
-          <input type="email" id="u-email" placeholder="Ej. maria.garcia@gmail.com" autocomplete="off">
+          <input type="email" id="u-email" maxlength="254" placeholder="Ej. maria.garcia@gmail.com" autocomplete="off">
           <span class="campo-mensaje-error"></span>
         </div>
       </div>

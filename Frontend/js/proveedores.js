@@ -4,6 +4,7 @@
    direccion (máx. 150). La colección "compras" es solo relación (no editable).
    ========================================================================== */
 
+const MAX_NOMBRE = 200;
 const MAX_TELEFONO = 20;
 const MAX_DIRECCION = 150;
 
@@ -37,16 +38,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.dataset.accion === "eliminar") abrirEliminar(id);
   });
 
-  cargarProveedores();
+  /* La lectura es libre para cualquier usuario autenticado; escribir exige inventario.gestionar */
+  Auth.listo.then(() => {
+    if (!Auth.tiene("inventario.gestionar") && Auth.permisosCargados) {
+      $("btn-nuevo-proveedor").hidden = true;
+    }
+    cargarProveedores();
+  });
 });
+
+const puedeGestionar = () => Auth.tiene("inventario.gestionar") || !Auth.permisosCargados;
 
 /* ---------- GET ---------- */
 function cargarProveedores() {
   $("tabla-proveedores").innerHTML = filaMensaje("Cargando proveedores...");
   apiProveedores.listar()
     .then(datos => { proveedores = datos; renderTabla(); })
-    .catch(() => {
-      $("tabla-proveedores").innerHTML = filaMensaje("No fue posible cargar los proveedores. Intente de nuevo.");
+    .catch(err => {
+      $("tabla-proveedores").innerHTML = filaMensaje(Api.mensajeError(err, "No fue posible cargar los proveedores. Intente de nuevo."));
     });
 }
 
@@ -69,7 +78,7 @@ function renderTabla() {
   const visibles = proveedores.filter(p => !q || coincide(p, q));
 
   if (proveedores.length === 0) {
-    cuerpo.innerHTML = filaMensaje("No hay proveedores registrados.", true);
+    cuerpo.innerHTML = filaMensaje("No hay proveedores registrados.", puedeGestionar());
     const btn = cuerpo.querySelector("[data-nuevo-vacio]");
     if (btn) btn.addEventListener("click", abrirNuevo);
   } else if (visibles.length === 0) {
@@ -88,10 +97,10 @@ function filaProveedor(p) {
       <td class="col-nombre">${esc(p.telefono)}</td>
       <td>${esc(p.direccion)}</td>
       <td class="col-centro">
-        <div class="acciones-fila">
+        ${puedeGestionar() ? `<div class="acciones-fila">
           <button class="btn-icono" data-accion="editar" data-id="${p.idProveedor}" aria-label="Editar proveedor ${esc(p.nombreProveedor)}" title="Editar proveedor">${ICONO_EDITAR}</button>
           <button class="btn-icono btn-icono--peligro" data-accion="eliminar" data-id="${p.idProveedor}" aria-label="Eliminar proveedor ${esc(p.nombreProveedor)}" title="Eliminar proveedor">${ICONO_ELIMINAR}</button>
-        </div>
+        </div>` : ""}
       </td>
     </tr>`;
 }
@@ -131,7 +140,9 @@ function validarFormulario() {
   let valido = true;
   const falla = (id, msg) => { marcarError($(id), msg); valido = false; };
 
-  if (!$("p-nombre").value.trim()) falla("p-nombre", "El nombre del proveedor es obligatorio.");
+  const nom = $("p-nombre").value.trim();
+  if (!nom) falla("p-nombre", "El nombre del proveedor es obligatorio.");
+  else if (nom.length > MAX_NOMBRE) falla("p-nombre", "El nombre del proveedor no puede superar los 200 caracteres.");
 
   const tel = $("p-telefono").value.trim();
   if (!tel) falla("p-telefono", "El teléfono es obligatorio.");
@@ -182,7 +193,12 @@ function guardarProveedor() {
       mostrarToast(editando ? "Proveedor actualizado correctamente." : "Proveedor creado correctamente.");
     })
     .catch(err => {
-      mostrarToast((err && err.status === 404) ? err.mensaje : "No fue posible guardar el proveedor. Intente de nuevo.", "error");
+      const mapa = { nombreproveedor: "p-nombre", telefono: "p-telefono", direccion: "p-direccion" };
+      Object.keys((err && err.errores) || {}).forEach(c => {
+        const id = mapa[c.toLowerCase()];
+        if (id) marcarError($(id), err.errores[c][0]);
+      });
+      mostrarToast(Api.mensajeError(err, "No fue posible guardar el proveedor. Intente de nuevo."), "error");
     })
     .finally(() => liberarBoton(btn));
 }
@@ -214,8 +230,7 @@ function confirmarEliminacion() {
       cerrarModal("overlay-eliminar");
       mostrarToast(
         err && err.status === 409 ? "No es posible eliminar este proveedor porque tiene compras asociadas."
-        : err && err.status === 404 ? err.mensaje
-        : "No fue posible eliminar el proveedor. Intente de nuevo.",
+        : Api.mensajeError(err, "No fue posible eliminar el proveedor. Intente de nuevo."),
         "error"
       );
     })

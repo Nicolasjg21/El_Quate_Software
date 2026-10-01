@@ -11,12 +11,20 @@ let usuarioAEliminar = null; // idUsuario pendiente de confirmar
 
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/* Límites de UsuarioCrearDTO / UsuarioActualizarDTO del Backend */
+const LIMITES = { nombres: 200, apellidos: 200, documento: 50, telefono: 20, email: 254, passwordMin: 8, passwordMax: 128 };
+
+/* Campo del DTO -> id del control del formulario (para pintar errores 400 del Backend) */
+const CAMPOS_FORM = {
+  nombres: "u-nombres", apellidos: "u-apellidos", documento: "u-documento", idtipodocumento: "u-tipo-documento",
+  telefono: "u-telefono", estado: "u-estado", idrol: "u-rol", email: "u-email", password: "u-password"
+};
+
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
   $("fecha-actual").textContent = fechaHoy();
 
-  poblarSelects();
   conectarCierreModales();
   limpiarErrorAlEscribir($("form-usuario"));
 
@@ -37,7 +45,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.dataset.accion === "eliminar") abrirEliminar(id);
   });
 
-  cargarUsuarios();
+  /* Espera a que Auth cargue los permisos y trae los catálogos (roles / tipos de documento) */
+  Auth.listo
+    .then(() => cargarCatalogos())
+    .catch(() => mostrarToast("No fue posible cargar los catálogos de roles y tipos de documento.", "error"))
+    .finally(() => { poblarSelects(); cargarUsuarios(); });
 });
 
 /* ---------- Catálogos ---------- */
@@ -57,8 +69,8 @@ function cargarUsuarios() {
   $("tabla-usuarios").innerHTML = filaMensaje("Cargando usuarios...");
   apiUsuarios.listar()
     .then(datos => { usuarios = datos; renderTabla(); })
-    .catch(() => {
-      $("tabla-usuarios").innerHTML = filaMensaje("No fue posible cargar los usuarios. Intente de nuevo.");
+    .catch(err => {
+      $("tabla-usuarios").innerHTML = filaMensaje(Api.mensajeError(err, "No fue posible cargar los usuarios. Intente de nuevo."));
     });
 }
 
@@ -127,7 +139,7 @@ function filaUsuario(u) {
 
 /* ---------- Formulario: abrir ---------- */
 function vaciarFormulario() {
-  ["u-nombres", "u-apellidos", "u-documento", "u-telefono", "u-email", "u-tipo-documento", "u-rol", "u-estado"]
+  ["u-nombres", "u-apellidos", "u-documento", "u-telefono", "u-email", "u-password", "u-tipo-documento", "u-rol", "u-estado"]
     .forEach(id => { $(id).value = ""; });
   limpiarErrores($("form-usuario"));
 }
@@ -138,6 +150,7 @@ function abrirNuevo() {
   $("titulo-usuario").textContent = "Nuevo usuario";
   $("descripcion-usuario").textContent = "Registra la información del usuario.";
   $("btn-guardar-usuario").textContent = "Guardar usuario";
+  $("fila-password").hidden = false;   // la contraseña solo se define al crear (POST); luego se cambia con CambiarPassword
   abrirModal("overlay-usuario");
 }
 
@@ -157,6 +170,7 @@ function abrirEdicion(id) {
   $("titulo-usuario").textContent = "Editar usuario";
   $("descripcion-usuario").textContent = `ID del usuario: ${u.idUsuario}`;
   $("btn-guardar-usuario").textContent = "Guardar cambios";
+  $("fila-password").hidden = true;
   abrirModal("overlay-usuario");
 }
 
@@ -166,17 +180,31 @@ function validarFormulario() {
   let valido = true;
   const falla = (id, msg) => { marcarError($(id), msg); valido = false; };
 
-  if (!$("u-nombres").value.trim()) falla("u-nombres", "Los nombres son obligatorios.");
-  if (!$("u-apellidos").value.trim()) falla("u-apellidos", "Los apellidos son obligatorios.");
-  if (!$("u-documento").value.trim()) falla("u-documento", "El documento es obligatorio.");
-  if (!$("u-telefono").value.trim()) falla("u-telefono", "El teléfono es obligatorio.");
+  const texto = (id, etiqueta, max) => {
+    const v = $(id).value.trim();
+    if (!v) falla(id, `${etiqueta} es obligatorio.`);
+    else if (v.length > max) falla(id, `${etiqueta} no puede superar ${max} caracteres.`);
+  };
+  texto("u-nombres", "El nombre", LIMITES.nombres);
+  texto("u-apellidos", "El apellido", LIMITES.apellidos);
+  texto("u-documento", "El documento", LIMITES.documento);
+  texto("u-telefono", "El teléfono", LIMITES.telefono);
   if (!$("u-tipo-documento").value) falla("u-tipo-documento", "Seleccione un tipo de documento.");
   if (!$("u-rol").value) falla("u-rol", "Seleccione un rol.");
   if (!$("u-estado").value) falla("u-estado", "Seleccione un estado.");
 
   const email = $("u-email").value.trim();
   if (!email) falla("u-email", "El correo electrónico es obligatorio.");
+  else if (email.length > LIMITES.email) falla("u-email", `El correo electrónico no puede superar ${LIMITES.email} caracteres.`);
   else if (!REGEX_EMAIL.test(email)) falla("u-email", "El correo electrónico no tiene un formato válido.");
+
+  if (usuarioEnEdicion === null) {
+    const pw = $("u-password").value;
+    if (!pw) falla("u-password", "La contraseña es obligatoria.");
+    else if (pw.length < LIMITES.passwordMin || pw.length > LIMITES.passwordMax) {
+      falla("u-password", `La contraseña debe tener entre ${LIMITES.passwordMin} y ${LIMITES.passwordMax} caracteres.`);
+    }
+  }
 
   if (!valido) {
     const primero = $("form-usuario").querySelector(".campo-error");
@@ -186,7 +214,7 @@ function validarFormulario() {
 }
 
 function leerFormulario() {
-  return {
+  const datos = {
     nombres: $("u-nombres").value.trim(),
     apellidos: $("u-apellidos").value.trim(),
     documento: $("u-documento").value.trim(),
@@ -196,6 +224,18 @@ function leerFormulario() {
     idRol: Number($("u-rol").value),
     email: $("u-email").value.trim()
   };
+  if (usuarioEnEdicion === null) datos.password = $("u-password").value;   // solo en POST (UsuarioCrearDTO)
+  return datos;
+}
+
+/** Pinta en el formulario los errores 400 por campo que devuelve el Backend. */
+function mostrarErroresServidor(err) {
+  let alguno = false;
+  Object.keys((err && err.errores) || {}).forEach(campo => {
+    const id = CAMPOS_FORM[campo.toLowerCase()];
+    if (id && $(id)) { marcarError($(id), err.errores[campo][0]); alguno = true; }
+  });
+  return alguno;
 }
 
 /* ---------- POST / PUT ---------- */
@@ -224,7 +264,9 @@ function guardarUsuario() {
       mostrarToast(editando ? "Usuario actualizado correctamente." : "Usuario creado correctamente.");
     })
     .catch(err => {
-      mostrarToast((err && err.status === 404) ? err.mensaje : "No fue posible guardar el usuario. Intente de nuevo.", "error");
+      if (err && err.status === 400) mostrarErroresServidor(err);
+      /* 400 / 403 / 404 / 409 / 429 / 5xx: se muestra el mensaje uniforme del Backend */
+      mostrarToast(Api.mensajeError(err, "No fue posible guardar el usuario. Intente de nuevo."), "error");
     })
     .finally(() => liberarBoton(btn));
 }
@@ -256,8 +298,7 @@ function confirmarEliminacion() {
       cerrarModal("overlay-eliminar");
       mostrarToast(
         err && err.status === 409 ? "No es posible eliminar este usuario porque tiene registros asociados."
-        : err && err.status === 404 ? err.mensaje
-        : "No fue posible eliminar el usuario. Intente de nuevo.",
+        : Api.mensajeError(err, "No fue posible eliminar el usuario. Intente de nuevo."),
         "error"
       );
     })

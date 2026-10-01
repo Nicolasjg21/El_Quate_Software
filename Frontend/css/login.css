@@ -190,3 +190,15 @@ body {
     font-size: 21px;
   }
 }
+
+/* Mensaje de error del inicio de sesión */
+.login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #FCEAE7;
+  color: #D8432B;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.login-error[hidden] { display: none; }

@@ -88,3 +88,6 @@
   .toolbar-admin .buscador input { width: 100%; }
   .modal-pie--doble { flex-direction: column-reverse; }
 }
+
+/* El atributo hidden debe ganar a display: flex / grid de los componentes */
+[hidden] { display: none !important; }

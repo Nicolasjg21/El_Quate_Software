@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabla();
   });
 
-  cargarRegistros();
+  Auth.listo.then(cargarRegistros);
 });
 
 /* ---------- Formato ---------- */
@@ -76,21 +76,22 @@ function cargarRegistros() {
       calcularResultados();
       renderTabla();
     })
-    .catch(() => {
+    .catch(err => {
       $("conteo-registros").textContent = "No se pudo cargar";
       $("tabla-auditoria").innerHTML =
-        filaMensaje("No fue posible cargar los registros de auditoría. Intente nuevamente.",
+        filaMensaje(Api.mensajeError(err, "No fue posible cargar los registros de auditoría. Intente nuevamente."),
           `<button type="button" class="btn btn--secundario" data-reintentar>Reintentar</button>`, true);
       $("tabla-pie").textContent = "Mostrando 0 de 0 registros";
     });
 }
 
 function poblarFiltros() {
-  const tablas = AUDITORIA_TABLAS.filter(t => registros.some(r => r.tabla === t));
+  const tablas = [...new Set(registros.map(r => r.tabla))].sort((a, b) => a.localeCompare(b, "es"));
+  const acciones = [...new Set([...AUDITORIA_ACCIONES, ...registros.map(r => r.accion)])];
   const usuarios = [...new Set(registros.map(r => r.usuario))].sort((a, b) => a.localeCompare(b, "es"));
 
   $("filtro-tabla").innerHTML = `<option value="">Todas</option>` + tablas.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
-  $("filtro-accion").innerHTML = `<option value="">Todas</option>` + AUDITORIA_ACCIONES.map(a => `<option value="${a}">${a}</option>`).join("");
+  $("filtro-accion").innerHTML = `<option value="">Todas</option>` + acciones.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
   $("filtro-usuario").innerHTML = `<option value="">Todos</option>` + usuarios.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join("");
 }
 
