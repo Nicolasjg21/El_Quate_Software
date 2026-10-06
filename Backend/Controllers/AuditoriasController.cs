@@ -136,6 +136,10 @@ namespace ElQuateDePatty.Controllers
 
                 auditoria.idUsuario = idUsuarioActual.Value;
 
+                // La fecha la fija el servidor: la que envía el cliente se ignora para que
+                // nadie pueda registrar auditorías con fechas falsas. El contrato no cambia.
+                auditoria.fecha = DateTime.Now;
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 

@@ -138,6 +138,12 @@ body {
   cursor: pointer;
 }
 
+.login-nota {
+  font-size: 13px;
+  color: var(--texto-secundario);
+  margin: 0 0 22px;
+}
+
 .login-recordar input {
   width: 14px;
   height: 14px;

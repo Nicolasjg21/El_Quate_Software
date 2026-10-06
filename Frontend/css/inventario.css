@@ -48,3 +48,13 @@
 .imagen-placeholder:hover { border-color: var(--coral); color: var(--coral); }
 .imagen-placeholder img { width: 100%; height: 100%; object-fit: cover; }
 #imagen-placeholder-icono { font-size: 20px; }
+
+/* Acciones por fila (solo Administración) */
+.acciones-inv { display: inline-flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.btn-fila {
+  font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--borde); background: #fff; color: var(--texto-principal); cursor: pointer;
+}
+.btn-fila:hover { background-color: var(--gris-claro); }
+.btn-fila--peligro { color: var(--rojo-texto); }
+.btn-fila--peligro:hover { background-color: var(--rojo-fondo); }

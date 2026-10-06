@@ -303,3 +303,7 @@
   .detalle-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .historial-tabs { gap: 18px; }
 }
+
+/* Métodos de pago definidos por el administrador (sin color propio) */
+.metodo-pago--otro { background-color: var(--gris-claro); color: var(--texto-secundario, #555); }
+.metodo-pago--otro .metodo-pago-punto { background-color: #9a9a9a; }

@@ -104,7 +104,7 @@
             <h2 class="modulo-titulo">Mesas</h2>
             <p class="modulo-subtitulo">Administrar piso y estado de mesas</p>
           </div>
-          <button class="btn btn--primario" id="btn-nueva-mesa">+ Nueva Mesa</button>
+          <button class="btn btn--primario" id="btn-nueva-mesa" hidden>+ Nueva Mesa</button>
         </div>
 
         <div class="resumen-grid" style="margin-top:20px;">
@@ -140,7 +140,7 @@
 
         <div class="panel" style="margin-top:14px;">
           <h2 class="modulo-titulo" id="detalle-titulo">Mesa</h2>
-          <p class="modulo-subtitulo" id="detalle-meta">&#128101; 0 personas &nbsp;&nbsp; &#128337; Abierto desde --:--</p>
+          <p class="modulo-subtitulo" id="detalle-meta">&#128337; Abierto desde --:--</p>
 
           <div class="tabla-scroll" style="margin-top:18px;">
             <table class="tabla">
@@ -185,6 +185,15 @@
           </button>
           <button class="btn btn--primario btn--ancho" id="btn-marcar-pagada" style="margin-top:14px; padding:14px; display:none; background-color:var(--amarillo-punto);">
             Marcar como Pagada y Liberar Mesa
+          </button>
+          <p class="modulo-subtitulo" id="nota-cobro-caja" style="display:none; margin-top:14px; text-align:center;">
+            Cuenta lista para cobrar. El cobro lo registra Caja.
+          </p>
+          <button class="btn btn--secundario btn--ancho" id="btn-reabrir-cuenta" style="margin-top:10px; display:none;">
+            Reabrir cuenta
+          </button>
+          <button class="btn btn--secundario btn--ancho" id="btn-eliminar-mesa" style="margin-top:10px; color:var(--rojo-texto); border-color:var(--rojo-texto);" hidden>
+            Eliminar mesa
           </button>
         </div>
 
@@ -241,9 +250,60 @@
   </div>
 </div>
 
+<!-- ============ MODAL: COBRO (MÉTODO DE PAGO) ============ -->
+<div class="overlay" id="overlay-cobro">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <p class="modal-titulo">Registrar pago</p>
+        <p class="modal-descripcion">Seleccione cómo pagó el cliente para cerrar la cuenta y liberar la mesa.</p>
+      </div>
+      <button class="modal-cerrar" data-cerrar="overlay-cobro">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="detalle-total-caja" style="margin-bottom:14px;">
+        <span class="detalle-total-etiqueta">TOTAL A COBRAR</span>
+        <span class="detalle-total-valor" id="cobro-total">$ 0</span>
+      </div>
+      <div class="campo">
+        <label for="select-metodo-pago">Método de pago *</label>
+        <select id="select-metodo-pago"></select>
+      </div>
+      <div class="campo" id="bloque-nuevo-metodo" hidden>
+        <label for="input-nuevo-metodo">Nuevo método de pago</label>
+        <input type="text" id="input-nuevo-metodo" maxlength="50" placeholder="Ej. Efectivo" autocomplete="off">
+        <button class="btn btn--secundario" id="btn-agregar-metodo" type="button" style="margin-top:8px;">Agregar método</button>
+      </div>
+      <p class="campo-mensaje-error campo-mensaje-error--visible" id="cobro-error" role="alert" style="min-height:16px;"></p>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-cobro">Cancelar</button>
+      <button class="btn btn--primario" id="btn-confirmar-cobro">Confirmar pago y liberar mesa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ELIMINAR MESA ============ -->
+<div class="overlay" id="overlay-eliminar-mesa">
+  <div class="modal">
+    <div class="modal-header">
+      <p class="modal-titulo">Eliminar mesa</p>
+      <button class="modal-cerrar" data-cerrar="overlay-eliminar-mesa">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <p>¿Está seguro de que desea eliminar esta mesa? Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-eliminar-mesa">Cancelar</button>
+      <button class="btn btn--primario" id="btn-confirmar-eliminar-mesa" style="background-color:var(--rojo-texto);">Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="../js/data.js"></script>
+<script src="../js/api-negocio.js"></script>
 <script src="../js/mesas.js"></script>
 </body>
 </html>

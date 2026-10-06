@@ -116,9 +116,70 @@
     }
   }
 
+  /** Fecha/hora local "AAAA-MM-DDTHH:mm:ss" (sin zona), el formato que guarda el Backend. */
+  function fechaLocal(d) {
+    const f = d || new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return f.getFullYear() + "-" + p(f.getMonth() + 1) + "-" + p(f.getDate()) + "T" +
+      p(f.getHours()) + ":" + p(f.getMinutes()) + ":" + p(f.getSeconds());
+  }
+
+  /* Límites de AuditoriaCrearDTO: tabla y accion <= 50, datosAnteriores / datosNuevos <= 20000. */
+  const MAX_TEXTO_CORTO = 50;
+  const MAX_DATOS = 20000;
+  const CLAVE_SENSIBLE = /pass|token|contrase|secret|hash|clave/i;
+
+  /** Copia del objeto sin claves sensibles, a cualquier profundidad (también dentro de arreglos). */
+  function sinSensibles(valor) {
+    if (Array.isArray(valor)) return valor.map(sinSensibles);
+    if (valor && typeof valor === "object") {
+      const c = {};
+      Object.keys(valor).forEach((k) => { if (!CLAVE_SENSIBLE.test(k)) c[k] = sinSensibles(valor[k]); });
+      return c;
+    }
+    return valor;
+  }
+
+  /** Objeto -> JSON que cabe en 20000 caracteres (si no cabe, se guardan solo los campos simples). */
+  function serializarDatos(o) {
+    if (!o || typeof o !== "object") return undefined;
+    const limpio = sinSensibles(o);
+    let texto = JSON.stringify(limpio);
+    if (texto.length <= MAX_DATOS) return texto;
+    const simple = { _recortado: true };
+    Object.keys(limpio).forEach((k) => {
+      const v = limpio[k];
+      if (v === null || ["number", "boolean"].includes(typeof v)) simple[k] = v;
+      else if (typeof v === "string") simple[k] = v.length > 500 ? v.slice(0, 500) + "…" : v;
+    });
+    texto = JSON.stringify(simple);
+    return texto.length <= MAX_DATOS ? texto : JSON.stringify({ _recortado: true });
+  }
+
+  /** Registra un evento en Auditorias (el Backend no lo hace solo; el idUsuario lo toma del token).
+      Nunca lanza error ni bloquea la operación principal; los campos sensibles se descartan. */
+  async function auditar(tabla, accion, antes, despues) {
+    try {
+      await solicitar("POST", "api/Auditorias/PostAuditoria", {
+        cuerpo: {
+          tabla: String(tabla).slice(0, MAX_TEXTO_CORTO),
+          accion: String(accion).slice(0, MAX_TEXTO_CORTO),
+          fecha: fechaLocal(),
+          datosAnteriores: serializarDatos(antes),
+          datosNuevos: serializarDatos(despues)
+        }
+      });
+    } catch (e) {
+      /* La auditoría es complementaria: un fallo no rompe la operación. Se avisa en consola sin datos. */
+      if (window.console) console.warn("No se pudo registrar la auditoría (" + tabla + " / " + accion + "). Código: " + (e && e.status));
+    }
+  }
+
   window.Api = {
     solicitar,
     lista,
+    auditar,
+    fechaLocal,
     get: (ruta, query) => solicitar("GET", ruta, { query }),
     post: (ruta, cuerpo, op) => solicitar("POST", ruta, Object.assign({ cuerpo }, op)),
     put: (ruta, cuerpo) => solicitar("PUT", ruta, { cuerpo }),

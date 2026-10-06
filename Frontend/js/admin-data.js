@@ -44,15 +44,24 @@ const apiUsuarios = {
     return Api.lista("api/Usuarios/GetUsuarios");
   },
   crear(datos) {
-    return Api.post("api/Usuarios/PostUsuarios", datos).then(datosDe);
+    return Api.post("api/Usuarios/PostUsuarios", datos).then(datosDe).then((u) => {
+      Api.auditar("Usuarios", "INSERT", null, u || datos);   // auditar() descarta la contraseña
+      return u;
+    });
   },
-  actualizar(id, datos) {
+  actualizar(id, datos, anterior) {
     /* UsuarioActualizarDTO no lleva idUsuario ni password: el id viaja en la URL. */
     const { idUsuario, password, ...cuerpo } = datos;
-    return Api.put("api/Usuarios/PutUsuarios/" + id, cuerpo).then(datosDe);
+    return Api.put("api/Usuarios/PutUsuarios/" + id, cuerpo).then(datosDe).then((u) => {
+      Api.auditar("Usuarios", "UPDATE", anterior || { idUsuario: id }, u || { idUsuario: id, ...cuerpo });
+      return u;
+    });
   },
-  eliminar(id) {
-    return Api.del("api/Usuarios/DeleteUsuarios/" + id).then(() => true);
+  eliminar(id, anterior) {
+    return Api.del("api/Usuarios/DeleteUsuarios/" + id).then(() => {
+      Api.auditar("Usuarios", "DELETE", anterior || { idUsuario: id }, null);
+      return true;
+    });
   }
 };
 
@@ -62,12 +71,21 @@ const apiProveedores = {
     return Api.lista("api/Proveedores/GetProveedores");
   },
   crear(datos) {
-    return Api.post("api/Proveedores/PostProveedores", datos).then(datosDe);
+    return Api.post("api/Proveedores/PostProveedores", datos).then(datosDe).then((p) => {
+      Api.auditar("Proveedores", "INSERT", null, p || datos);
+      return p;
+    });
   },
-  actualizar(id, datos) {
-    return Api.put("api/Proveedores/PutProveedores", { ...datos, idProveedor: id }).then(datosDe);
+  actualizar(id, datos, anterior) {
+    return Api.put("api/Proveedores/PutProveedores", { ...datos, idProveedor: id }).then(datosDe).then((p) => {
+      Api.auditar("Proveedores", "UPDATE", anterior || { idProveedor: id }, p || { ...datos, idProveedor: id });
+      return p;
+    });
   },
-  eliminar(id) {
-    return Api.del("api/Proveedores/DeleteProveedores/" + id).then(() => true);
+  eliminar(id, anterior) {
+    return Api.del("api/Proveedores/DeleteProveedores/" + id).then(() => {
+      Api.auditar("Proveedores", "DELETE", anterior || { idProveedor: id }, null);
+      return true;
+    });
   }
 };

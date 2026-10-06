@@ -500,3 +500,11 @@ a.btn { text-decoration: none; }
   .eje-tit { font-size: 9px; }
   .eje { font-size: 9px; }
 }
+
+/* ---------- Modo dinámico (datos desde la API, sin conmutación por CSS) ---------- */
+.set--vivo { display: flex; }
+.ctx--vivo { display: flex; }
+.exportar-vivo { display: inline-flex; }
+.pago--otro .pago-punto { background-color: #9a9a9a; }
+.metodo-pago--otro { background-color: var(--gris-claro); color: var(--texto-secundario); }
+.metodo-pago--otro .metodo-pago-punto { background-color: #9a9a9a; }

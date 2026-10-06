@@ -53,11 +53,12 @@ document.addEventListener("DOMContentLoaded", () => {
 const pad = (n) => String(n).padStart(2, "0");
 
 function partesFecha(iso) {           // "2026-09-23T14:32"
+  if (!iso) return { dia: "", hora: "", solofecha: "" };
   const [f, h] = iso.split("T");
   const [a, m, d] = f.split("-");
   return { dia: `${d}/${m}/${a}`, hora: h, solofecha: f };
 }
-function formatoFecha(iso) { const p = partesFecha(iso); return `${p.dia} ${p.hora}`; }
+function formatoFecha(iso) { if (!iso) return "Sin fecha"; const p = partesFecha(iso); return `${p.dia} ${p.hora}`; }
 
 function claseAccion(accion) {
   return { INSERT: "accion--insert", UPDATE: "accion--update", DELETE: "accion--delete" }[accion] || "accion--acceso";
@@ -71,7 +72,7 @@ function cargarRegistros() {
 
   apiAuditoria.listar()
     .then(datos => {
-      registros = datos.sort((a, b) => b.fecha.localeCompare(a.fecha));
+      registros = datos.sort((a, b) => (b.fecha || "").localeCompare(a.fecha || "") || b.idAuditoria - a.idAuditoria);
       poblarFiltros();
       calcularResultados();
       renderTabla();
@@ -113,6 +114,7 @@ function calcularResultados() {
     if (f.accion && r.accion !== f.accion) return false;
     if (f.usuario && r.usuario !== f.usuario) return false;
     const dia = partesFecha(r.fecha).solofecha;            // AAAA-MM-DD (comparación inclusiva)
+    if ((f.desde || f.hasta) && !dia) return false;        // sin fecha: no entra en un rango
     if (f.desde && dia < f.desde) return false;
     if (f.hasta && dia > f.hasta) return false;
     return !q || textoBuscable(r).includes(q);
@@ -182,7 +184,7 @@ function renderTabla() {
 function filaRegistro(r) {
   return `
     <tr data-id="${r.idAuditoria}">
-      <td class="col-fecha">${formatoFecha(r.fecha)}</td>
+      <td class="col-fecha">${esc(formatoFecha(r.fecha))}</td>
       <td class="col-nombre">${esc(r.usuario)}</td>
       <td>${esc(r.modulo)}</td>
       <td><span class="accion ${claseAccion(r.accion)}">${esc(r.accion)}</span></td>
@@ -236,14 +238,17 @@ function abrirDetalle(id) {
 
   const ant = r.anteriores, nue = r.nuevos;
   let html = "";
-  if (r.accion === "UPDATE" && ant && nue) {
-    html = `<div class="comparacion">${bloqueDatos("Datos anteriores", "anterior", ant, nue)}${bloqueDatos("Datos nuevos", "nuevo", nue, ant)}</div>`;
-  } else if (r.accion === "DELETE" && ant) {
-    html = `<div class="comparacion comparacion--simple">${bloqueDatos("Datos anteriores", "anterior", ant)}</div>`;
-  } else if (r.accion === "LOGIN" || r.accion === "LOGOUT") {
+  if (r.accion === "LOGIN" || r.accion === "LOGOUT") {
     html = `<div class="comparacion comparacion--simple">${bloqueDatos(r.accion === "LOGIN" ? "Información del acceso" : "Información de la salida", "nuevo", nue || {})}</div>`;
-  } else if (nue) {
-    html = `<div class="comparacion comparacion--simple">${bloqueDatos("Datos nuevos", "nuevo", nue)}</div>`;
+  } else if (ant && nue) {
+    /* Con los dos lados se comparan; en UPDATE se resalta lo que cambió. */
+    const resaltar = r.accion === "UPDATE";
+    html = `<div class="comparacion">${bloqueDatos("Datos anteriores", "anterior", ant, resaltar && nue)}${bloqueDatos("Datos nuevos", "nuevo", nue, resaltar && ant)}</div>`;
+  } else if (ant || nue) {
+    /* Solo uno de los lados (INSERT, DELETE o un UPDATE incompleto): se muestra el que exista. */
+    html = `<div class="comparacion comparacion--simple">${ant ? bloqueDatos("Datos anteriores", "anterior", ant) : bloqueDatos("Datos nuevos", "nuevo", nue)}</div>`;
+  } else {
+    html = `<p class="estado-tabla">Este registro no tiene datos anteriores ni nuevos.</p>`;
   }
   $("det-datos").innerHTML = html;
 

@@ -1,42 +1,53 @@
 /* ==========================================================================
-   HISTORIALES.JS — Lógica funcional del módulo Historiales
+   HISTORIALES.JS — Órdenes pagadas y compras (API real, vía Negocio)
+   --------------------------------------------------------------------------
+   · Órdenes pagadas: cualquier usuario con acceso a la página.
+   · Compras: solo con permiso "inventario.gestionar" (administración).
    ========================================================================== */
 
-/* ---------- Ícono de acción (ojo — ver detalle), reutilizado en ambas tablas ---------- */
 const HIST_ICONO_OJO = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M1.5 12S5.6 5 12 5s10.5 7 10.5 7-4.1 7-10.5 7-10.5-7-10.5-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/>
 </svg>`;
 
-/* ---------- Estado de la vista ---------- */
 let histEstado = {
-  ordenes: { busqueda: "", filtroTiempo: "todos", filtradas: [] },
-  compras: { busqueda: "", filtroTiempo: "todos", filtradas: [] },
+  ordenes: { busqueda: "", filtroTiempo: "todos", filtradas: [], todas: [] },
+  compras: { busqueda: "", filtroTiempo: "todos", filtradas: [], todas: [] },
   lineasCompra: [],
-  contadorLinea: 1
+  contadorLinea: 1,
+  catalogo: [],
+  proveedores: [],
+  puedeCompras: false,
+  guardando: false
 };
 
-/* ==========================================================================
-   INICIALIZACIÓN
-   ========================================================================== */
+const $ = (id) => document.getElementById(id);
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("fecha-actual").textContent = fechaHoy();
+  $("fecha-actual").textContent = fechaHoy();
 
   configurarPestañas();
   configurarOrdenes();
   configurarCompras();
-  configurarModalOrden();
   configurarModalCompra();
 
-  renderOrdenes();
-  renderCompras();
+  Auth.listo.then(() => {
+    histEstado.puedeCompras = Auth.tiene("inventario.gestionar");
+    $("tab-compras").hidden = !histEstado.puedeCompras;
+    $("panel-compras").hidden = !histEstado.puedeCompras;
+    if (histEstado.puedeCompras) {
+      $("subtitulo-historiales").textContent = "Consulta el historial completo de órdenes finalizadas y compras registradas.";
+      cargarCompras();
+    }
+    cargarOrdenes();
+  });
 });
 
 /* ==========================================================================
    UTILIDADES GENERALES
    ========================================================================== */
-function abrirModal(id) { document.getElementById(id).classList.add("overlay--visible"); }
-function cerrarModal(id) { document.getElementById(id).classList.remove("overlay--visible"); }
+function abrirModal(id) { $(id).classList.add("overlay--visible"); }
+function cerrarModal(id) { $(id).classList.remove("overlay--visible"); }
 
 document.addEventListener("click", (e) => {
   if (e.target.classList && e.target.classList.contains("overlay") && e.target.classList.contains("overlay--visible")) {
@@ -55,23 +66,26 @@ document.querySelectorAll("[data-cerrar]").forEach(btn => {
   btn.addEventListener("click", () => cerrarModal(btn.dataset.cerrar));
 });
 
-function mostrarToast(mensaje) {
-  const toast = document.getElementById("toast");
+function mostrarToast(mensaje, esError) {
+  const toast = $("toast");
   toast.textContent = mensaje;
+  toast.classList.toggle("toast--error", !!esError);
   toast.classList.add("toast--visible");
   clearTimeout(mostrarToast._t);
-  mostrarToast._t = setTimeout(() => toast.classList.remove("toast--visible"), 2400);
+  mostrarToast._t = setTimeout(() => toast.classList.remove("toast--visible"), esError ? 4500 : 2400);
 }
 
-function etiquetaMetodoPago(metodo) {
-  if (metodo === "efectivo") return "Efectivo";
-  if (metodo === "tarjeta") return "Tarjeta";
-  if (metodo === "billetera") return "Billetera digital";
-  return metodo;
+/** Clase de color según el nombre del método de pago (los nuevos usan el estilo neutro). */
+function claseMetodoPago(nombre) {
+  const n = histNormalizar(nombre);
+  if (n.startsWith("efectivo")) return "efectivo";
+  if (n.startsWith("tarjeta")) return "tarjeta";
+  if (n.startsWith("billetera")) return "billetera";
+  return "otro";
 }
 
-function badgeMetodoPago(metodo) {
-  return `<span class="metodo-pago metodo-pago--${metodo}"><span class="metodo-pago-punto"></span>${etiquetaMetodoPago(metodo)}</span>`;
+function badgeMetodoPago(nombre) {
+  return `<span class="metodo-pago metodo-pago--${claseMetodoPago(nombre)}"><span class="metodo-pago-punto"></span>${esc(nombre || "—")}</span>`;
 }
 
 function descargarCSV(nombreArchivo, encabezados, filas) {
@@ -87,6 +101,10 @@ function descargarCSV(nombreArchivo, encabezados, filas) {
   enlace.click();
   document.body.removeChild(enlace);
   URL.revokeObjectURL(url);
+}
+
+function filaMensaje(colspan, texto) {
+  return `<tr><td colspan="${colspan}" class="col-centro">${esc(texto)}</td></tr>`;
 }
 
 function filaEstadoVacio(colspan, contextoLimpiar) {
@@ -107,10 +125,10 @@ function filaEstadoVacio(colspan, contextoLimpiar) {
    PESTAÑAS
    ========================================================================== */
 function configurarPestañas() {
-  const tabOrdenes = document.getElementById("tab-ordenes");
-  const tabCompras = document.getElementById("tab-compras");
-  const panelOrdenes = document.getElementById("panel-ordenes");
-  const panelCompras = document.getElementById("panel-compras");
+  const tabOrdenes = $("tab-ordenes");
+  const tabCompras = $("tab-compras");
+  const panelOrdenes = $("panel-ordenes");
+  const panelCompras = $("panel-compras");
 
   function activar(tab) {
     const esOrdenes = tab === "ordenes";
@@ -123,14 +141,14 @@ function configurarPestañas() {
   }
 
   tabOrdenes.addEventListener("click", () => activar("ordenes"));
-  tabCompras.addEventListener("click", () => activar("compras"));
+  tabCompras.addEventListener("click", () => { if (histEstado.puedeCompras) activar("compras"); });
 }
 
 /* ==========================================================================
    ÓRDENES PAGADAS
    ========================================================================== */
 function configurarOrdenes() {
-  document.getElementById("buscar-ordenes").addEventListener("input", (e) => {
+  $("buscar-ordenes").addEventListener("input", (e) => {
     histEstado.ordenes.busqueda = e.target.value;
     renderOrdenes();
   });
@@ -143,10 +161,10 @@ function configurarOrdenes() {
     });
   });
 
-  document.getElementById("btn-exportar-ordenes").addEventListener("click", () => {
+  $("btn-exportar-ordenes").addEventListener("click", () => {
     const filas = histEstado.ordenes.filtradas.map(o => [
       o.id, o.mesa, o.mesero, histFormatoFechaHora(new Date(o.fechaHora)),
-      o.total, etiquetaMetodoPago(o.metodoPago), o.estado
+      o.total, o.metodoPago, o.estado
     ]);
     if (!filas.length) { mostrarToast("No hay registros para exportar."); return; }
     descargarCSV("ordenes-pagadas.csv",
@@ -155,29 +173,35 @@ function configurarOrdenes() {
     mostrarToast("Exportación de órdenes pagadas generada.");
   });
 
-  document.getElementById("tabla-ordenes").addEventListener("click", (e) => {
+  $("tabla-ordenes").addEventListener("click", (e) => {
     const btnVer = e.target.closest("[data-ver-orden]");
     if (btnVer) { abrirDetalleOrden(btnVer.dataset.verOrden); return; }
-    const btnLimpiar = e.target.closest("[data-limpiar='ordenes']");
-    if (btnLimpiar) { limpiarFiltrosOrdenes(); }
+    if (e.target.closest("[data-limpiar='ordenes']")) limpiarFiltrosOrdenes();
   });
+}
+
+function cargarOrdenes() {
+  $("tabla-ordenes").innerHTML = filaMensaje(7, "Cargando órdenes...");
+  return Negocio.ordenesPagadas()
+    .then((lista) => { histEstado.ordenes.todas = lista; renderOrdenes(); })
+    .catch((err) => {
+      $("tabla-ordenes").innerHTML = filaMensaje(7, Api.mensajeError(err, "No fue posible cargar las órdenes. Intente de nuevo."));
+    });
 }
 
 function limpiarFiltrosOrdenes() {
   histEstado.ordenes.busqueda = "";
   histEstado.ordenes.filtroTiempo = "todos";
-  document.getElementById("buscar-ordenes").value = "";
+  $("buscar-ordenes").value = "";
   document.querySelectorAll("[data-filtro-ordenes]").forEach(b => b.classList.toggle("filtro-btn--activo", b.dataset.filtroOrdenes === "todos"));
   renderOrdenes();
   mostrarToast("Filtros restablecidos");
 }
 
 function textoBusquedaOrden(orden, fecha) {
-  const itemsTexto = orden.items.map(i => i.nombre).join(" ");
   return histNormalizar([
     orden.id, orden.mesa, orden.mesero, histFormatoFechaHora(fecha), histFormatoFecha(fecha),
-    orden.estado, etiquetaMetodoPago(orden.metodoPago), orden.metodoPago,
-    orden.total, orden.subtotal, formatoCOP(orden.total), itemsTexto
+    orden.estado, orden.metodoPago, orden.total, formatoCOP(orden.total)
   ].join(" "));
 }
 
@@ -185,89 +209,80 @@ function renderOrdenes() {
   const ahora = new Date();
   const termino = histNormalizar(histEstado.ordenes.busqueda);
   const filtroTiempo = histEstado.ordenes.filtroTiempo;
-
-  const todas = histObtenerOrdenes();
+  const todas = histEstado.ordenes.todas;
 
   const filtradas = todas.filter(orden => {
     const fecha = new Date(orden.fechaHora);
-
     let coincideTiempo = true;
     if (filtroTiempo === "hoy") coincideTiempo = histEsHoy(fecha, ahora);
     else if (filtroTiempo === "semana") coincideTiempo = histEsEstaSemana(fecha, ahora);
     else if (filtroTiempo === "mes") coincideTiempo = histEsEsteMes(fecha, ahora);
-
     if (!coincideTiempo) return false;
-
-    if (!termino) return true;
-    return textoBusquedaOrden(orden, fecha).includes(termino);
+    return !termino || textoBusquedaOrden(orden, fecha).includes(termino);
   });
 
   histEstado.ordenes.filtradas = filtradas;
-
-  const cuerpo = document.getElementById("tabla-ordenes");
+  const cuerpo = $("tabla-ordenes");
 
   if (!filtradas.length) {
-    cuerpo.innerHTML = filaEstadoVacio(7, "ordenes");
+    cuerpo.innerHTML = todas.length ? filaEstadoVacio(7, "ordenes") : filaMensaje(7, "Aún no hay órdenes pagadas.");
   } else {
-    cuerpo.innerHTML = filtradas.map(orden => {
-      const fecha = new Date(orden.fechaHora);
-      return `
+    cuerpo.innerHTML = filtradas.map(orden => `
         <tr>
-          <td>${orden.id}</td>
-          <td class="col-centro">${orden.mesa}</td>
-          <td>${orden.mesero}</td>
-          <td>${histFormatoFechaHora(fecha)}</td>
+          <td>${esc(orden.id)}</td>
+          <td class="col-centro">${esc(orden.mesa)}</td>
+          <td>${esc(orden.mesero)}</td>
+          <td>${histFormatoFechaHora(new Date(orden.fechaHora))}</td>
           <td class="col-derecha">${formatoCOP(orden.total)}</td>
           <td class="col-centro">${badgeMetodoPago(orden.metodoPago)}</td>
           <td class="col-centro">
-            <button class="accion-ver" data-ver-orden="${orden.id}" title="Ver detalle de la orden" aria-label="Ver detalle de la orden ${orden.id}">${HIST_ICONO_OJO}</button>
+            <button class="accion-ver" data-ver-orden="${esc(orden.id)}" title="Ver detalle de la orden" aria-label="Ver detalle de la orden ${esc(orden.id)}">${HIST_ICONO_OJO}</button>
           </td>
-        </tr>`;
-    }).join("");
+        </tr>`).join("");
   }
 
-  document.getElementById("tabla-ordenes-pie").textContent = `Mostrando ${filtradas.length} de ${todas.length} órdenes`;
+  $("tabla-ordenes-pie").textContent = `Mostrando ${filtradas.length} de ${todas.length} órdenes`;
 }
 
 /* ---------- Modal: Detalle de la Orden ---------- */
-function configurarModalOrden() {
-  // el cierre ya está manejado por [data-cerrar]
-}
+async function abrirDetalleOrden(id) {
+  const orden = histEstado.ordenes.todas.find(o => o.id === id);
+  if (!orden) { mostrarToast("No fue posible cargar la orden seleccionada.", true); return; }
 
-function abrirDetalleOrden(id) {
-  const orden = histObtenerOrdenes().find(o => o.id === id);
-  if (!orden) { mostrarToast("No fue posible cargar la orden seleccionada."); return; }
+  $("detalle-orden-id").textContent = orden.id;
+  $("detalle-orden-fecha").textContent = histFormatoFechaHora(new Date(orden.fechaHora));
+  $("detalle-orden-mesa").textContent = orden.mesa;
+  $("detalle-orden-mesero").textContent = orden.mesero;
+  $("detalle-orden-estado").innerHTML = `<span class="pill pill--verde">${esc(orden.estado)}</span>`;
+  $("detalle-orden-metodo").innerHTML = badgeMetodoPago(orden.metodoPago);
+  $("detalle-orden-items").innerHTML = `<tr><td colspan="4" class="col-centro">Cargando detalle...</td></tr>`;
+  $("detalle-orden-subtotal").textContent = "—";
+  $("detalle-orden-impuesto").textContent = "—";
+  $("detalle-orden-total").textContent = formatoCOP(orden.total);
+  abrirModal("overlay-detalle-orden");
 
-  const fecha = new Date(orden.fechaHora);
-
-  document.getElementById("detalle-orden-id").textContent = orden.id;
-  document.getElementById("detalle-orden-fecha").textContent = histFormatoFechaHora(fecha);
-  document.getElementById("detalle-orden-mesa").textContent = orden.mesa;
-  document.getElementById("detalle-orden-mesero").textContent = orden.mesero;
-  document.getElementById("detalle-orden-estado").innerHTML = `<span class="pill pill--verde">${orden.estado}</span>`;
-  document.getElementById("detalle-orden-metodo").innerHTML = badgeMetodoPago(orden.metodoPago);
-
-  document.getElementById("detalle-orden-items").innerHTML = orden.items.map(item => `
+  try {
+    const items = await Negocio.itemsOrden(orden, histEstado.catalogo.length ? histEstado.catalogo : null);
+    $("detalle-orden-items").innerHTML = items.length ? items.map(item => `
     <tr>
-      <td>${item.nombre}</td>
+      <td>${esc(item.nombre)}</td>
       <td class="col-centro">${item.cantidad}</td>
       <td class="col-derecha">${formatoCOP(item.precioUnitario)}</td>
       <td class="col-derecha">${formatoCOP(item.cantidad * item.precioUnitario)}</td>
-    </tr>`).join("");
-
-  document.getElementById("detalle-orden-subtotal").textContent = formatoCOP(orden.subtotal);
-  document.getElementById("detalle-orden-impuesto").textContent = formatoCOP(orden.impuesto);
-  document.getElementById("detalle-orden-propina").textContent = formatoCOP(orden.propina);
-  document.getElementById("detalle-orden-total").textContent = formatoCOP(orden.total);
-
-  abrirModal("overlay-detalle-orden");
+    </tr>`).join("") : `<tr><td colspan="4" class="col-centro">Sin productos registrados.</td></tr>`;
+    const t = Negocio.totales(items);
+    $("detalle-orden-subtotal").textContent = formatoCOP(t.subtotal);
+    $("detalle-orden-impuesto").textContent = formatoCOP(t.iva);
+  } catch (err) {
+    $("detalle-orden-items").innerHTML = `<tr><td colspan="4" class="col-centro">${esc(Api.mensajeError(err, "No fue posible cargar el detalle."))}</td></tr>`;
+  }
 }
 
 /* ==========================================================================
-   COMPRAS REALIZADAS
+   COMPRAS REALIZADAS (solo administración)
    ========================================================================== */
 function configurarCompras() {
-  document.getElementById("buscar-compras").addEventListener("input", (e) => {
+  $("buscar-compras").addEventListener("input", (e) => {
     histEstado.compras.busqueda = e.target.value;
     renderCompras();
   });
@@ -280,32 +295,39 @@ function configurarCompras() {
     });
   });
 
-  document.getElementById("btn-exportar-compras").addEventListener("click", () => {
+  $("btn-exportar-compras").addEventListener("click", () => {
     const filas = histEstado.compras.filtradas.map(c => [
-      c.id, histFormatoFecha(new Date(c.fecha + "T00:00:00")), c.proveedor,
-      c.items.reduce((acc, it) => acc + it.cantidad, 0), c.costoTotal, c.registradoPor
+      c.id, histFormatoFecha(new Date(c.fecha)), c.proveedor,
+      c.items.reduce((acc, it) => acc + it.cantidad, 0), c.costoTotal
     ]);
     if (!filas.length) { mostrarToast("No hay registros para exportar."); return; }
     descargarCSV("compras-realizadas.csv",
-      ["ID Compra", "Fecha", "Proveedor", "Total de Artículos", "Costo Total (COP)", "Registrado por"],
-      filas);
+      ["ID Compra", "Fecha", "Proveedor", "Total de Artículos", "Costo Total (COP)"], filas);
     mostrarToast("Exportación de compras generada.");
   });
 
-  document.getElementById("tabla-compras").addEventListener("click", (e) => {
+  $("tabla-compras").addEventListener("click", (e) => {
     const btnVer = e.target.closest("[data-ver-compra]");
     if (btnVer) { abrirDetalleCompra(btnVer.dataset.verCompra); return; }
-    const btnLimpiar = e.target.closest("[data-limpiar='compras']");
-    if (btnLimpiar) { limpiarFiltrosCompras(); }
+    if (e.target.closest("[data-limpiar='compras']")) limpiarFiltrosCompras();
   });
 
-  document.getElementById("btn-nueva-compra").addEventListener("click", abrirModalNuevaCompra);
+  $("btn-nueva-compra").addEventListener("click", abrirModalNuevaCompra);
+}
+
+function cargarCompras() {
+  $("tabla-compras").innerHTML = filaMensaje(6, "Cargando compras...");
+  return Negocio.listarCompras()
+    .then((lista) => { histEstado.compras.todas = lista; renderCompras(); })
+    .catch((err) => {
+      $("tabla-compras").innerHTML = filaMensaje(6, Api.mensajeError(err, "No fue posible cargar las compras. Intente de nuevo."));
+    });
 }
 
 function limpiarFiltrosCompras() {
   histEstado.compras.busqueda = "";
   histEstado.compras.filtroTiempo = "todos";
-  document.getElementById("buscar-compras").value = "";
+  $("buscar-compras").value = "";
   document.querySelectorAll("[data-filtro-compras]").forEach(b => b.classList.toggle("filtro-btn--activo", b.dataset.filtroCompras === "todos"));
   renderCompras();
   mostrarToast("Filtros restablecidos");
@@ -315,9 +337,8 @@ function textoBusquedaCompra(compra, fecha) {
   const itemsTexto = compra.items.map(i => `${i.nombre} ${i.categoria}`).join(" ");
   const totalArticulos = compra.items.reduce((acc, it) => acc + it.cantidad, 0);
   return histNormalizar([
-    compra.id, compra.fecha, histFormatoFecha(fecha), compra.proveedor, compra.factura,
-    compra.registradoPor, compra.costoTotal, formatoCOP(compra.costoTotal), totalArticulos,
-    compra.observaciones || "", itemsTexto
+    compra.id, histFormatoFecha(fecha), compra.proveedor,
+    compra.costoTotal, formatoCOP(compra.costoTotal), totalArticulos, itemsTexto
   ].join(" "));
 }
 
@@ -325,80 +346,67 @@ function renderCompras() {
   const ahora = new Date();
   const termino = histNormalizar(histEstado.compras.busqueda);
   const filtroTiempo = histEstado.compras.filtroTiempo;
-
-  const todas = histObtenerCompras();
+  const todas = histEstado.compras.todas;
 
   const filtradas = todas.filter(compra => {
-    const fecha = new Date(compra.fecha + "T00:00:00");
-
+    const fecha = new Date(compra.fecha);
     let coincideTiempo = true;
     if (filtroTiempo === "hoy") coincideTiempo = histEsHoy(fecha, ahora);
     else if (filtroTiempo === "semana") coincideTiempo = histEsEstaSemana(fecha, ahora);
     else if (filtroTiempo === "mes") coincideTiempo = histEsEsteMes(fecha, ahora);
-
     if (!coincideTiempo) return false;
-
-    if (!termino) return true;
-    return textoBusquedaCompra(compra, fecha).includes(termino);
+    return !termino || textoBusquedaCompra(compra, fecha).includes(termino);
   });
 
   histEstado.compras.filtradas = filtradas;
-
-  const cuerpo = document.getElementById("tabla-compras");
+  const cuerpo = $("tabla-compras");
 
   if (!filtradas.length) {
-    cuerpo.innerHTML = filaEstadoVacio(7, "compras");
+    cuerpo.innerHTML = todas.length ? filaEstadoVacio(6, "compras") : filaMensaje(6, "Aún no hay compras registradas.");
   } else {
     cuerpo.innerHTML = filtradas.map(compra => {
-      const fecha = new Date(compra.fecha + "T00:00:00");
       const totalArticulos = compra.items.reduce((acc, it) => acc + it.cantidad, 0);
       return `
         <tr>
-          <td>${compra.id}</td>
-          <td>${histFormatoFecha(fecha)}</td>
-          <td>${compra.proveedor}</td>
+          <td>${esc(compra.id)}</td>
+          <td>${histFormatoFecha(new Date(compra.fecha))}</td>
+          <td>${esc(compra.proveedor)}</td>
           <td class="col-centro">${totalArticulos}</td>
           <td class="col-derecha">${formatoCOP(compra.costoTotal)}</td>
-          <td>${compra.registradoPor}</td>
           <td class="col-centro">
-            <button class="accion-ver" data-ver-compra="${compra.id}" title="Ver detalle de la compra" aria-label="Ver detalle de la compra ${compra.id}">${HIST_ICONO_OJO}</button>
+            <button class="accion-ver" data-ver-compra="${esc(compra.id)}" title="Ver detalle de la compra" aria-label="Ver detalle de la compra ${esc(compra.id)}">${HIST_ICONO_OJO}</button>
           </td>
         </tr>`;
     }).join("");
   }
 
-  document.getElementById("tabla-compras-pie").textContent = `Mostrando ${filtradas.length} de ${todas.length} compras`;
+  $("tabla-compras-pie").textContent = `Mostrando ${filtradas.length} de ${todas.length} compras`;
 }
 
-/* ---------- Modal: Detalle de la Compra ---------- */
 function abrirDetalleCompra(id) {
-  const compra = histObtenerCompras().find(c => c.id === id);
-  if (!compra) { mostrarToast("No fue posible cargar la compra seleccionada."); return; }
+  const compra = histEstado.compras.todas.find(c => c.id === id);
+  if (!compra) { mostrarToast("No fue posible cargar la compra seleccionada.", true); return; }
 
-  const fecha = new Date(compra.fecha + "T00:00:00");
   const totalUnidades = compra.items.reduce((acc, it) => acc + it.cantidad, 0);
 
-  document.getElementById("detalle-compra-id").textContent = compra.id;
-  document.getElementById("detalle-compra-fecha").textContent = histFormatoFecha(fecha);
-  document.getElementById("detalle-compra-proveedor").textContent = compra.proveedor;
-  document.getElementById("detalle-compra-usuario").textContent = compra.registradoPor;
-  document.getElementById("detalle-compra-factura").textContent = compra.factura || "—";
-  document.getElementById("detalle-compra-total-productos").textContent = compra.items.length;
-  document.getElementById("detalle-compra-costo-total").textContent = formatoCOP(compra.costoTotal);
+  $("detalle-compra-id").textContent = compra.id;
+  $("detalle-compra-fecha").textContent = histFormatoFecha(new Date(compra.fecha));
+  $("detalle-compra-proveedor").textContent = compra.proveedor;
+  $("detalle-compra-total-productos").textContent = compra.items.length;
+  $("detalle-compra-costo-total").textContent = formatoCOP(compra.costoTotal);
 
-  document.getElementById("detalle-compra-items").innerHTML = compra.items.map(item => `
+  $("detalle-compra-items").innerHTML = compra.items.length ? compra.items.map(item => `
     <tr>
-      <td>${item.nombre}</td>
-      <td>${item.categoria}</td>
+      <td>${esc(item.nombre)}</td>
+      <td>${esc(item.categoria)}</td>
       <td class="col-centro">${item.cantidad}</td>
       <td class="col-derecha">${formatoCOP(item.costoUnitario)}</td>
       <td class="col-derecha">${formatoCOP(item.cantidad * item.costoUnitario)}</td>
-    </tr>`).join("");
+    </tr>`).join("") : `<tr><td colspan="5" class="col-centro">Sin productos registrados.</td></tr>`;
 
-  document.getElementById("detalle-compra-productos-diferentes").textContent = compra.items.length;
-  document.getElementById("detalle-compra-total-unidades").textContent = totalUnidades;
-  document.getElementById("detalle-compra-total").textContent = formatoCOP(compra.costoTotal);
-  document.getElementById("detalle-compra-observaciones").textContent = compra.observaciones && compra.observaciones.trim() ? compra.observaciones : "Sin observaciones registradas.";
+  $("detalle-compra-productos-diferentes").textContent = compra.items.length;
+  $("detalle-compra-total-unidades").textContent = totalUnidades;
+  $("detalle-compra-total").textContent = formatoCOP(compra.costoTotal);
 
   abrirModal("overlay-detalle-compra");
 }
@@ -406,24 +414,13 @@ function abrirDetalleCompra(id) {
 /* ==========================================================================
    MODAL: REGISTRAR NUEVA COMPRA
    ========================================================================== */
-function opcionesCategoriasCompra() {
-  return [...new Set(HIST_CATALOGO_COMPRAS.map(p => p.categoria))];
-}
-
-function poblarSelectProveedores() {
-  const select = document.getElementById("input-proveedor-compra");
-  select.innerHTML = `<option value="">Seleccionar proveedor</option>` +
-    HIST_PROVEEDORES.map(p => `<option value="${p}">${p}</option>`).join("");
-}
-
 function opcionesProductoSelect(seleccionado) {
-  const categorias = opcionesCategoriasCompra();
+  const categorias = [...new Set(histEstado.catalogo.map(p => p.categoria))].sort((a, b) => a.localeCompare(b));
   let html = `<option value="">Seleccionar producto</option>`;
   categorias.forEach(cat => {
-    html += `<optgroup label="${cat}">`;
-    HIST_CATALOGO_COMPRAS.filter(p => p.categoria === cat).forEach(p => {
-      const sel = p.nombre === seleccionado ? "selected" : "";
-      html += `<option value="${p.nombre}" ${sel}>${p.nombre}</option>`;
+    html += `<optgroup label="${esc(cat)}">`;
+    histEstado.catalogo.filter(p => p.categoria === cat).forEach(p => {
+      html += `<option value="${p.idProducto}" ${p.idProducto === seleccionado ? "selected" : ""}>${esc(p.nombre)}</option>`;
     });
     html += `</optgroup>`;
   });
@@ -431,15 +428,8 @@ function opcionesProductoSelect(seleccionado) {
 }
 
 function configurarModalCompra() {
-  poblarSelectProveedores();
-
-  document.getElementById("btn-nueva-compra")?.addEventListener("click", () => {});
-
-  document.getElementById("buscar-producto-compra").addEventListener("input", (e) => {
-    renderSugerenciasProducto(e.target.value);
-  });
-
-  document.getElementById("buscar-producto-compra").addEventListener("focus", (e) => {
+  $("buscar-producto-compra").addEventListener("input", (e) => renderSugerenciasProducto(e.target.value));
+  $("buscar-producto-compra").addEventListener("focus", (e) => {
     if (e.target.value.trim()) renderSugerenciasProducto(e.target.value);
   });
 
@@ -447,77 +437,99 @@ function configurarModalCompra() {
     if (!e.target.closest(".buscador-producto")) ocultarSugerencias();
   });
 
-  document.getElementById("btn-nuevo-producto-compra").addEventListener("click", () => agregarLineaCompra());
-  document.getElementById("btn-agregar-otro-producto").addEventListener("click", () => agregarLineaCompra());
+  $("btn-agregar-otro-producto").addEventListener("click", () => agregarLineaCompra());
 
-  document.getElementById("tabla-productos-compra").addEventListener("input", manejarCambioLinea);
-  document.getElementById("tabla-productos-compra").addEventListener("change", manejarCambioLinea);
-  document.getElementById("tabla-productos-compra").addEventListener("click", (e) => {
+  $("tabla-productos-compra").addEventListener("input", manejarCambioLinea);
+  $("tabla-productos-compra").addEventListener("change", manejarCambioLinea);
+  $("tabla-productos-compra").addEventListener("click", (e) => {
     const btnQuitar = e.target.closest("[data-quitar-linea]");
     if (btnQuitar) quitarLineaCompra(btnQuitar.dataset.quitarLinea);
   });
 
-  document.getElementById("btn-guardar-compra").addEventListener("click", guardarCompra);
+  $("btn-guardar-compra").addEventListener("click", guardarCompra);
 }
 
-function abrirModalNuevaCompra() {
+async function abrirModalNuevaCompra() {
+  if (!histEstado.puedeCompras) return;
   histEstado.lineasCompra = [];
   histEstado.contadorLinea = 1;
 
-  document.getElementById("input-proveedor-compra").value = "";
-  document.getElementById("input-fecha-compra").value = histFechaISO(new Date());
-  document.getElementById("input-factura-compra").value = "";
-  document.getElementById("input-observaciones-compra").value = "";
-  document.getElementById("buscar-producto-compra").value = "";
+  $("input-proveedor-compra").value = "";
+  $("input-fecha-compra").value = histFechaISO(new Date());
+  $("input-fecha-compra").max = histFechaISO(new Date());
+  $("buscar-producto-compra").value = "";
   ocultarSugerencias();
-
+  errorCompra("");
   document.querySelectorAll("#overlay-nueva-compra .campo-error").forEach(el => el.classList.remove("campo-error"));
-  document.querySelectorAll("#overlay-nueva-compra .campo-mensaje-error").forEach(el => el.classList.remove("campo-mensaje-error--visible"));
+
+  const btn = $("btn-nueva-compra");
+  btn.disabled = true;
+  try {
+    const [prods, provs] = await Promise.all([Negocio.productos(), Negocio.proveedores()]);
+    histEstado.catalogo = prods.filter(p => p.activo);
+    histEstado.proveedores = provs;
+  } catch (err) {
+    mostrarToast(Api.mensajeError(err, "No fue posible cargar productos y proveedores."), true);
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+
+  $("input-proveedor-compra").innerHTML = `<option value="">Seleccionar proveedor</option>` +
+    histEstado.proveedores.map(p => `<option value="${p.idProveedor}">${esc(p.nombreProveedor)}</option>`).join("");
 
   renderTablaCompra();
   abrirModal("overlay-nueva-compra");
 }
 
-function renderSugerenciasProducto(query) {
-  const contenedor = document.getElementById("sugerencias-productos");
-  const termino = histNormalizar(query);
+function errorCompra(texto) {
+  const el = $("error-compra");
+  el.textContent = texto;
+  el.hidden = !texto;
+}
 
+function renderSugerenciasProducto(query) {
+  const contenedor = $("sugerencias-productos");
+  const termino = histNormalizar(query);
   if (!termino) { ocultarSugerencias(); return; }
 
-  const coincidencias = HIST_CATALOGO_COMPRAS.filter(p => histNormalizar(p.nombre).includes(termino)).slice(0, 8);
+  const coincidencias = histEstado.catalogo.filter(p => histNormalizar(p.nombre).includes(termino)).slice(0, 8);
 
   if (!coincidencias.length) {
     contenedor.innerHTML = `<div class="sugerencias-vacio">No se encontraron productos.</div>`;
   } else {
     contenedor.innerHTML = coincidencias.map(p => `
-      <div class="sugerencia-item" data-sugerencia="${p.nombre}">
-        <span>${p.nombre}</span>
-        <span class="sugerencia-item-categoria">${p.categoria}</span>
+      <div class="sugerencia-item" data-sugerencia="${p.idProducto}">
+        <span>${esc(p.nombre)}</span>
+        <span class="sugerencia-item-categoria">${esc(p.categoria)}</span>
       </div>`).join("");
 
     contenedor.querySelectorAll("[data-sugerencia]").forEach(item => {
       item.addEventListener("click", () => {
-        const producto = HIST_CATALOGO_COMPRAS.find(p => p.nombre === item.dataset.sugerencia);
+        const producto = histEstado.catalogo.find(p => p.idProducto === Number(item.dataset.sugerencia));
         agregarLineaCompra(producto);
-        document.getElementById("buscar-producto-compra").value = "";
+        $("buscar-producto-compra").value = "";
         ocultarSugerencias();
       });
     });
   }
-
   contenedor.classList.add("sugerencias-productos--visible");
 }
 
 function ocultarSugerencias() {
-  const contenedor = document.getElementById("sugerencias-productos");
+  const contenedor = $("sugerencias-productos");
   if (contenedor) contenedor.classList.remove("sugerencias-productos--visible");
 }
 
 function agregarLineaCompra(producto) {
-  const id = `linea-${histEstado.contadorLinea++}`;
+  /* Si el producto ya está en la lista, suma una unidad en lugar de duplicarlo */
+  if (producto) {
+    const existente = histEstado.lineasCompra.find(l => l.idProducto === producto.idProducto);
+    if (existente) { existente.cantidad += 1; renderTablaCompra(); return; }
+  }
   histEstado.lineasCompra.push({
-    id,
-    nombre: producto ? producto.nombre : "",
+    id: `linea-${histEstado.contadorLinea++}`,
+    idProducto: producto ? producto.idProducto : 0,
     categoria: producto ? producto.categoria : "",
     cantidad: 1,
     costoUnitario: producto ? producto.costo : 0
@@ -534,49 +546,39 @@ function manejarCambioLinea(e) {
   const fila = e.target.closest("tr[data-linea-id]");
   if (!fila) return;
   const linea = histEstado.lineasCompra.find(l => l.id === fila.dataset.lineaId);
-  if (!linea) return;
-
   const campo = e.target.dataset.campo;
-  if (!campo) return;
+  if (!linea || !campo) return;
 
-  if (campo === "nombre") {
-    linea.nombre = e.target.value;
-    const producto = HIST_CATALOGO_COMPRAS.find(p => p.nombre === linea.nombre);
-    if (producto) {
-      linea.categoria = producto.categoria;
-      linea.costoUnitario = producto.costo;
-    } else {
-      linea.categoria = "";
-    }
+  if (campo === "producto") {
+    linea.idProducto = Number(e.target.value) || 0;
+    const producto = histEstado.catalogo.find(p => p.idProducto === linea.idProducto);
+    linea.categoria = producto ? producto.categoria : "";
+    linea.costoUnitario = producto ? producto.costo : 0;
     renderTablaCompra();
     return;
   }
-
   if (campo === "cantidad") {
     const valor = parseInt(e.target.value, 10);
     linea.cantidad = isNaN(valor) ? 0 : valor;
   }
-
   if (campo === "costoUnitario") {
     const valor = parseFloat(e.target.value);
     linea.costoUnitario = isNaN(valor) ? 0 : valor;
   }
-
   actualizarSubtotalFila(linea);
   actualizarResumenCompra();
 }
 
 function actualizarSubtotalFila(linea) {
   const fila = document.querySelector(`tr[data-linea-id="${linea.id}"]`);
-  if (!fila) return;
-  const celda = fila.querySelector(".col-subtotal");
+  const celda = fila && fila.querySelector(".col-subtotal");
   if (celda) celda.textContent = formatoCOP(Math.max(0, linea.cantidad) * Math.max(0, linea.costoUnitario));
 }
 
 function renderTablaCompra() {
-  const cuerpo = document.getElementById("tabla-productos-compra");
+  const cuerpo = $("tabla-productos-compra");
   const scrollTabla = cuerpo.closest(".tabla-scroll");
-  const estadoVacio = document.getElementById("estado-vacio-compra");
+  const estadoVacio = $("estado-vacio-compra");
 
   if (!histEstado.lineasCompra.length) {
     cuerpo.innerHTML = "";
@@ -585,14 +587,13 @@ function renderTablaCompra() {
   } else {
     scrollTabla.style.display = "";
     estadoVacio.style.display = "none";
-
     cuerpo.innerHTML = histEstado.lineasCompra.map(linea => `
       <tr data-linea-id="${linea.id}">
-        <td><select data-campo="nombre">${opcionesProductoSelect(linea.nombre)}</select></td>
-        <td><input type="text" data-campo="categoria" value="${linea.categoria}" readonly placeholder="—"></td>
+        <td><select data-campo="producto">${opcionesProductoSelect(linea.idProducto)}</select></td>
+        <td><input type="text" value="${esc(linea.categoria)}" readonly placeholder="—"></td>
         <td class="col-cantidad"><input type="number" min="1" step="1" data-campo="cantidad" value="${linea.cantidad}"></td>
         <td class="col-costo">
-          <div class="campo-prefijo"><span>$</span><input type="number" min="0" step="1" data-campo="costoUnitario" value="${linea.costoUnitario}"></div>
+          <div class="campo-prefijo"><span>$</span><input type="number" min="0" step="any" data-campo="costoUnitario" value="${linea.costoUnitario}"></div>
         </td>
         <td class="col-subtotal">${formatoCOP(Math.max(0, linea.cantidad) * Math.max(0, linea.costoUnitario))}</td>
         <td class="col-acciones">
@@ -600,94 +601,61 @@ function renderTablaCompra() {
         </td>
       </tr>`).join("");
   }
-
   actualizarResumenCompra();
 }
 
 function actualizarResumenCompra() {
-  const lineasValidas = histEstado.lineasCompra.filter(l => l.nombre);
-  const totalUnidades = lineasValidas.reduce((acc, l) => acc + Math.max(0, l.cantidad), 0);
-  const costoTotal = lineasValidas.reduce((acc, l) => acc + Math.max(0, l.cantidad) * Math.max(0, l.costoUnitario), 0);
-
-  document.getElementById("resumen-productos-diferentes").textContent = lineasValidas.length;
-  document.getElementById("resumen-total-unidades").textContent = totalUnidades;
-  document.getElementById("resumen-costo-total").textContent = formatoCOP(costoTotal);
+  const validas = histEstado.lineasCompra.filter(l => l.idProducto);
+  $("resumen-productos-diferentes").textContent = validas.length;
+  $("resumen-total-unidades").textContent = validas.reduce((a, l) => a + Math.max(0, l.cantidad), 0);
+  $("resumen-costo-total").textContent = formatoCOP(validas.reduce((a, l) => a + Math.max(0, l.cantidad) * Math.max(0, l.costoUnitario), 0));
 }
 
-function marcarErrorElemento(elemento, mostrar) {
-  if (!elemento) return;
-  elemento.classList.toggle("campo-error", mostrar);
-}
-
-function guardarCompra() {
+async function guardarCompra() {
+  if (histEstado.guardando || !histEstado.puedeCompras) return;
   document.querySelectorAll("#overlay-nueva-compra .campo-error").forEach(el => el.classList.remove("campo-error"));
+  errorCompra("");
 
-  const proveedor = document.getElementById("input-proveedor-compra").value;
-  const fecha = document.getElementById("input-fecha-compra").value;
-  const factura = document.getElementById("input-factura-compra").value.trim();
-  const observaciones = document.getElementById("input-observaciones-compra").value.trim();
+  const idProveedor = Number($("input-proveedor-compra").value);
+  const fecha = $("input-fecha-compra").value;
 
-  if (!proveedor) {
-    marcarErrorElemento(document.getElementById("input-proveedor-compra"), true);
-    mostrarToast("Seleccione un proveedor.");
-    return;
-  }
+  if (!idProveedor) { $("input-proveedor-compra").classList.add("campo-error"); errorCompra("Seleccione un proveedor."); return; }
+  if (!fecha) { $("input-fecha-compra").classList.add("campo-error"); errorCompra("Ingrese una fecha de compra válida."); return; }
 
-  if (!fecha) {
-    marcarErrorElemento(document.getElementById("input-fecha-compra"), true);
-    mostrarToast("Ingrese una fecha de compra válida.");
-    return;
-  }
+  const lineas = histEstado.lineasCompra.filter(l => l.idProducto);
+  if (!lineas.length) { errorCompra("Agregue al menos un producto a la compra."); return; }
 
-  const lineasValidas = histEstado.lineasCompra.filter(l => l.nombre);
-
-  if (!lineasValidas.length) {
-    mostrarToast("Agregue al menos un producto a la compra.");
-    return;
-  }
-
-  let cantidadesValidas = true;
-  lineasValidas.forEach(l => {
+  let validas = true;
+  lineas.forEach(l => {
     const fila = document.querySelector(`tr[data-linea-id="${l.id}"]`);
-    const inputCantidad = fila ? fila.querySelector('[data-campo="cantidad"]') : null;
-    const inputCosto = fila ? fila.querySelector('[data-campo="costoUnitario"]') : null;
-    const cantidadInvalida = !Number.isInteger(l.cantidad) || l.cantidad <= 0;
-    const costoInvalido = isNaN(l.costoUnitario) || l.costoUnitario < 0;
-    marcarErrorElemento(inputCantidad, cantidadInvalida);
-    marcarErrorElemento(inputCosto, costoInvalido);
-    if (cantidadInvalida || costoInvalido) cantidadesValidas = false;
+    const malaCant = !Number.isInteger(l.cantidad) || l.cantidad <= 0;
+    const malCosto = !Number.isFinite(l.costoUnitario) || l.costoUnitario < 0 || l.costoUnitario > 99999999.99;
+    if (fila) {
+      fila.querySelector('[data-campo="cantidad"]').classList.toggle("campo-error", malaCant);
+      fila.querySelector('[data-campo="costoUnitario"]').classList.toggle("campo-error", malCosto);
+    }
+    if (malaCant || malCosto) validas = false;
   });
+  if (!validas) { errorCompra("Verifique las cantidades (enteros mayores a 0) y los costos ingresados."); return; }
 
-  if (!cantidadesValidas) {
-    mostrarToast("Verifique las cantidades y costos ingresados.");
-    return;
+  histEstado.guardando = true;
+  const btn = $("btn-guardar-compra");
+  const textoBtn = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+  try {
+    const r = await Negocio.crearCompra({
+      idProveedor, fecha,
+      items: lineas.map(l => ({ idProducto: l.idProducto, cantidad: l.cantidad, costoUnitario: l.costoUnitario }))
+    });
+    cerrarModal("overlay-nueva-compra");
+    await cargarCompras();
+    mostrarToast(r.aviso.length ? "Compra registrada con avisos: " + r.aviso.join(" ") : "Compra registrada correctamente.", r.aviso.length > 0);
+  } catch (err) {
+    errorCompra(Api.mensajeError(err, "No fue posible registrar la compra. Intente de nuevo."));
+  } finally {
+    histEstado.guardando = false;
+    btn.disabled = false;
+    btn.textContent = textoBtn;
   }
-
-  const items = lineasValidas.map(l => ({
-    nombre: l.nombre,
-    categoria: l.categoria || "Sin categoría",
-    cantidad: Number(l.cantidad),
-    costoUnitario: Number(l.costoUnitario)
-  }));
-
-  const costoTotal = items.reduce((acc, it) => acc + it.cantidad * it.costoUnitario, 0);
-
-  const nuevaCompra = {
-    id: histSiguienteIdCompra(),
-    fecha,
-    proveedor,
-    factura: factura || "",
-    registradoPor: "Usuario Administrador",
-    items,
-    costoTotal,
-    observaciones
-  };
-
-  const compras = histObtenerCompras();
-  compras.unshift(nuevaCompra);
-  histGuardarCompras(compras);
-
-  cerrarModal("overlay-nueva-compra");
-  renderCompras();
-  mostrarToast("Compra registrada correctamente.");
 }

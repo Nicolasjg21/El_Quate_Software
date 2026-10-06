@@ -168,16 +168,27 @@ function leerFormulario() {
 }
 
 /* ---------- POST / PUT ---------- */
-function guardarProveedor() {
+async function guardarProveedor() {
   if (!validarFormulario()) return;
   const btn = $("btn-guardar-proveedor");
   if (btn.disabled) return;
   const datos = leerFormulario();
   const editando = proveedorEnEdicion !== null;
 
+  if (editando) {
+    const p = proveedores.find(x => x.idProveedor === proveedorEnEdicion);
+    const filas = Confirmar.cambios(
+      { n: p.nombreProveedor, t: p.telefono, d: p.direccion },
+      { n: datos.nombreProveedor, t: datos.telefono, d: datos.direccion },
+      { n: "Nombre", t: "Teléfono", d: "Dirección" });
+    if (!filas.length) { mostrarToast("No hay cambios para guardar."); return; }
+    const ok = await Confirmar.pedir({ titulo: "Confirmar edición", mensaje: "Se modificará el proveedor <strong>" + esc(p.nombreProveedor) + "</strong>. ¿Desea guardar los cambios?", filas, textoConfirmar: "Sí, guardar cambios" });
+    if (!ok) return;
+  }
+
   bloquearBoton(btn, "Guardando...");
   const peticion = editando
-    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion })  // PUT
+    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion }, proveedores.find(p => p.idProveedor === proveedorEnEdicion))  // PUT
     : apiProveedores.crear(datos);                                                                   // POST
 
   peticion
@@ -219,7 +230,7 @@ function confirmarEliminacion() {
   const id = proveedorAEliminar;
 
   bloquearBoton(btn, "Eliminando...");
-  apiProveedores.eliminar(id)
+  apiProveedores.eliminar(id, proveedores.find(p => p.idProveedor === id))
     .then(() => {
       proveedores = proveedores.filter(p => p.idProveedor !== id);
       cerrarModal("overlay-eliminar");

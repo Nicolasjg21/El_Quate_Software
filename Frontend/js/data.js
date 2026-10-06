@@ -1,173 +1,14 @@
 /* ==========================================================================
-   DATA.JS — Capa de datos compartida (El Cuate)
+   DATA.JS — Utilidades compartidas (El Cuate)
    --------------------------------------------------------------------------
-   Simula el backend con localStorage. Mesas e Inventario leen y escriben
-   sobre las MISMAS claves, así que agregar un producto a una mesa descuenta
-   el stock real del inventario. Cuando exista API/backend, basta con
-   reemplazar las funciones de este archivo (los módulos no se tocan).
+   Formato de moneda / fecha y escape de texto. Los datos del negocio
+   (productos, mesas, pedidos, compras…) vienen de la API (api-negocio.js);
+   este archivo ya no guarda nada en localStorage.
    ========================================================================== */
-
-const ELCUATE_DB = {
-  PRODUCTOS: "elcuate_productos",
-  MESAS: "elcuate_mesas",
-  VERSION: "elcuate_db_version"
-};
-
-const DB_VERSION_ACTUAL = 1;
-
-/* ---------- Catálogo inicial (semilla, tomado de tus capturas) ---------- */
-const PRODUCTOS_SEMILLA = [
-  { id: "CER-001", nombre: "Águila Original 330 ml", categoria: "Cervezas", costo: 2400, precio: 7500, stock: 45, stockMinimo: 15, proveedor: "Bavaria S.A." },
-  { id: "CER-002", nombre: "Águila Light 330 ml", categoria: "Cervezas", costo: 2400, precio: 7500, stock: 38, stockMinimo: 15, proveedor: "Bavaria S.A." },
-  { id: "CER-003", nombre: "Poker 330 ml", categoria: "Cervezas", costo: 2300, precio: 7000, stock: 52, stockMinimo: 15, proveedor: "Bavaria S.A." },
-  { id: "CER-004", nombre: "Club Colombia Dorada 330 ml", categoria: "Cervezas", costo: 2800, precio: 9500, stock: 34, stockMinimo: 15, proveedor: "Bavaria S.A." },
-  { id: "CER-005", nombre: "Corona Extra 330 ml", categoria: "Cervezas", costo: 3200, precio: 11000, stock: 4, stockMinimo: 15, proveedor: "Central Cervecera de Colombia" },
-  { id: "CER-006", nombre: "Budweiser 330 ml", categoria: "Cervezas", costo: 2600, precio: 8500, stock: 28, stockMinimo: 15, proveedor: "Diageo Colombia" },
-  { id: "CER-007", nombre: "Heineken 330 ml", categoria: "Cervezas", costo: 3000, precio: 10000, stock: 22, stockMinimo: 15, proveedor: "Central Cervecera de Colombia" },
-  { id: "CER-008", nombre: "Stella Artois 330 ml", categoria: "Cervezas", costo: 3100, precio: 10500, stock: 16, stockMinimo: 15, proveedor: "Diageo Colombia" },
-  { id: "CER-009", nombre: "BBC Chapinero Porter", categoria: "Cervezas", costo: 3800, precio: 12000, stock: 8, stockMinimo: 10, proveedor: "Proveedor Local" },
-  { id: "AGU-001", nombre: "Aguardiente Antioqueño Azul 750ml", categoria: "Aguardientes", costo: 28000, precio: 95000, stock: 8, stockMinimo: 10, proveedor: "Dislicores" },
-  { id: "AGU-002", nombre: "Aguardiente Antioqueño Verde 750ml", categoria: "Aguardientes", costo: 28000, precio: 95000, stock: 6, stockMinimo: 10, proveedor: "Dislicores" },
-  { id: "AGU-003", nombre: "Aguardiente Antioqueño Rojo 750ml", categoria: "Aguardientes", costo: 28000, precio: 95000, stock: 10, stockMinimo: 10, proveedor: "Dislicores" },
-  { id: "AGU-004", nombre: "Aguardiente Néctar Azul 750ml", categoria: "Aguardientes", costo: 26000, precio: 88000, stock: 12, stockMinimo: 10, proveedor: "Dislicores" },
-  { id: "WHI-001", nombre: "Old Parr 12 años 750ml", categoria: "Whiskies", costo: 85000, precio: 285000, stock: 2, stockMinimo: 5, proveedor: "Diageo Colombia" },
-  { id: "WHI-002", nombre: "Old Parr 18 años 750ml", categoria: "Whiskies", costo: 120000, precio: 395000, stock: 3, stockMinimo: 5, proveedor: "Diageo Colombia" },
-  { id: "WHI-003", nombre: "Buchanan's Deluxe 750ml", categoria: "Whiskies", costo: 78000, precio: 265000, stock: 5, stockMinimo: 5, proveedor: "Diageo Colombia" },
-  { id: "CAF-001", nombre: "Espresso", categoria: "Café", costo: 1800, precio: 5000, stock: 120, stockMinimo: 20, proveedor: "Café Local" },
-  { id: "CAF-002", nombre: "Americano", categoria: "Café", costo: 1600, precio: 4000, stock: 120, stockMinimo: 20, proveedor: "Café Local" },
-  { id: "CAF-003", nombre: "Cappuccino", categoria: "Café", costo: 2200, precio: 6000, stock: 90, stockMinimo: 20, proveedor: "Café Local" },
-  { id: "CAF-004", nombre: "Latte", categoria: "Café", costo: 2200, precio: 6000, stock: 90, stockMinimo: 20, proveedor: "Café Local" },
-  { id: "COC-001", nombre: "Croissant", categoria: "Panadería", costo: 3000, precio: 8000, stock: 40, stockMinimo: 10, proveedor: "Panadería Central" },
-  { id: "COC-002", nombre: "Sándwich - Pavo", categoria: "Panadería", costo: 6000, precio: 15000, stock: 25, stockMinimo: 10, proveedor: "Panadería Central" }
-];
-
-/* ---------- Mesas iniciales (semilla) ---------- */
-function mesasSemilla() {
-  return [
-    { id: 1, numero: 1, personas: 0, abiertoDesde: null, items: [], estadoPago: "ninguno" },
-    {
-      id: 2, numero: 2, personas: 4, abiertoDesde: "14:32", estadoPago: "ninguno",
-      items: [
-        { productoId: "CAF-001", cantidad: 2 },
-        { productoId: "CAF-003", cantidad: 2 },
-        { productoId: "COC-001", cantidad: 1 },
-        { productoId: "COC-002", cantidad: 1 },
-        { productoId: "CAF-002", cantidad: 1 },
-        { productoId: "CAF-004", cantidad: 1 }
-      ]
-    },
-    {
-      id: 3, numero: 3, personas: 2, abiertoDesde: "14:15", estadoPago: "ninguno",
-      items: [
-        { productoId: "CER-004", cantidad: 4 },
-        { productoId: "CER-001", cantidad: 4 }
-      ]
-    },
-    {
-      id: 4, numero: 4, personas: 3, abiertoDesde: "13:20", estadoPago: "cerrando",
-      items: [
-        { productoId: "WHI-003", cantidad: 1 },
-        { productoId: "CER-007", cantidad: 6 }
-      ]
-    },
-    { id: 5, numero: 5, personas: 0, abiertoDesde: null, items: [], estadoPago: "ninguno" },
-    {
-      id: 6, numero: 6, personas: 2, abiertoDesde: "14:50", estadoPago: "ninguno",
-      items: [
-        { productoId: "WHI-001", cantidad: 1 },
-        { productoId: "CER-006", cantidad: 8 }
-      ]
-    }
-  ];
-}
-
-/* ---------- Inicialización ---------- */
-function inicializarDB() {
-  const version = localStorage.getItem(ELCUATE_DB.VERSION);
-  if (version !== String(DB_VERSION_ACTUAL)) {
-    localStorage.setItem(ELCUATE_DB.PRODUCTOS, JSON.stringify(PRODUCTOS_SEMILLA));
-    localStorage.setItem(ELCUATE_DB.MESAS, JSON.stringify(mesasSemilla()));
-    localStorage.setItem(ELCUATE_DB.VERSION, String(DB_VERSION_ACTUAL));
-    return;
-  }
-  if (!localStorage.getItem(ELCUATE_DB.PRODUCTOS)) {
-    localStorage.setItem(ELCUATE_DB.PRODUCTOS, JSON.stringify(PRODUCTOS_SEMILLA));
-  }
-  if (!localStorage.getItem(ELCUATE_DB.MESAS)) {
-    localStorage.setItem(ELCUATE_DB.MESAS, JSON.stringify(mesasSemilla()));
-  }
-}
-
-/* ---------- Productos ---------- */
-function obtenerProductos() {
-  return JSON.parse(localStorage.getItem(ELCUATE_DB.PRODUCTOS) || "[]");
-}
-
-function guardarProductos(productos) {
-  localStorage.setItem(ELCUATE_DB.PRODUCTOS, JSON.stringify(productos));
-}
-
-function obtenerProductoPorId(id) {
-  return obtenerProductos().find(p => p.id === id) || null;
-}
-
-function generarSkuUnico(baseSku) {
-  const productos = obtenerProductos();
-  let sku = baseSku.trim();
-  if (!productos.some(p => p.id === sku)) return sku;
-  let n = 2;
-  while (productos.some(p => p.id === `${sku}-${n}`)) n++;
-  return `${sku}-${n}`;
-}
-
-/** Suma/resta stock de un producto. delta negativo = descuenta (venta), positivo = repone. */
-function ajustarStock(productoId, delta) {
-  const productos = obtenerProductos();
-  const idx = productos.findIndex(p => p.id === productoId);
-  if (idx === -1) return false;
-  const nuevoStock = productos[idx].stock + delta;
-  productos[idx].stock = Math.max(0, nuevoStock);
-  guardarProductos(productos);
-  return true;
-}
-
-/* ---------- Mesas ---------- */
-function obtenerMesas() {
-  return JSON.parse(localStorage.getItem(ELCUATE_DB.MESAS) || "[]");
-}
-
-function guardarMesas(mesas) {
-  localStorage.setItem(ELCUATE_DB.MESAS, JSON.stringify(mesas));
-}
-
-function obtenerMesaPorId(id) {
-  return obtenerMesas().find(m => m.id === id) || null;
-}
-
-function calcularEstadoMesa(mesa) {
-  if (mesa.estadoPago === "cerrando") return "cerrando";
-  if (mesa.items && mesa.items.length > 0) return "ocupada";
-  return "libre";
-}
-
-function calcularTotalesMesa(mesa) {
-  const productos = obtenerProductos();
-  let subtotal = 0;
-  const filas = (mesa.items || []).map(item => {
-    const prod = productos.find(p => p.id === item.productoId);
-    const precio = prod ? prod.precio : 0;
-    const nombre = prod ? prod.nombre : "Producto eliminado";
-    const sub = precio * item.cantidad;
-    subtotal += sub;
-    return { ...item, nombre, precio, subtotal: sub, stockDisponible: prod ? prod.stock : 0 };
-  });
-  const iva = Math.round(subtotal * 0.19);
-  return { filas, subtotal, iva, total: subtotal + iva };
-}
 
 /* ---------- Formato de moneda (COP) ---------- */
 function formatoCOP(valor) {
-  return "$ " + Math.round(valor).toLocaleString("es-CO");
+  return "$ " + Math.round(Number(valor) || 0).toLocaleString("es-CO");
 }
 
 function horaActual() {
@@ -180,4 +21,76 @@ function fechaHoy() {
   return `${ahora.getDate()}/${ahora.getMonth() + 1}/${ahora.getFullYear()}`;
 }
 
-inicializarDB();
+/** Escapa texto para insertarlo en HTML (evita inyección con datos que vienen del servidor). */
+function esc(valor) {
+  return String(valor === undefined || valor === null ? "" : valor)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/* ==========================================================================
+   Confirmar — ventana de advertencia antes de crear / editar / eliminar
+   --------------------------------------------------------------------------
+   Confirmar.pedir({ titulo, mensaje, filas: [[etiqueta, valor], ...],
+                     textoConfirmar, peligro }) -> Promise<boolean>
+   Confirmar.cambios(antes, despues, etiquetas) -> filas solo con lo modificado
+   ========================================================================== */
+const Confirmar = (function () {
+  let overlay = null, resolver = null;
+
+  function construir() {
+    if (overlay) return;
+    overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.id = "overlay-confirmar";
+    overlay.style.zIndex = "4000";
+    overlay.innerHTML =
+      '<div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmar-titulo">' +
+      '<div class="modal-header"><p class="modal-titulo" id="confirmar-titulo"></p></div>' +
+      '<div class="modal-cuerpo"><p id="confirmar-mensaje"></p><div id="confirmar-filas" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:13px"></div></div>' +
+      '<div class="modal-pie"><button type="button" class="btn btn--secundario" id="confirmar-cancelar">Cancelar</button>' +
+      '<button type="button" class="btn btn--primario" id="confirmar-aceptar">Confirmar</button></div></div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector("#confirmar-cancelar").addEventListener("click", () => cerrar(false));
+    overlay.querySelector("#confirmar-aceptar").addEventListener("click", () => cerrar(true));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(false); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.classList.contains("overlay--visible")) cerrar(false);
+    }, true);
+  }
+
+  function cerrar(valor) {
+    overlay.classList.remove("overlay--visible");
+    const r = resolver; resolver = null;
+    if (r) r(valor);
+  }
+
+  function pedir(op) {
+    construir();
+    if (resolver) cerrar(false);
+    overlay.querySelector("#confirmar-titulo").textContent = op.titulo || "Confirmar acción";
+    overlay.querySelector("#confirmar-mensaje").innerHTML = op.mensaje || "";
+    overlay.querySelector("#confirmar-filas").innerHTML = (op.filas || []).map((f) =>
+      '<div style="display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid var(--borde,#e5e5e5);padding-bottom:4px">' +
+      '<span style="color:var(--texto-secundario,#666)">' + esc(f[0]) + '</span><strong style="text-align:right;word-break:break-word">' + f[1] + '</strong></div>').join("");
+    const ok = overlay.querySelector("#confirmar-aceptar");
+    ok.textContent = op.textoConfirmar || "Confirmar";
+    ok.style.backgroundColor = op.peligro ? "var(--rojo-texto,#D8432B)" : "";
+    overlay.classList.add("overlay--visible");
+    overlay.querySelector("#confirmar-cancelar").focus();
+    return new Promise((res) => { resolver = res; });
+  }
+
+  /** Filas "antes → después" solo de los campos que cambiaron. etiquetas: { campo: "Etiqueta" } */
+  function cambios(antes, despues, etiquetas) {
+    const filas = [];
+    Object.keys(etiquetas).forEach((k) => {
+      if (String(antes[k] === undefined || antes[k] === null ? "" : antes[k]) !== String(despues[k] === undefined || despues[k] === null ? "" : despues[k])) {
+        filas.push([etiquetas[k], esc(antes[k] === "" || antes[k] == null ? "—" : antes[k]) + " &rarr; " + esc(despues[k] === "" || despues[k] == null ? "—" : despues[k])]);
+      }
+    });
+    return filas;
+  }
+
+  return { pedir, cambios };
+})();

@@ -14,15 +14,16 @@ const AUDITORIA_ACCIONES = ["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT"];
 
 const pad2 = (n) => String(n).padStart(2, "0");
 
-/** DateTime del Backend -> "AAAA-MM-DDTHH:mm". Si trae zona (Z / +hh:mm) se pasa a hora local. */
+/** DateTime del Backend -> "AAAA-MM-DDTHH:mm". Si trae zona (Z / +hh:mm) se pasa a hora local.
+    fecha es opcional en el Backend: sin fecha se devuelve "" y la pantalla muestra "Sin fecha". */
 function fechaAuditoria(valor) {
-  if (!valor) return "1970-01-01T00:00";
+  if (!valor) return "";
   const texto = String(valor);
   if (/(Z|[+-]\d{2}:?\d{2})$/.test(texto)) {
     const d = new Date(texto);
     if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
-  return texto.slice(0, 16);
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texto) ? texto.slice(0, 16) : "";
 }
 
 /** datosAnteriores / datosNuevos (texto, normalmente JSON) -> pares etiqueta → valor. */

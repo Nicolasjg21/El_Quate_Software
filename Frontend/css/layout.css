@@ -450,3 +450,7 @@ input, select { font-family: inherit; }
   .header { padding: 14px 16px; }
   .buscador input { width: 160px; }
 }
+
+/* El atributo hidden debe ganar a display: flex / grid de los componentes */
+[hidden] { display: none !important; }
+.toast--error { background-color: var(--rojo-texto); }

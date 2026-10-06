@@ -99,14 +99,14 @@
       <div class="modulo-header">
         <div>
           <h2 class="modulo-titulo">Historiales</h2>
-          <p class="modulo-subtitulo">Consulta el historial completo de órdenes finalizadas y compras registradas.</p>
+          <p class="modulo-subtitulo" id="subtitulo-historiales">Consulta el historial completo de órdenes finalizadas.</p>
         </div>
       </div>
 
       <!-- ============ PESTAÑAS ============ -->
       <div class="historial-tabs" role="tablist">
         <button class="historial-tab historial-tab--activo" id="tab-ordenes" role="tab" aria-selected="true" aria-controls="panel-ordenes">Órdenes Pagadas</button>
-        <button class="historial-tab" id="tab-compras" role="tab" aria-selected="false" aria-controls="panel-compras">Compras Realizadas</button>
+        <button class="historial-tab" id="tab-compras" role="tab" aria-selected="false" aria-controls="panel-compras" hidden>Compras Realizadas</button>
       </div>
 
       <!-- ============ PANEL: ÓRDENES PAGADAS ============ -->
@@ -150,7 +150,7 @@
       </section>
 
       <!-- ============ PANEL: COMPRAS REALIZADAS ============ -->
-      <section class="historial-panel" id="panel-compras" role="tabpanel" aria-labelledby="tab-compras">
+      <section class="historial-panel" id="panel-compras" role="tabpanel" aria-labelledby="tab-compras" hidden>
 
         <div class="toolbar">
           <div class="buscador">
@@ -178,8 +178,7 @@
                   <th>Proveedor</th>
                   <th class="col-centro">Total de Artículos</th>
                   <th class="col-derecha">Costo Total</th>
-                  <th>Registrado por</th>
-                  <th class="col-centro">Acción</th>
+                                    <th class="col-centro">Acción</th>
                 </tr>
               </thead>
               <tbody id="tabla-compras"></tbody>
@@ -249,7 +248,6 @@
       <div class="resumen-financiero">
         <div class="resumen-fila"><span>Subtotal</span><span id="detalle-orden-subtotal">$ 0</span></div>
         <div class="resumen-fila"><span>Impuesto (INC)</span><span id="detalle-orden-impuesto">$ 0</span></div>
-        <div class="resumen-fila"><span>Propina</span><span id="detalle-orden-propina">$ 0</span></div>
         <div class="resumen-fila resumen-fila--total"><span>TOTAL PAGADO</span><span class="resumen-fila-valor" id="detalle-orden-total">$ 0</span></div>
       </div>
 
@@ -288,16 +286,6 @@
             <span class="campo-mensaje-error">Ingrese una fecha válida.</span>
           </div>
         </div>
-        <div class="campo-fila">
-          <div class="campo">
-            <label for="input-factura-compra">Factura / Remisión</label>
-            <input type="text" id="input-factura-compra" placeholder="Ej. FAC-2026-000245">
-          </div>
-          <div class="campo">
-            <label>Registrado por</label>
-            <div class="campo-solo-lectura" id="input-registrado-por">Usuario Administrador</div>
-          </div>
-        </div>
       </div>
 
       <div class="seccion-formulario">
@@ -309,7 +297,6 @@
             <input type="text" id="buscar-producto-compra" placeholder="Buscar producto..." style="width:100%;" autocomplete="off">
             <div class="sugerencias-productos" id="sugerencias-productos"></div>
           </div>
-          <button class="btn btn--secundario" id="btn-nuevo-producto-compra">+ Nuevo Producto</button>
         </div>
 
         <div class="tabla-scroll">
@@ -340,10 +327,7 @@
         </div>
       </div>
 
-      <div class="campo campo-textarea">
-        <label for="input-observaciones-compra">Observaciones</label>
-        <textarea id="input-observaciones-compra" placeholder="Notas sobre la compra, proveedor o factura..."></textarea>
-      </div>
+      <p class="campo-mensaje-error campo-mensaje-error--visible" id="error-compra" role="alert" hidden></p>
 
     </div>
     <div class="modal-pie">
@@ -374,14 +358,6 @@
         <div class="detalle-campo">
           <span class="detalle-etiqueta">Proveedor</span>
           <span class="detalle-valor" id="detalle-compra-proveedor">—</span>
-        </div>
-        <div class="detalle-campo">
-          <span class="detalle-etiqueta">Usuario</span>
-          <span class="detalle-valor" id="detalle-compra-usuario">—</span>
-        </div>
-        <div class="detalle-campo">
-          <span class="detalle-etiqueta">Número de Factura</span>
-          <span class="detalle-valor" id="detalle-compra-factura">—</span>
         </div>
         <div class="detalle-campo">
           <span class="detalle-etiqueta">Total Productos</span>
@@ -416,11 +392,6 @@
         <div class="resumen-fila resumen-fila--total"><span>Costo Total de Compra</span><span class="resumen-fila-valor" id="detalle-compra-total">$ 0</span></div>
       </div>
 
-      <div class="detalle-campo">
-        <span class="detalle-etiqueta">Observaciones</span>
-        <p class="detalle-observaciones" id="detalle-compra-observaciones">—</p>
-      </div>
-
     </div>
     <div class="modal-pie">
       <button class="btn btn--secundario btn--ancho" data-cerrar="overlay-detalle-compra">Cerrar</button>
@@ -431,6 +402,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="../js/data.js"></script>
+<script src="../js/api-negocio.js"></script>
 <script src="../js/historial-data.js"></script>
 <script src="../js/historiales.js"></script>
 </body>

@@ -99,7 +99,7 @@
       <div class="modulo-header">
         <div>
           <h2 class="modulo-titulo">Inventario</h2>
-          <p class="modulo-subtitulo">Gestione productos, niveles de existencias y precios</p>
+          <p class="modulo-subtitulo" id="subtitulo-inventario">Consulte productos, niveles de existencias y precios</p>
         </div>
       </div>
 
@@ -127,7 +127,7 @@
           <option value="todas">Todas las Categorías</option>
         </select>
         <div class="spacer"></div>
-        <button class="btn btn--primario" id="btn-nuevo-producto">+ Nuevo Producto</button>
+        <button class="btn btn--primario" id="btn-nuevo-producto" hidden>+ Nuevo Producto</button>
       </div>
 
       <section class="panel">
@@ -143,6 +143,7 @@
                 <th class="col-derecha">Precio de Venta</th>
                 <th class="col-derecha">Stock</th>
                 <th>Proveedor</th>
+                <th class="col-centro" id="th-acciones" hidden>Acciones</th>
               </tr>
             </thead>
             <tbody id="tabla-inventario"></tbody>
@@ -155,35 +156,19 @@
   </div>
 </div>
 
-<!-- ============ MODAL: NUEVO PRODUCTO ============ -->
+<!-- ============ MODAL: NUEVO / EDITAR PRODUCTO ============ -->
 <div class="overlay" id="overlay-nuevo-producto">
   <div class="modal modal--ancho">
     <div class="modal-header">
-      <p class="modal-titulo">Registrar Nuevo Producto</p>
+      <p class="modal-titulo" id="titulo-producto">Registrar Nuevo Producto</p>
       <button class="modal-cerrar" data-cerrar="overlay-nuevo-producto">&#10005;</button>
     </div>
     <div class="modal-cuerpo">
 
       <div class="campo">
-        <label>Imagen del Producto</label>
-        <label for="input-imagen-producto" class="imagen-placeholder" id="imagen-placeholder">
-          <span id="imagen-placeholder-icono">&#128444;</span>
-          <span id="imagen-placeholder-texto">Placeholder</span>
-        </label>
-        <input type="file" id="input-imagen-producto" accept="image/*" style="display:none;">
-      </div>
-
-      <div class="campo-fila">
-        <div class="campo">
-          <label for="input-nombre-producto">Nombre del Producto *</label>
-          <input type="text" id="input-nombre-producto" placeholder="Ej. Granos Premium Arabica">
-          <span class="campo-mensaje-error">El nombre es obligatorio.</span>
-        </div>
-        <div class="campo">
-          <label for="input-sku-producto">SKU / Código de Barras *</label>
-          <input type="text" id="input-sku-producto" placeholder="Ej. CF-001">
-          <span class="campo-mensaje-error">El código es obligatorio.</span>
-        </div>
+        <label for="input-nombre-producto">Nombre del Producto *</label>
+        <input type="text" id="input-nombre-producto" maxlength="200" placeholder="Ej. Granos Premium Arabica" autocomplete="off">
+        <span class="campo-mensaje-error">El nombre es obligatorio (máx. 200 caracteres).</span>
       </div>
 
       <div class="campo-fila">
@@ -192,42 +177,62 @@
           <select id="input-categoria-producto">
             <option value="">Selecciona una categoría</option>
           </select>
-          <span class="campo-mensaje-error">Selecciona una categoría.</span>
+          <span class="campo-mensaje-error">Selecciona o crea una categoría (máx. 100 caracteres).</span>
         </div>
         <div class="campo">
           <label for="input-categoria-nueva">O crea una categoría nueva</label>
-          <input type="text" id="input-categoria-nueva" placeholder="Ej. Postres">
+          <input type="text" id="input-categoria-nueva" maxlength="100" placeholder="Ej. Postres" autocomplete="off">
         </div>
       </div>
 
       <div class="campo-fila">
-        <div class="campo">
-          <label for="input-costo-producto">Costo de Compra *</label>
-          <div class="campo-prefijo"><span>$</span><input type="number" id="input-costo-producto" min="0" placeholder="0"></div>
-          <span class="campo-mensaje-error">Ingresa un costo válido.</span>
-        </div>
         <div class="campo">
           <label for="input-precio-producto">Precio de Venta *</label>
-          <div class="campo-prefijo"><span>$</span><input type="number" id="input-precio-producto" min="0" placeholder="0"></div>
-          <span class="campo-mensaje-error">Ingresa un precio válido.</span>
-        </div>
-      </div>
-
-      <div class="campo-fila">
-        <div class="campo">
-          <label for="input-stock-inicial">Stock Inicial</label>
-          <input type="number" id="input-stock-inicial" min="0" placeholder="0">
+          <div class="campo-prefijo"><span>$</span><input type="number" id="input-precio-producto" min="0" max="99999999.99" step="any" placeholder="0"></div>
+          <span class="campo-mensaje-error">Ingresa un precio entre 0 y 99.999.999,99.</span>
         </div>
         <div class="campo">
           <label for="input-stock-minimo">Stock Mínimo de Alerta</label>
-          <input type="number" id="input-stock-minimo" min="0" placeholder="0">
+          <input type="number" id="input-stock-minimo" min="0" step="1" placeholder="0">
+          <span class="campo-mensaje-error">Ingresa un entero mayor o igual a 0.</span>
         </div>
       </div>
 
-      <div class="campo">
-        <label for="input-proveedor-producto">Proveedor</label>
-        <input type="text" id="input-proveedor-producto" placeholder="Ej. Bavaria S.A.">
+      <!-- Solo al crear: el stock inicial entra como compra al proveedor (o como entrada de Kardex si no se indica proveedor) -->
+      <div id="bloque-alta">
+        <div class="campo-fila">
+          <div class="campo">
+            <label for="input-stock-inicial">Stock Inicial</label>
+            <input type="number" id="input-stock-inicial" min="0" step="1" placeholder="0">
+            <span class="campo-mensaje-error">Ingresa un entero mayor o igual a 0.</span>
+          </div>
+          <div class="campo">
+            <label for="input-costo-producto">Costo de Compra (por unidad)</label>
+            <div class="campo-prefijo"><span>$</span><input type="number" id="input-costo-producto" min="0" max="99999999.99" step="any" placeholder="0"></div>
+            <span class="campo-mensaje-error">Ingresa un costo válido.</span>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="input-proveedor-producto">Proveedor</label>
+          <select id="input-proveedor-producto">
+            <option value="">Sin proveedor</option>
+          </select>
+          <span class="campo-mensaje-error">Con stock inicial y costo, seleccione el proveedor para registrar la compra.</span>
+        </div>
+        <p class="modulo-subtitulo">El stock inicial con proveedor y costo se registra como una compra (Historiales &rarr; Compras) y alimenta el costo promedio.</p>
       </div>
+
+      <!-- Solo al editar: ajuste manual del stock (queda en el Kardex) -->
+      <div id="bloque-edicion" hidden>
+        <div class="campo">
+          <label for="input-stock-actual">Stock actual (ajuste manual)</label>
+          <input type="number" id="input-stock-actual" min="0" step="1" placeholder="0">
+          <span class="campo-mensaje-error">Ingresa un entero mayor o igual a 0.</span>
+        </div>
+        <p class="modulo-subtitulo">Si cambia el stock, se registra un movimiento de ajuste en el Kardex.</p>
+      </div>
+
+      <p class="campo-mensaje-error campo-mensaje-error--visible" id="error-producto" role="alert"></p>
 
     </div>
     <div class="modal-pie">
@@ -237,9 +242,27 @@
   </div>
 </div>
 
+<!-- ============ MODAL: ELIMINAR PRODUCTO ============ -->
+<div class="overlay" id="overlay-eliminar-producto">
+  <div class="modal">
+    <div class="modal-header">
+      <p class="modal-titulo">Eliminar producto</p>
+      <button class="modal-cerrar" data-cerrar="overlay-eliminar-producto">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <p id="texto-eliminar-producto">¿Está seguro de que desea eliminar este producto?</p>
+    </div>
+    <div class="modal-pie">
+      <button class="btn btn--secundario" data-cerrar="overlay-eliminar-producto">Cancelar</button>
+      <button class="btn btn--primario" id="btn-confirmar-eliminar-producto" style="background-color:var(--rojo-texto);">Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="../js/data.js"></script>
+<script src="../js/api-negocio.js"></script>
 <script src="../js/inventario.js"></script>
 </body>
 </html>

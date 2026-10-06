@@ -1,14 +1,22 @@
 /* ==========================================================================
    AUTH.JS — Sesión, token, guardia de páginas, permisos y cierre de sesión
    --------------------------------------------------------------------------
-   Almacenamiento del token (Bearer JWT):
-     - "Recordar este dispositivo" marcado  -> localStorage  (persiste al cerrar el navegador)
-     - sin marcar                           -> sessionStorage (muere con la pestaña)
+   Almacenamiento del token (Bearer JWT): SIEMPRE sessionStorage (muere con la
+   pestaña). Nunca se usa localStorage; si quedó algo de versiones anteriores
+   (opción "Recordar este dispositivo", ya retirada) se borra al cargar la página.
    El Backend autentica solo con el encabezado Authorization: Bearer (no usa
    cookies), por lo que el token debe ser legible por JavaScript. Mitigaciones:
    el token expira (Jwt:ExpirationMinutes), Logout lo revoca en el servidor, el
    Backend responde con CSP restrictivo y todo texto dinámico se escapa con esc().
    Nunca se escribe el token ni la contraseña en consola.
+
+   Qué se guarda en el navegador (y nada más):
+     elcuate_token    -> el JWT (necesario para el encabezado Authorization)
+     elcuate_permisos -> { idRol, nombres[] } solo para pintar el menú sin parpadeo;
+                         se vuelve a pedir al Backend en cada página (no es fuente
+                         de verdad: el Backend responde 403 si no hay permiso).
+   La contraseña, el correo y la fecha de expiración NO se guardan aparte
+   (la expiración se lee del propio token: claim "exp").
 
    Requiere: config.js y api-cliente.js (cargados antes en <head>).
    ========================================================================== */
@@ -16,28 +24,39 @@
   "use strict";
 
   const K_TOKEN = "elcuate_token";
-  const K_EXPIRA = "elcuate_expira";
+  const K_EXPIRA = "elcuate_expira";   // ya no se escribe; solo se borra si quedó de versiones anteriores
   const K_PERMISOS = "elcuate_permisos";
   const PAGINA_LOGIN = "login.html";
-  const PAGINA_INICIO = "dashboard.html";
+  const PAGINA_ADMIN = "dashboard.html";
 
   /* Permiso requerido por página (nombres de PermisosSistema.cs en el Backend). */
   const PERMISO_PAGINA = {
+    "dashboard.html": "auditorias.consultar",   // Panel Principal: solo administración
+    "analiticas.html": "auditorias.consultar",  // Ventas y Analíticas: solo administración
     "usuarios.html": "usuarios.gestionar",
     "auditoria.html": "auditorias.consultar"
   };
+  const PAGINA_OPERATIVA = "mesas.html";   // inicio de Caja y Mesero
 
   const pagina = (location.pathname.split("/").pop() || "").toLowerCase();
   const enLogin = pagina === PAGINA_LOGIN;
 
   /* ---------- Almacenamiento seguro (puede lanzar en modo privado) ---------- */
+  /* Restos de versiones anteriores en localStorage (token, sesión y datos de prueba que antes
+     se guardaban en el navegador): ninguno se usa ya y se eliminan siempre al cargar. */
+  const CLAVES_ANTIGUAS = ["token", "cuate.sesion", "nombreUsuario"];
+  try {
+    Object.keys(localStorage).forEach((k) => {
+      if (/^elcuate_/.test(k) || CLAVES_ANTIGUAS.indexOf(k) !== -1) localStorage.removeItem(k);
+    });
+  } catch (e) { /* sin almacenamiento */ }
+
   function leer(clave) {
-    try { return sessionStorage.getItem(clave) || localStorage.getItem(clave); } catch (e) { return null; }
+    try { return sessionStorage.getItem(clave); } catch (e) { return null; }
   }
   function dondeEsta(clave) {
     try {
       if (sessionStorage.getItem(clave) !== null) return sessionStorage;
-      if (localStorage.getItem(clave) !== null) return localStorage;
     } catch (e) { /* sin almacenamiento */ }
     return null;
   }
@@ -82,25 +101,23 @@
 
   function sesionValida() { return !!token(); }
 
-  /** Guarda (o reemplaza) el token. Si ya había uno, se conserva el mismo almacenamiento. */
-  function guardarToken(nuevo, expiraEn, recordar) {
-    const previo = dondeEsta(K_TOKEN);
-    let destino = previo;
-    if (!destino) {
-      try { destino = recordar ? localStorage : sessionStorage; } catch (e) { destino = null; }
-    }
+  /** Guarda (o reemplaza) el token, siempre en sessionStorage. */
+  function guardarToken(nuevo) {
+    if (!decodificar(nuevo)) return false;   // no se guarda nada que no sea un JWT legible
+    let destino;
+    try { destino = sessionStorage; } catch (e) { destino = null; }
     if (!destino) return false;
     try {
       destino.setItem(K_TOKEN, nuevo);
-      if (expiraEn) destino.setItem(K_EXPIRA, String(expiraEn)); else destino.removeItem(K_EXPIRA);
+      destino.removeItem(K_EXPIRA);   // "expiraEn" no se persiste: el token ya trae "exp"
       programarExpiracion();
       return true;
     } catch (e) { return false; }
   }
 
   /** Sustituye el token anterior (p. ej. tras CambiarPassword). El viejo deja de usarse de inmediato. */
-  function reemplazarToken(nuevo, expiraEn) {
-    return guardarToken(nuevo, expiraEn, false);
+  function reemplazarToken(nuevo) {
+    return guardarToken(nuevo);
   }
 
   /* ---------- Expiración / 401 ---------- */
@@ -140,11 +157,13 @@
     return null;
   }
 
-  async function cargarPermisos() {
+  /** forzar=true ignora la caché y consulta al Backend (la caché solo evita el parpadeo inicial;
+      así un permiso retirado o una caché editada a mano no sobreviven más allá de una página). */
+  async function cargarPermisos(forzar) {
     const u = usuario();
     if (!u) { permisos = []; return permisos; }
     const cache = leerCachePermisos();
-    if (cache) { permisos = cache; permisosCargados = true; return permisos; }
+    if (cache && !forzar) { permisos = cache; permisosCargados = true; return permisos; }
     try {
       const [rp, todos] = await Promise.all([
         window.Api.lista("api/RolesPermisos/GetRolesPermisos"),
@@ -156,32 +175,55 @@
       const destino = dondeEsta(K_TOKEN);
       if (destino) { try { destino.setItem(K_PERMISOS, JSON.stringify({ idRol: u.idRol, nombres: permisos })); } catch (e) {} }
     } catch (e) {
-      permisos = [];
-      permisosCargados = false;
+      /* Sin respuesta del Backend: se conserva la caché si existía (el Backend sigue validando cada acción). */
+      if (cache) { permisos = cache; permisosCargados = true; }
+      else { permisos = []; permisosCargados = false; }
     }
     return permisos;
   }
 
   function tiene(nombrePermiso) { return permisos.indexOf(nombrePermiso) !== -1; }
 
+  /** Administración = rol con permisos de seguridad (solo el administrador los tiene). */
+  function esAdmin() { return tiene("seguridad.gestionar"); }
+
+  /** Página de inicio según el rol: administración -> Panel Principal; Caja y Mesero -> Mesas. */
+  function paginaInicio() {
+    if (!permisosCargados) {
+      const cache = leerCachePermisos();
+      if (cache) { permisos = cache; permisosCargados = true; }
+    }
+    return permisosCargados && tiene("auditorias.consultar") ? PAGINA_ADMIN : PAGINA_OPERATIVA;
+  }
+
   /* ---------- Login / Logout ---------- */
-  async function login(email, password, recordar) {
+  async function login(email, password) {
     const r = await window.Api.post("api/Autenticador/Login", { email, password }, { publico: true });
     if (!r || !r.token) throw { status: 500, mensaje: "Respuesta de inicio de sesión inválida.", errores: {} };
     borrarSesionLocal();
-    if (!guardarToken(r.token, r.expiraEn, recordar)) {
+    if (!guardarToken(r.token)) {
       throw { status: 0, mensaje: "El navegador no permite guardar la sesión. Habilite el almacenamiento del sitio.", errores: {} };
     }
     await cargarPermisos();
+    const u = usuario();
+    await window.Api.auditar("Usuarios", "LOGIN", null, { Usuario: email, idRol: u ? u.idRol : undefined });
     return r;
   }
 
+  let cerrando = false;
   async function logout() {
+    if (cerrando) return;   // evita doble clic: una sola auditoría y una sola revocación
+    cerrando = true;
     expirando = true; // un 401 al revocar no debe mostrarse como "sesión expirada"
+    const u = usuario();
+    if (u) await window.Api.auditar("Usuarios", "LOGOUT", null, { Usuario: u.email, idRol: u.idRol });
     try { if (token()) await window.Api.post("api/Autenticador/Logout"); } catch (e) { /* aun así se cierra localmente */ }
     borrarSesionLocal();
     irALogin();
   }
+
+  /* sessionStorage es propio de cada pestaña. Si otra pestaña con el mismo token cierra
+     sesión, el Backend lo revoca y esta pestaña sale al recibir el 401 de su siguiente llamada. */
 
   /* ---------- Interfaz común (menú, usuario, Configuración) ---------- */
   function mostrarAviso(mensaje, error) {
@@ -240,7 +282,7 @@
       }).catch(() => { /* se queda el correo */ });
     }
 
-    await cargarPermisos();
+    await cargarPermisos(true);
 
     /* Opciones de menú y páginas según permisos reales del rol */
     if (permisosCargados) {
@@ -250,7 +292,7 @@
         }
       });
       const req = PERMISO_PAGINA[pagina];
-      if (req && !tiene(req)) location.replace(PAGINA_INICIO);
+      if (req && !tiene(req)) location.replace(paginaInicio());
     }
   }
 
@@ -278,9 +320,9 @@
       ov.innerHTML =
         '<div id="cp-caja" role="dialog" aria-modal="true" aria-labelledby="cp-titulo">' +
         '<h2 id="cp-titulo">Cambiar contraseña</h2><p class="cp-sub">La nueva contraseña debe tener entre 8 y 128 caracteres.</p>' +
-        '<label for="cp-actual">Contraseña actual</label><input type="password" id="cp-actual" maxlength="128" autocomplete="current-password">' +
-        '<label for="cp-nueva">Nueva contraseña</label><input type="password" id="cp-nueva" maxlength="128" autocomplete="new-password">' +
-        '<label for="cp-confirmar">Confirmar nueva contraseña</label><input type="password" id="cp-confirmar" maxlength="128" autocomplete="new-password">' +
+        '<label for="cp-actual">Contraseña actual</label><input type="password" id="cp-actual" maxlength="128" autocomplete="new-password" readonly>' +
+        '<label for="cp-nueva">Nueva contraseña</label><input type="password" id="cp-nueva" maxlength="128" autocomplete="new-password" readonly>' +
+        '<label for="cp-confirmar">Confirmar nueva contraseña</label><input type="password" id="cp-confirmar" maxlength="128" autocomplete="new-password" readonly>' +
         '<div class="cp-err" id="cp-error" role="alert"></div>' +
         '<div class="cp-botones"><button type="button" id="cp-cancelar">Cancelar</button><button type="button" class="cp-ok" id="cp-guardar">Guardar</button></div></div>';
       document.body.appendChild(ov);
@@ -288,10 +330,26 @@
       document.getElementById("cp-cancelar").addEventListener("click", () => ov.classList.remove("cp-visible"));
       document.getElementById("cp-guardar").addEventListener("click", guardarPassword);
     }
-    ["cp-actual", "cp-nueva", "cp-confirmar"].forEach((id) => { document.getElementById(id).value = ""; });
+    /* El navegador puede autocompletar la contraseña guardada del inicio de sesión: los campos
+       arrancan en solo lectura (se habilitan al enfocarlos) y se vacían de nuevo tras abrir. */
+    const campos = ["cp-actual", "cp-nueva", "cp-confirmar"].map((id) => document.getElementById(id));
+    const vaciar = () => campos.forEach((c) => { if (!c.dataset.escrito) c.value = ""; });
+    campos.forEach((c) => {
+      c.readOnly = true;
+      delete c.dataset.escrito;
+      if (!c.dataset.listo) {
+        c.dataset.listo = "1";
+        c.addEventListener("focus", () => { c.readOnly = false; });
+        c.addEventListener("keydown", () => { c.dataset.escrito = "1"; });   // lo escribió la persona
+      }
+    });
+    vaciar();
     document.getElementById("cp-error").textContent = "";
     ov.classList.add("cp-visible");
-    document.getElementById("cp-actual").focus();
+    setTimeout(vaciar, 150);
+    setTimeout(vaciar, 600);
+    campos[0].readOnly = false;
+    campos[0].focus();
   }
 
   async function guardarPassword() {
@@ -313,7 +371,7 @@
         { passwordActual: actual, nuevaPassword: nueva, confirmarPassword: conf });
       /* El Backend invalida el token anterior y entrega uno nuevo: se reemplaza de inmediato. */
       if (r && r.token) {
-        reemplazarToken(r.token, r.expiraEn);
+        reemplazarToken(r.token);
       }
       document.getElementById("cp-overlay").classList.remove("cp-visible");
       mostrarAviso("Contraseña actualizada correctamente.");
@@ -329,21 +387,39 @@
   const listo = new Promise((r) => { resolverListo = r; });
 
   if (enLogin) {
-    if (sesionValida()) location.replace(PAGINA_INICIO);
+    if (sesionValida()) location.replace(paginaInicio());
   } else if (!sesionValida()) {
     const habiaToken = !!leer(K_TOKEN);
     borrarSesionLocal();
     irALogin(habiaToken ? "expirada" : "");
   } else {
     programarExpiracion();
+
+    /* Permisos en caché (se guardan al iniciar sesión): permiten decidir antes de pintar. */
+    const cache = leerCachePermisos();
+    if (cache) { permisos = cache; permisosCargados = true; }
+    const requerido = PERMISO_PAGINA[pagina];
+    let oculta = false;
+    if (requerido) {
+      if (permisosCargados && !tiene(requerido)) {
+        location.replace(paginaInicio());
+      } else if (!permisosCargados) {
+        document.documentElement.style.visibility = "hidden";   // se muestra al confirmar el permiso
+        oculta = true;
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
-      prepararPagina().finally(resolverListo);
+      prepararPagina().finally(() => {
+        if (oculta) document.documentElement.style.visibility = "";
+        resolverListo();
+      });
     });
   }
 
   window.Auth = {
     token, usuario, sesionValida, login, logout, sesionExpirada,
-    reemplazarToken, tiene, listo,
+    reemplazarToken, tiene, esAdmin, paginaInicio, listo,
     get permisosCargados() { return permisosCargados; },
     mostrarAviso
   };

@@ -239,16 +239,37 @@ function mostrarErroresServidor(err) {
 }
 
 /* ---------- POST / PUT ---------- */
-function guardarUsuario() {
+async function guardarUsuario() {
   if (!validarFormulario()) return;
   const btn = $("btn-guardar-usuario");
   if (btn.disabled) return;
   const datos = leerFormulario();
   const editando = usuarioEnEdicion !== null;
 
+  /* Advertencia previa: revisar los datos antes de crear o modificar */
+  const textoSel = (id) => { const s = $(id); return s.options[s.selectedIndex] ? s.options[s.selectedIndex].text : ""; };
+  if (editando) {
+    const u = usuarios.find(x => x.idUsuario === usuarioEnEdicion);
+    const antes = { n: u.nombres, a: u.apellidos, td: u.idTipoDocumento, d: u.documento, t: u.telefono, e: u.email, r: u.idRol, s: u.estado ? "Activo" : "Inactivo" };
+    const despues = { n: datos.nombres, a: datos.apellidos, td: datos.idTipoDocumento, d: datos.documento, t: datos.telefono, e: datos.email, r: datos.idRol, s: datos.estado ? "Activo" : "Inactivo" };
+    const filas = Confirmar.cambios(antes, despues, { n: "Nombres", a: "Apellidos", td: "Tipo de documento (id)", d: "Documento", t: "Teléfono", e: "Correo", r: "Rol (id)", s: "Estado" });
+    if (!filas.length) { mostrarToast("No hay cambios para guardar."); return; }
+    const ok = await Confirmar.pedir({ titulo: "Confirmar edición", mensaje: "Se modificará el usuario <strong>" + esc(u.nombres) + " " + esc(u.apellidos) + "</strong>. ¿Desea guardar los cambios?", filas, textoConfirmar: "Sí, guardar cambios" });
+    if (!ok) return;
+  } else {
+    const ok = await Confirmar.pedir({
+      titulo: "Verifique los datos del nuevo usuario",
+      mensaje: "Revise que la información sea correcta antes de crear el usuario.",
+      filas: [["Nombres", esc(datos.nombres)], ["Apellidos", esc(datos.apellidos)], ["Tipo de documento", esc(textoSel("u-tipo-documento"))], ["Documento", esc(datos.documento)],
+        ["Teléfono", esc(datos.telefono)], ["Correo", esc(datos.email)], ["Rol", esc(textoSel("u-rol"))], ["Estado", datos.estado ? "Activo" : "Inactivo"], ["Contraseña", "&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"]],
+      textoConfirmar: "Sí, crear usuario"
+    });
+    if (!ok) return;
+  }
+
   bloquearBoton(btn, "Guardando...");
   const peticion = editando
-    ? apiUsuarios.actualizar(usuarioEnEdicion, { ...datos, idUsuario: usuarioEnEdicion })   // PUT
+    ? apiUsuarios.actualizar(usuarioEnEdicion, { ...datos, idUsuario: usuarioEnEdicion }, usuarios.find(u => u.idUsuario === usuarioEnEdicion))   // PUT
     : apiUsuarios.crear(datos);                                                              // POST
 
   peticion
@@ -287,7 +308,7 @@ function confirmarEliminacion() {
   const id = usuarioAEliminar;
 
   bloquearBoton(btn, "Eliminando...");
-  apiUsuarios.eliminar(id)
+  apiUsuarios.eliminar(id, usuarios.find(u => u.idUsuario === id))
     .then(() => {
       usuarios = usuarios.filter(u => u.idUsuario !== id);
       cerrarModal("overlay-eliminar");

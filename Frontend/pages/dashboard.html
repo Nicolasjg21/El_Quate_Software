@@ -100,6 +100,8 @@
       <!-- ---------- Cuerpo ---------- -->
       <main class="cuerpo">
 
+        <p class="estado-carga" id="estado-panel" role="status" style="margin:0 0 12px;color:var(--texto-secundario);">Cargando información...</p>
+
         <!-- 4 tarjetas KPI -->
         <section class="kpi-grid">
 
@@ -108,8 +110,8 @@
               <p class="kpi-titulo">Ventas Totales</p>
               <span class="kpi-icono kpi-icono--coral">$</span>
             </div>
-            <p class="kpi-valor">$ 24.562.000</p>
-            <p class="kpi-tendencia kpi-tendencia--positiva">&#8593; 12% vs semana pasada</p>
+            <p class="kpi-valor" id="kpi-ventas">—</p>
+            <p class="kpi-tendencia" id="kpi-ventas-t">&nbsp;</p>
           </article>
 
           <article class="kpi-card">
@@ -117,8 +119,8 @@
               <p class="kpi-titulo">Órdenes Totales</p>
               <span class="kpi-icono kpi-icono--coral">&#128722;</span>
             </div>
-            <p class="kpi-valor">1,284</p>
-            <p class="kpi-tendencia kpi-tendencia--positiva">&#8593; 8% vs semana pasada</p>
+            <p class="kpi-valor" id="kpi-ordenes">—</p>
+            <p class="kpi-tendencia" id="kpi-ordenes-t">&nbsp;</p>
           </article>
 
           <article class="kpi-card">
@@ -126,8 +128,8 @@
               <p class="kpi-titulo">Artículos de Inventario</p>
               <span class="kpi-icono kpi-icono--coral">&#128230;</span>
             </div>
-            <p class="kpi-valor">487</p>
-            <p class="kpi-tendencia kpi-tendencia--negativa">&#8595; 3% vs semana pasada</p>
+            <p class="kpi-valor" id="kpi-articulos">—</p>
+            <p class="kpi-tendencia" id="kpi-articulos-t">&nbsp;</p>
           </article>
 
           <article class="kpi-card">
@@ -135,8 +137,8 @@
               <p class="kpi-titulo">Valor Promedio de Orden</p>
               <span class="kpi-icono kpi-icono--coral">&#128200;</span>
             </div>
-            <p class="kpi-valor">$ 19.120</p>
-            <p class="kpi-tendencia kpi-tendencia--positiva">&#8593; 5% vs semana pasada</p>
+            <p class="kpi-valor" id="kpi-promedio">—</p>
+            <p class="kpi-tendencia" id="kpi-promedio-t">&nbsp;</p>
           </article>
 
         </section>
@@ -147,90 +149,31 @@
           <article class="panel panel--grafica">
             <div class="panel-header">
               <h2 class="panel-titulo">Tendencia de Ventas y Órdenes</h2>
-              <span class="selector-visual">Últimos 7 días <span aria-hidden="true">&#9662;</span></span>
+              <span class="selector-visual">Últimos 7 días</span>
             </div>
 
             <div class="chart-linea">
-
-              <div class="chart-linea-ejes">
-                <span>4000</span><span>3000</span><span>2000</span><span>1000</span><span>0</span>
-              </div>
-
-              <div class="chart-linea-area">
-
+              <div class="chart-linea-ejes" id="chart-ejes"></div>
+              <div class="chart-linea-area" id="chart-area">
                 <div class="chart-linea-guia" style="top:0%"></div>
                 <div class="chart-linea-guia" style="top:25%"></div>
                 <div class="chart-linea-guia" style="top:50%"></div>
                 <div class="chart-linea-guia" style="top:75%"></div>
                 <div class="chart-linea-guia" style="top:100%"></div>
-
-                <!-- Serie "orders" (naranja, casi plana) -->
-                <div class="chart-segmento chart-segmento--orders" style="left:0.0px; top:200.6px; width:106.7px; transform:rotate(-1.13deg);"></div>
-                <div class="chart-segmento chart-segmento--orders" style="left:106.7px; top:198.4px; width:106.7px; transform:rotate(1.97deg);"></div>
-                <div class="chart-segmento chart-segmento--orders" style="left:213.3px; top:202.1px; width:106.8px; transform:rotate(-3.10deg);"></div>
-                <div class="chart-segmento chart-segmento--orders" style="left:320.0px; top:196.3px; width:106.9px; transform:rotate(3.66deg);"></div>
-                <div class="chart-segmento chart-segmento--orders" style="left:426.7px; top:203.2px; width:106.7px; transform:rotate(-2.25deg);"></div>
-                <div class="chart-segmento chart-segmento--orders" style="left:533.3px; top:199.0px; width:106.7px; transform:rotate(0.56deg);"></div>
-
-                <div class="chart-punto chart-punto--orders" style="left:0.0px; top:200.6px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:106.7px; top:198.4px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:213.3px; top:202.1px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:320.0px; top:196.3px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:426.7px; top:203.2px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:533.3px; top:199.0px;"></div>
-                <div class="chart-punto chart-punto--orders" style="left:640.0px; top:200.0px;"></div>
-
-                <!-- Serie "sales" (coral) -->
-                <div class="chart-segmento chart-segmento--sales" style="left:0.0px; top:0.0px; width:118.9px; transform:rotate(26.21deg);"></div>
-                <div class="chart-segmento chart-segmento--sales" style="left:106.7px; top:52.5px; width:118.9px; transform:rotate(26.21deg);"></div>
-                <div class="chart-segmento chart-segmento--sales" style="left:213.3px; top:105.0px; width:114.6px; transform:rotate(-21.49deg);"></div>
-                <div class="chart-segmento chart-segmento--sales" style="left:320.0px; top:63.0px; width:116.7px; transform:rotate(23.89deg);"></div>
-                <div class="chart-segmento chart-segmento--sales" style="left:426.7px; top:110.2px; width:110.5px; transform:rotate(-15.15deg);"></div>
-                <div class="chart-segmento chart-segmento--sales" style="left:533.3px; top:81.4px; width:121.3px; transform:rotate(-28.43deg);"></div>
-
-                <div class="chart-punto chart-punto--sales" style="left:0.0px; top:0.0px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:106.7px; top:52.5px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:213.3px; top:105.0px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:320.0px; top:63.0px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:426.7px; top:110.2px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:533.3px; top:81.4px;"></div>
-                <div class="chart-punto chart-punto--sales" style="left:640.0px; top:23.6px;"></div>
-
+                <div id="chart-series"></div>
               </div>
-
-              <div class="chart-linea-dias">
-                <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
-              </div>
-
+              <div class="chart-linea-dias" id="chart-dias"></div>
             </div>
 
             <div class="chart-leyenda">
-              <span><i class="chart-leyenda-punto chart-leyenda-punto--sales"></i>sales</span>
-              <span><i class="chart-leyenda-punto chart-leyenda-punto--orders"></i>orders</span>
+              <span><i class="chart-leyenda-punto chart-leyenda-punto--sales"></i>Ventas ($)</span>
+              <span><i class="chart-leyenda-punto chart-leyenda-punto--orders"></i>Órdenes (escala propia)</span>
             </div>
           </article>
 
           <article class="panel panel--grafica">
             <h2 class="panel-titulo">Ingresos por Categoría</h2>
-
-            <div class="chart-barras">
-              <div class="chart-barra-col">
-                <div class="chart-barra" style="height:75%"></div>
-                <span class="chart-barra-etiqueta">Cervezas</span>
-              </div>
-              <div class="chart-barra-col">
-                <div class="chart-barra" style="height:57%"></div>
-                <span class="chart-barra-etiqueta">Licores</span>
-              </div>
-              <div class="chart-barra-col">
-                <div class="chart-barra" style="height:24%"></div>
-                <span class="chart-barra-etiqueta">Bebidas</span>
-              </div>
-              <div class="chart-barra-col">
-                <div class="chart-barra" style="height:12%"></div>
-                <span class="chart-barra-etiqueta">Snacks</span>
-              </div>
-            </div>
+            <div class="chart-barras" id="chart-categorias"></div>
           </article>
 
         </section>
@@ -244,49 +187,12 @@
               <thead>
                 <tr>
                   <th>Nombre del Producto</th>
+                  <th>Categoría</th>
                   <th class="col-derecha">Unidades Vendidas</th>
                   <th class="col-derecha">Ingresos</th>
-                  <th class="col-derecha">Tendencia</th>
-                  <th class="col-centro">Acción</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td>Cerveza Club Colombia Dorada</td>
-                  <td class="col-derecha">456</td>
-                  <td class="col-derecha">$ 5.472.000</td>
-                  <td class="col-derecha"><span class="pill pill--positiva">&#8593; 12%</span></td>
-                  <td class="col-centro">&#8942;</td>
-                </tr>
-                <tr>
-                  <td>Cerveza Águila Original</td>
-                  <td class="col-derecha">234</td>
-                  <td class="col-derecha">$ 2.691.000</td>
-                  <td class="col-derecha"><span class="pill pill--positiva">&#8593; 8%</span></td>
-                  <td class="col-centro">&#8942;</td>
-                </tr>
-                <tr>
-                  <td>Whisky Old Parr</td>
-                  <td class="col-derecha">89</td>
-                  <td class="col-derecha">$ 3.912.000</td>
-                  <td class="col-derecha"><span class="pill pill--negativa">&#8595; 3%</span></td>
-                  <td class="col-centro">&#8942;</td>
-                </tr>
-                <tr>
-                  <td>Mojito Clásico</td>
-                  <td class="col-derecha">156</td>
-                  <td class="col-derecha">$ 2.340.000</td>
-                  <td class="col-derecha"><span class="pill pill--positiva">&#8593; 15%</span></td>
-                  <td class="col-centro">&#8942;</td>
-                </tr>
-                <tr>
-                  <td>Maní Salado (Bolsa)</td>
-                  <td class="col-derecha">298</td>
-                  <td class="col-derecha">$ 1.490.000</td>
-                  <td class="col-derecha"><span class="pill pill--positiva">&#8593; 5%</span></td>
-                  <td class="col-centro">&#8942;</td>
-                </tr>
-              </tbody>
+              <tbody id="tabla-top"></tbody>
             </table>
           </div>
         </section>
@@ -297,7 +203,7 @@
             <h2 class="panel-titulo">Estado del Inventario</h2>
             <div class="buscador">
               <span class="buscador-icono" aria-hidden="true">&#128269;</span>
-              <input type="text" placeholder="Buscar inventario...">
+              <input type="text" id="buscar-panel-inventario" placeholder="Buscar inventario...">
             </div>
           </div>
 
@@ -305,7 +211,7 @@
             <table class="tabla">
               <thead>
                 <tr>
-                  <th>SKU</th>
+                  <th>Código</th>
                   <th>Producto</th>
                   <th>Categoría</th>
                   <th class="col-derecha">Cantidad</th>
@@ -314,26 +220,7 @@
                   <th>Estado</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td class="col-mono">CCH-001</td>
-                  <td>Club Colombia Dorada</td>
-                  <td>Cervezas</td>
-                  <td class="col-derecha">156</td>
-                  <td class="col-derecha">80</td>
-                  <td class="col-derecha">$ 5.500</td>
-                  <td><span class="pill pill--stock">En Existencia</span></td>
-                </tr>
-                <tr>
-                  <td class="col-mono">AGU-045</td>
-                  <td>Aguardiente Antioqueño Rojo</td>
-                  <td>Licores</td>
-                  <td class="col-derecha">48</td>
-                  <td class="col-derecha">20</td>
-                  <td class="col-derecha">$ 19.000</td>
-                  <td><span class="pill pill--stock">En Existencia</span></td>
-                </tr>
-              </tbody>
+              <tbody id="tabla-estado-inv"></tbody>
             </table>
           </div>
         </section>
@@ -344,5 +231,8 @@
 
   </div>
 
+<script src="../js/data.js"></script>
+<script src="../js/api-negocio.js"></script>
+<script src="../js/dashboard.js"></script>
 </body>
 </html>
