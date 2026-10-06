@@ -1,9 +1,5 @@
 /* ==========================================================================
    MENÚ RESPONSIVE — El Cuate
-   --------------------------------------------------------------------------
-   Convierte el sidebar en una barra superior con botón de menú (hamburguesa)
-   en tablet y móvil (≤ 900 px). Sólo HTML + CSS (checkbox + label).
-   Se carga DESPUÉS de layout.css / dashboard.css para poder ajustarlos.
    ========================================================================== */
 
 /* En escritorio el botón y el checkbox no existen visualmente */

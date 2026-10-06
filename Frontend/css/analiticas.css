@@ -1,10 +1,5 @@
 /* ==========================================================================
    VENTAS Y ANALÍTICAS — El Cuate
-   --------------------------------------------------------------------------
-   Estilos específicos de la vista. Reutiliza layout.css (sidebar, header,
-   paneles, botones, tablas) y sólo agrega lo propio del módulo.
-   100% HTML + CSS: el filtro de período funciona con radios ocultos
-   (input:checked ~ ...) y las gráficas son SVG/CSS sin JavaScript.
    ========================================================================== */
 
 :root {
