@@ -1,10 +1,16 @@
-/* ==========================================================================
-   DASHBOARD.JS — Panel Principal con datos reales (solo administración)
-   ========================================================================== */
+/**
+ * @file dashboard.js
+ * @description Panel Principal (requiere "auditorias.consultar"). Resumen de los últimos 7 días
+ *   frente a los 7 anteriores, tendencia de ventas, categorías y productos más vendidos y estado
+ *   del inventario con búsqueda.
+ * @requires api-negocio.js, data.js, auth.js
+ */
+
 (function () {
   const $ = (id) => document.getElementById(id);
   let inventario = [];
 
+  /* ---------- Utilidades ---------- */
   const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const inicioDia = (f) => { const d = new Date(f); d.setHours(0, 0, 0, 0); return d; };
   const claveDia = (f) => `${f.getFullYear()}-${f.getMonth()}-${f.getDate()}`;
@@ -16,6 +22,7 @@
     Auth.listo.then(cargar);
   });
 
+  /** Muestra la variación porcentual frente a los 7 días previos. */
   function tendencia(el, actual, previo, etiqueta) {
     if (!previo) {
       el.className = "kpi-tendencia";
@@ -27,6 +34,7 @@
     el.textContent = `${pct >= 0 ? "↑" : "↓"} ${Math.abs(pct)}% vs 7 días previos`;
   }
 
+  /** Carga ventas, órdenes, consumo e inventario y dibuja el panel. */
   async function cargar() {
     const estado = $("estado-panel");
     estado.hidden = false;
@@ -47,7 +55,6 @@
     const ordenes = rOrdenes.status === "fulfilled" ? rOrdenes.value : [];
     const ventas = rVentas.status === "fulfilled" ? rVentas.value : null;
 
-    /* KPIs */
     const totalIngresos = ventas ? ventas.totalIngresos : ordenes.reduce((a, o) => a + o.total, 0);
     const totalOrdenes = ventas ? ventas.totalVentas : ordenes.length;
     const promedio = ventas ? ventas.promedioVenta : (ordenes.length ? totalIngresos / ordenes.length : 0);
@@ -68,7 +75,6 @@
     tendencia($("kpi-ordenes-t"), sem.length, prev.length, "Últimos 7 días");
     tendencia($("kpi-promedio-t"), sem.length ? sumaSem / sem.length : 0, prev.length ? sumaPrev / prev.length : 0, "Últimos 7 días");
 
-    /* Inventario */
     if (rProductos.status === "fulfilled") {
       inventario = rProductos.value;
       const bajos = inventario.filter((p) => p.stock <= p.stockMinimo).length;
@@ -92,7 +98,6 @@
     }
   }
 
-  /* ---------- Gráfica de líneas (7 días) ---------- */
   function dibujarTendencia(ordenes, desde) {
     const ANCHO = 640, ALTO = 210;
     const dias = [];
@@ -164,6 +169,7 @@
       </tr>`).join("") : `<tr><td colspan="4" class="col-centro">Aún no hay ventas registradas.</td></tr>`;
   }
 
+  /** Estado del inventario: En existencia, Stock bajo (≤ mínimo) o Sin existencias. */
   function renderInventario() {
     const q = $("buscar-panel-inventario").value.trim().toLowerCase();
     const filas = inventario.filter((p) => {

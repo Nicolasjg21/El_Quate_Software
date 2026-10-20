@@ -1,9 +1,9 @@
 /* ==========================================================================
-   VENTAS Y ANALÍTICAS — El Cuate
+   analiticas.css
+   Ventas y Analíticas: período, indicadores, gráficas y tablas del módulo.
    ========================================================================== */
 
 :root {
-  /* colores auxiliares (sólo métodos de pago), suaves y no saturados */
   --c-efectivo: #6FBF8E;
   --c-tarjeta: #7FA3E3;
   --c-billetera: #A98BEA;
@@ -16,7 +16,6 @@
 
 .an { position: relative; }
 
-/* ---------- Radios ocultos (accesibles por teclado) ---------- */
 .per-radio {
   position: absolute;
   width: 1px;
@@ -25,12 +24,10 @@
   pointer-events: none;
 }
 
-/* ---------- Encabezado del módulo + exportar ---------- */
 a.btn { text-decoration: none; }
 .btn--chico { padding: 7px 12px; font-size: 12px; }
 .exportar .exp { display: none; }
 
-/* ---------- Panel de filtros ---------- */
 .per-filtros { display: flex; flex-direction: column; gap: 14px; }
 
 .per-fila { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -66,10 +63,8 @@ a.btn { text-decoration: none; }
   white-space: nowrap;
 }
 
-/* ---------- Conjunto de datos por período ---------- */
 .set { display: none; flex-direction: column; gap: 20px; min-width: 0; }
 
-/* ---------- KPIs ---------- */
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 
 .kpi {
@@ -113,7 +108,6 @@ a.btn { text-decoration: none; }
 
 .nota { font-size: 11px; color: var(--texto-secundario); margin-top: -6px; }
 
-/* ---------- Encabezado de panel ---------- */
 .panel { min-width: 0; }
 
 .panel-cab {
@@ -137,7 +131,6 @@ a.btn { text-decoration: none; }
   white-space: nowrap;
 }
 
-/* ---------- Leyenda / símbolos de serie (forma + color, no sólo color) ---------- */
 .leyenda { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--texto-secundario); }
 .ley { display: inline-flex; align-items: center; gap: 7px; }
 
@@ -154,7 +147,6 @@ a.btn { text-decoration: none; }
 .lg-p { width: 10px; height: 10px; }
 .lg-p::after { width: 9px; height: 9px; border-radius: 50%; background-color: #FFFFFF; border: 2px solid var(--coral); }
 
-/* ---------- Tendencia de ventas y órdenes ---------- */
 .panel--tendencia .panel-titulo { font-size: 16px; }
 
 .trend {
@@ -185,7 +177,6 @@ a.btn { text-decoration: none; }
 .l-o { stroke: var(--naranja); stroke-width: 2; }
 .l-v.parcial, .l-o.parcial { stroke-dasharray: 3 4; }
 
-/* columnas interactivas (una por punto) */
 .tc { position: absolute; top: 0; bottom: 0; outline: none; }
 .tc-g { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background-color: var(--carbon); opacity: 0; }
 
@@ -227,7 +218,6 @@ a.btn { text-decoration: none; }
 .tc--izq .tc-tip, .hc--izq .tc-tip { left: 0; }
 .tc--der .tc-tip, .hc--der .tc-tip { right: 0; }
 
-/* eje X */
 .xl { position: relative; height: 20px; }
 .xl span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--texto-secundario); white-space: nowrap; }
 .xl span.fut { color: var(--texto-suave); opacity: 0.7; }
@@ -236,12 +226,10 @@ a.btn { text-decoration: none; }
 
 .eje-cap { font-size: 11px; color: var(--texto-suave); text-align: center; margin-top: 6px; }
 
-/* ---------- Filas de paneles ---------- */
 .fila { display: grid; gap: 16px; align-items: stretch; }
 .fila--b { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 .fila--c { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
 
-/* ---------- Ingresos por categoría ---------- */
 .panel--cat { display: flex; flex-direction: column; }
 .cats { list-style: none; display: flex; flex-direction: column; justify-content: space-around; gap: 18px; flex: 1; }
 .cat-linea { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; }
@@ -267,7 +255,6 @@ a.btn { text-decoration: none; }
 }
 .cats-total strong { color: var(--texto-principal); }
 
-/* ---------- Productos más vendidos ---------- */
 .panel--prod { container-type: inline-size; }
 .tabla--prod { min-width: 0; }
 .tabla--prod thead th { white-space: normal; }
@@ -309,7 +296,6 @@ a.btn { text-decoration: none; }
   .col-prod { min-width: 0; }
 }
 
-/* ---------- Actividad por hora ---------- */
 .horas { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
 .horas .eje { height: 220px; }
 .horas-plot { position: relative; min-width: 0; }
@@ -330,7 +316,6 @@ a.btn { text-decoration: none; }
 .hc:hover, .hc:focus { z-index: 6; }
 .hc .tc-tip { top: 0; }
 
-/* ---------- Métodos de pago ---------- */
 .pagos { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
 
 .donut { position: relative; width: 168px; height: 168px; border-radius: 50%; flex-shrink: 0; margin: 0 auto; }
@@ -358,7 +343,6 @@ a.btn { text-decoration: none; }
 .pago-info span { font-size: 11px; color: var(--texto-secundario); }
 .pago-valor { font-size: 13px; font-weight: 700; color: var(--texto-principal); white-space: nowrap; }
 
-/* ---------- Órdenes recientes ---------- */
 .tabla--rec { min-width: 860px; }
 .tabla--rec .col-fecha { white-space: nowrap; color: var(--texto-secundario); }
 .panel--rec .tabla-pie { padding-top: 10px; }
@@ -394,7 +378,6 @@ a.btn { text-decoration: none; }
 .accion-ver:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
 .accion-ver svg { width: 16px; height: 16px; }
 
-/* ---------- Estados: cargando / sin datos / error ---------- */
 .estado {
   display: flex;
   flex-direction: column;
@@ -409,10 +392,8 @@ a.btn { text-decoration: none; }
 .estado-titulo { font-size: 14px; font-weight: 700; color: var(--texto-principal); max-width: 420px; }
 .estado--error .estado-titulo { color: var(--rojo-texto); }
 
-/* ---------- Foco visible (teclado) ---------- */
 .tc:focus-visible, .hc:focus-visible { outline: 2px solid var(--coral); outline-offset: -2px; border-radius: 4px; }
 
-/* ---------- Filtro de período (sólo CSS): un bloque de reglas por opción ---------- */
 #per-hoy:checked ~ .set--hoy { display: flex; }
 #per-hoy:checked ~ .modulo-header .exp--hoy { display: inline-flex; }
 #per-hoy:checked ~ .per-filtros .ctx--hoy { display: flex; }
@@ -458,9 +439,6 @@ a.btn { text-decoration: none; }
 #per-personalizado:checked ~ .per-filtros .rango-fila { display: flex; }
 
 
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
 @media (max-width: 1240px) {
   .fila--b, .fila--c { grid-template-columns: minmax(0, 1fr); }
 }
@@ -496,7 +474,6 @@ a.btn { text-decoration: none; }
   .eje { font-size: 9px; }
 }
 
-/* ---------- Modo dinámico (datos desde la API, sin conmutación por CSS) ---------- */
 .set--vivo { display: flex; }
 .ctx--vivo { display: flex; }
 .exportar-vivo { display: inline-flex; }

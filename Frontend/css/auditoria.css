@@ -1,8 +1,8 @@
 /* ==========================================================================
-   AUDITORÍA 
+   auditoria.css
+   Auditoría: filtros, tabla de registros, paginación y detalle.
    ========================================================================== */
 
-/* ---------- Panel de búsqueda y filtros ---------- */
 .filtros-panel { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 
 .filtros-fila { display: grid; gap: 14px 16px; }
@@ -19,12 +19,12 @@
 .filtros-acciones { display: flex; justify-content: flex-end; gap: 10px; }
 .filtros-acciones .btn { min-width: 84px; }
 
-/* ---------- Panel de resultados ---------- */
 .resultados-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 6px 4px 12px 4px; }
 .resultados-titulo { font-size: 15px; font-weight: 700; color: var(--texto-principal); }
 .resultados-conteo { font-size: 11px; color: var(--texto-secundario); margin-top: 3px; }
 .resultados-icono { width: 18px; height: 18px; fill: none; stroke: var(--coral); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
+/* ---------- Tabla de registros ---------- */
 .tabla-auditoria { min-width: 760px; }
 .tabla-auditoria .col-fecha { white-space: nowrap; color: var(--texto-secundario); }
 .tabla-auditoria .col-detalle { color: var(--texto-secundario); }
@@ -46,11 +46,9 @@
 .accion--delete { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
 .accion--acceso { background-color: var(--gris-claro); color: var(--carbon); }
 
-/* ---------- Mensajes de estado (cargando / vacío / error) ---------- */
 .estado-tabla .btn { margin-top: 14px; }
 .estado-tabla--error p { color: var(--rojo-texto); }
 
-/* ---------- Paginación ---------- */
 .paginacion-barra {
   display: flex;
   align-items: center;
@@ -79,7 +77,6 @@
 .pag-btn:disabled { color: var(--texto-suave); cursor: not-allowed; background-color: #FAFAFA; }
 .pag-btn:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
 
-/* ---------- Modal de detalle ---------- */
 .modal--auditoria { max-width: 640px; }
 .auditoria-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; }
 .meta-campo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -110,7 +107,6 @@
 
 .modal--auditoria .modal-pie .btn { min-width: 110px; }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .filtros-fila--campos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -127,3 +123,5 @@
   .auditoria-meta { grid-template-columns: 1fr; }
   .resultados-cabecera { padding-top: 10px; }
 }
+
+.tabla-auditoria .col-id { white-space: nowrap; color: var(--texto-secundario); font-variant-numeric: tabular-nums; width: 60px; }

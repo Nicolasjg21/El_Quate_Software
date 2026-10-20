@@ -1,19 +1,21 @@
-/* ==========================================================================
-   API-CLIENTE.JS — Único punto de salida hacia el Backend (fetch centralizado)
-   --------------------------------------------------------------------------
-   Todas las llamadas HTTP del Frontend pasan por Api.solicitar().
-   - Agrega la URL base (config.js), el Bearer token y los encabezados JSON.
-   - Interpreta las respuestas uniformes { statusCode, message, data, errors }.
-   - Rechaza SIEMPRE con { status, mensaje, errores, cuerpo }:
-       0 = sin conexión / tiempo agotado, 400, 401, 403, 404, 409, 429, 5xx.
-   - 401 (salvo en rutas públicas como Login) => cierra la sesión local y
-     redirige al login. 403 => mensaje de permisos, la sesión sigue activa.
-   Requiere: config.js. Usa Auth (auth.js) si está cargado.
-   ========================================================================== */
+/**
+ * @file api-cliente.js
+ * @description Cliente HTTP del Frontend. Centraliza todas las llamadas a la API:
+ *   agrega la URL base, el token Bearer y los encabezados JSON, interpreta las respuestas
+ *   { statusCode, message, data, errors } y normaliza los errores.
+ * @requires config.js
+ * @exports window.Api
+ *
+ * Toda petición rechazada entrega { status, mensaje, errores, cuerpo }, donde status 0
+ * indica falta de conexión o tiempo agotado. Un 401 en una ruta protegida cierra la sesión.
+ */
+
 (function () {
   "use strict";
 
   const base = String(window.ELCUATE_CONFIG.API_URL || "").replace(/\/+$/, "");
+
+  /** Mensajes por defecto según el código de estado HTTP. */
   const MENSAJES = {
     0: "No fue posible conectar con el servidor. Verifique su conexión e intente de nuevo.",
     400: "Los datos enviados no son válidos.",
@@ -29,8 +31,12 @@
     return MENSAJES[status] || (status >= 500 ? MENSAJES[500] : "No fue posible completar la operación.");
   }
 
-  /** Aplana errors del Backend a { campo: [mensajes] }.
-      Acepta { campo: ["msg"] } y el formato de ModelState { campo: { errors: [{ errorMessage }] } }. */
+  /**
+   * Convierte los errores de validación del Backend a { campo: [mensajes] }.
+   * Acepta el formato de ValidationProblemDetails y el de ModelState.
+   * @param {object} errors Objeto "errors" de la respuesta.
+   * @returns {Object<string, string[]>}
+   */
   function aplanarErrores(errors) {
     const salida = {};
     if (!errors || typeof errors !== "object") return salida;
@@ -46,6 +52,12 @@
     return salida;
   }
 
+  /**
+   * Construye la URL absoluta de un endpoint. Omite los parámetros vacíos.
+   * @param {string} ruta Ruta relativa, por ejemplo "api/Usuarios/GetUsuarios".
+   * @param {object} [query] Parámetros de la cadena de consulta.
+   * @returns {string}
+   */
   function construirUrl(ruta, query) {
     let url = base + "/" + String(ruta).replace(/^\/+/, "");
     if (query) {
@@ -60,6 +72,17 @@
     return url;
   }
 
+  /**
+   * Ejecuta una petición a la API.
+   * @param {string} metodo GET, POST, PUT o DELETE.
+   * @param {string} ruta Ruta relativa del endpoint.
+   * @param {object} [opciones]
+   * @param {object} [opciones.cuerpo] Cuerpo a enviar como JSON.
+   * @param {object} [opciones.query] Parámetros de consulta.
+   * @param {boolean} [opciones.publico] true para no enviar el token (por ejemplo, Login).
+   * @returns {Promise<object|null>} Cuerpo de la respuesta.
+   * @throws {{status:number, mensaje:string, errores:object, cuerpo:object}}
+   */
   async function solicitar(metodo, ruta, opciones) {
     const op = opciones || {};
     const headers = { Accept: "application/json" };
@@ -100,12 +123,17 @@
       mensaje = Object.keys(errores).map((k) => errores[k][0]).join(" ");
     }
 
+    // Un 401 indica token vencido, revocado o inválido: se cierra la sesión local.
     if (status === 401 && !op.publico && window.Auth) window.Auth.sesionExpirada();
 
     throw { status, mensaje, errores, cuerpo };
   }
 
-  /** GET que devuelve el arreglo `data`; un 404 de listado ("no se encontraron…") equivale a lista vacía. */
+  /**
+   * GET que devuelve el arreglo "data". Un 404 de listado se interpreta como lista vacía,
+   * porque la API responde 404 cuando no hay registros.
+   * @returns {Promise<Array>}
+   */
   async function lista(ruta, query) {
     try {
       const r = await solicitar("GET", ruta, { query });
@@ -116,7 +144,11 @@
     }
   }
 
-  /** Fecha/hora local "AAAA-MM-DDTHH:mm:ss" (sin zona), el formato que guarda el Backend. */
+  /**
+   * Fecha y hora local en formato "AAAA-MM-DDTHH:mm:ss" (sin zona horaria), el formato que almacena el Backend.
+   * @param {Date} [d] Fecha a formatear; por defecto, el momento actual.
+   * @returns {string}
+   */
   function fechaLocal(d) {
     const f = d || new Date();
     const p = (n) => String(n).padStart(2, "0");
@@ -124,12 +156,16 @@
       p(f.getHours()) + ":" + p(f.getMinutes()) + ":" + p(f.getSeconds());
   }
 
-  /* Límites de AuditoriaCrearDTO: tabla y accion <= 50, datosAnteriores / datosNuevos <= 20000. */
+  /** Límites de AuditoriaCrearDTO y patrón de los campos que nunca se registran. */
   const MAX_TEXTO_CORTO = 50;
   const MAX_DATOS = 20000;
   const CLAVE_SENSIBLE = /pass|token|contrase|secret|hash|clave/i;
 
-  /** Copia del objeto sin claves sensibles, a cualquier profundidad (también dentro de arreglos). */
+  /**
+   * Copia profunda de un objeto sin las claves sensibles (contraseñas, tokens, hashes).
+   * @param {*} valor
+   * @returns {*}
+   */
   function sinSensibles(valor) {
     if (Array.isArray(valor)) return valor.map(sinSensibles);
     if (valor && typeof valor === "object") {
@@ -140,7 +176,12 @@
     return valor;
   }
 
-  /** Objeto -> JSON que cabe en 20000 caracteres (si no cabe, se guardan solo los campos simples). */
+  /**
+   * Serializa los datos de auditoría respetando el máximo de 20 000 caracteres.
+   * Si se excede, conserva solo los campos simples y marca el resultado con _recortado.
+   * @param {object} o
+   * @returns {string|undefined}
+   */
   function serializarDatos(o) {
     if (!o || typeof o !== "object") return undefined;
     const limpio = sinSensibles(o);
@@ -156,8 +197,14 @@
     return texto.length <= MAX_DATOS ? texto : JSON.stringify({ _recortado: true });
   }
 
-  /** Registra un evento en Auditorias (el Backend no lo hace solo; el idUsuario lo toma del token).
-      Nunca lanza error ni bloquea la operación principal; los campos sensibles se descartan. */
+  /**
+   * Registra un evento en Auditorias. El Backend asigna el usuario (desde el token) y la fecha.
+   * Nunca lanza error: un fallo de auditoría no debe interrumpir la operación principal.
+   * @param {string} tabla Tabla o módulo afectado.
+   * @param {string} accion INSERT, UPDATE, DELETE, LOGIN o LOGOUT.
+   * @param {object|null} antes Estado anterior del registro.
+   * @param {object|null} despues Estado nuevo del registro.
+   */
   async function auditar(tabla, accion, antes, despues) {
     try {
       await solicitar("POST", "api/Auditorias/PostAuditoria", {
@@ -170,11 +217,11 @@
         }
       });
     } catch (e) {
-      /* La auditoría es complementaria: un fallo no rompe la operación. Se avisa en consola sin datos. */
       if (window.console) console.warn("No se pudo registrar la auditoría (" + tabla + " / " + accion + "). Código: " + (e && e.status));
     }
   }
 
+  /** API pública del cliente HTTP. */
   window.Api = {
     solicitar,
     lista,
@@ -184,7 +231,6 @@
     post: (ruta, cuerpo, op) => solicitar("POST", ruta, Object.assign({ cuerpo }, op)),
     put: (ruta, cuerpo) => solicitar("PUT", ruta, { cuerpo }),
     del: (ruta) => solicitar("DELETE", ruta),
-    /** Mensaje listo para mostrar al usuario a partir de cualquier error. */
     mensajeError: (err, porDefecto) => (err && err.mensaje) || porDefecto || mensajePorDefecto(500)
   };
 })();

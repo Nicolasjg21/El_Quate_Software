@@ -1,19 +1,25 @@
-/* ==========================================================================
-   MESAS.JS — Módulo Mesas (conectado a la API vía Negocio, ver api-negocio.js)
-   --------------------------------------------------------------------------
-   Flujo: Libre -> (agregar productos) Ocupada -> (Confirmar pago) Cerrando
-          -> (Caja elige método de pago y cobra) Libre
-   - Mesero y Caja agregan / quitan productos y confirman el pago.
-   - Solo quien tiene el permiso cobros.gestionar (Caja, Administración) cobra.
-   - Solo Administración crea o elimina mesas.
-   ========================================================================== */
+/**
+ * @file mesas.js
+ * @description Módulo Mesas: salón, cuenta de cada mesa, cobro y comprobante.
+ *   Ciclo de una mesa: Libre → Ocupada (al agregar productos) → Cerrando (al cerrar la cuenta)
+ *   → Libre (al registrar el pago).
+ *   - Mesero y caja agregan o quitan productos y cierran la cuenta.
+ *   - El cobro requiere "cobros.gestionar": muestra la vista previa del comprobante, registra con qué
+ *     pagó el cliente y emite el comprobante para imprimir.
+ *   - Crear, eliminar, retirar y reactivar mesas requiere "seguridad.gestionar".
+ *     Una mesa con cuentas asociadas no puede eliminarse; en su lugar se retira (estado Inactiva).
+ * @requires api-negocio.js, comprobante.js, data.js, auth.js
+ */
 
+/** Estado de la pantalla. */
 let filtroActual = "todas";
-let mesas = [];            // última consulta (Mesas + cuenta abierta de cada una)
-let catalogo = [];         // productos con stock (para nombres y selector)
+let mesas = [];
+let catalogo = [];
 let mesaSeleccionada = null;
-let detalle = null;        // { cuenta, pedidos, items, comprobantes } de la mesa abierta
-let ocupado = false;       // evita dobles clics mientras una operación está en curso
+let detalle = null;
+
+/** Evita ejecutar dos operaciones a la vez por clics repetidos. */
+let ocupado = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -45,27 +51,39 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-marcar-pagada").addEventListener("click", abrirCobro);
   $("btn-reabrir-cuenta").addEventListener("click", reabrirCuenta);
   $("btn-confirmar-cobro").addEventListener("click", confirmarCobro);
+  $("btn-imprimir-comprobante").addEventListener("click", () => { if (comprobanteEmitido) Comprobante.imprimir(comprobanteEmitido); });
+  $("btn-cerrar-comprobante").addEventListener("click", () => cerrarModal("overlay-cobro"));
+  $("select-metodo-pago").addEventListener("change", () => { if (!comprobanteEmitido) renderVistaPrevia(); });
+  $("lista-mesas-retiradas").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-reactivar]");
+    if (btn) reactivarMesa(Number(btn.dataset.reactivar));
+  });
   $("btn-agregar-metodo").addEventListener("click", agregarMetodoPago);
   $("btn-eliminar-mesa").addEventListener("click", () => abrirModal("overlay-eliminar-mesa"));
   $("btn-confirmar-eliminar-mesa").addEventListener("click", eliminarMesa);
 
-  /* Delegación de los botones +, −, quitar de cada línea */
   $("detalle-items").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-accion]");
     if (btn) manejarAccionItem(btn.dataset.accion, Number(btn.dataset.id));
   });
 
   Auth.listo.then(() => {
-    /* Mesero y Caja no crean ni eliminan mesas: solo Administración */
+    // Solo la administración crea o elimina mesas.
     $("btn-nueva-mesa").hidden = !Auth.esAdmin();
     cargarMesas();
   });
 });
 
-/* ---------- Modales y avisos ---------- */
+/* ---------- Ventanas y avisos ---------- */
 function abrirModal(id) { $(id).classList.add("overlay--visible"); }
 function cerrarModal(id) {
   $(id).classList.remove("overlay--visible");
+
+  // Al cerrar un comprobante ya emitido la mesa está libre: se vuelve al salón.
+  if (id === "overlay-cobro" && comprobanteEmitido) {
+    comprobanteEmitido = null;
+    volverAMesas();
+  }
   if (id === "overlay-nueva-mesa") {
     $("error-numero-mesa").classList.remove("campo-mensaje-error--visible");
     $("input-numero-mesa").classList.remove("campo-error");
@@ -81,7 +99,12 @@ function mostrarToast(mensaje, tipo) {
   mostrarToast._t = setTimeout(() => toast.classList.remove("toast--visible"), tipo === "error" ? 4200 : 2400);
 }
 
-/** Ejecuta una operación asíncrona evitando solapes y mostrando el error del Backend (400/403/404/409/500…). */
+/**
+ * Ejecuta una operación asíncrona sin solaparla con otra y muestra el mensaje de error del Backend.
+ * @param {Function} operacion
+ * @param {string} [textoError] Mensaje si el Backend no envía uno.
+ * @returns {Promise<boolean>} true si terminó sin error.
+ */
 async function ejecutar(operacion, textoError) {
   if (ocupado) return false;
   ocupado = true;
@@ -101,27 +124,32 @@ const horaDe = (iso) => {
   return d && !isNaN(d) ? d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0") : "--:--";
 };
 
-/* ---------- Vista: listado de mesas ---------- */
+/* ---------- Salón ---------- */
 async function cargarMesas() {
   $("mesas-grid").innerHTML = `<p class="picker-vacio">Cargando mesas...</p>`;
   try {
     mesas = await Negocio.cargarMesas();
     renderMesas();
+    /* Corrige en segundo plano las mesas marcadas como ocupadas sin consumo. */
+    Negocio.sincronizarEstadosMesas(mesas).catch(() => {});
   } catch (err) {
     $("mesas-grid").innerHTML = `<p class="picker-vacio">${esc(Api.mensajeError(err, "No fue posible cargar las mesas."))}</p>`;
   }
 }
 
+/** Dibuja el salón y los contadores. Las mesas retiradas no se muestran ni se cuentan. */
 function renderMesas() {
-  const total = mesas.length;
+  const enSalon = mesas.filter(m => m.estado !== "inactiva");
+  const total = enSalon.length;
   const conteo = { libre: 0, ocupada: 0, cerrando: 0 };
-  mesas.forEach(m => conteo[m.estado]++);
+  enSalon.forEach(m => { if (conteo[m.estado] !== undefined) conteo[m.estado]++; });
+  renderMesasRetiradas();
 
   $("conteo-ocupadas").innerHTML = `${conteo.ocupada} <small>/ ${total}</small>`;
   $("conteo-libres").innerHTML = `${conteo.libre} <small>/ ${total}</small>`;
   $("conteo-cerrando").innerHTML = `${conteo.cerrando} <small>/ ${total}</small>`;
 
-  const visibles = mesas.filter(m => filtroActual === "todas" || m.estado === filtroActual);
+  const visibles = enSalon.filter(m => filtroActual === "todas" || m.estado === filtroActual);
   const grid = $("mesas-grid");
   grid.innerHTML = "";
 
@@ -167,12 +195,43 @@ function mesaCardEl(mesa) {
   return card;
 }
 
-/* ---------- Nueva mesa (solo Administración) ---------- */
+/** Lista de mesas retiradas, visible solo para la administración. */
+function renderMesasRetiradas() {
+  const retiradas = mesas.filter(m => m.estado === "inactiva");
+  const bloque = $("bloque-mesas-retiradas");
+  bloque.hidden = !(Auth.esAdmin() && retiradas.length);
+  $("lista-mesas-retiradas").innerHTML = retiradas.map(m => `
+    <div class="mesa-retirada">
+      <span>Mesa ${esc(m.numero)}</span>
+      <button type="button" class="btn btn--secundario" data-reactivar="${m.idMesa}">Reactivar</button>
+    </div>`).join("");
+}
+
+async function reactivarMesa(idMesa) {
+  const mesa = mesas.find(m => m.idMesa === idMesa);
+  if (!mesa) return;
+  const ok = await ejecutar(() => Negocio.reactivarMesa(mesa), "No fue posible reactivar la mesa.");
+  if (ok) { mostrarToast(`Mesa ${mesa.numero} reactivada`); await cargarMesas(); }
+}
+
+/* ---------- Alta de mesas ---------- */
+
+/** Registra una mesa. Si el número pertenece a una mesa retirada, ofrece reactivarla en lugar de duplicarla. */
 async function registrarNuevaMesa() {
   const input = $("input-numero-mesa");
   const error = $("error-numero-mesa");
   const numero = parseInt(input.value, 10);
 
+  const retirada = mesas.find(m => m.numero === numero && m.estado === "inactiva");
+  if (retirada) {
+    const si = await Confirmar.pedir({
+      titulo: "Mesa retirada",
+      mensaje: "La mesa <strong>" + esc(numero) + "</strong> ya existe, pero está retirada del salón. ¿Desea reactivarla?",
+      textoConfirmar: "Sí, reactivar"
+    });
+    if (si) { input.value = ""; cerrarModal("overlay-nueva-mesa"); await reactivarMesa(retirada.idMesa); }
+    return;
+  }
   const invalido = !Number.isInteger(numero) || numero < 1 || mesas.some(m => m.numero === numero);
   input.classList.toggle("campo-error", invalido);
   error.classList.toggle("campo-mensaje-error--visible", invalido);
@@ -194,7 +253,7 @@ async function registrarNuevaMesa() {
   if (ok) await cargarMesas();
 }
 
-/* ---------- Vista: detalle de mesa ---------- */
+/* ---------- Cuenta de la mesa ---------- */
 async function abrirDetalle(idMesa) {
   mesaSeleccionada = mesas.find(m => m.idMesa === idMesa) || null;
   if (!mesaSeleccionada) return;
@@ -231,12 +290,14 @@ function stockProducto(idProducto) {
   return p ? p.stock : 0;
 }
 
+/** Dibuja la cuenta y habilita las acciones según el estado de la mesa y los permisos. */
 function renderDetalle() {
   const mesa = mesaSeleccionada;
   if (!mesa || !detalle) return;
 
   $("detalle-titulo").textContent = `Mesa ${mesa.numero}`;
-  $("detalle-meta").innerHTML = `&#128337; ${mesa.cuenta ? "Abierto desde " + horaDe(mesa.cuenta.fechaApertura) : "Aún no se ha abierto"}`;
+  const conConsumo = detalle.items.length > 0;
+  $("detalle-meta").innerHTML = `&#128337; ${mesa.cuenta && conConsumo ? "Abierta desde " + horaDe(mesa.cuenta.fechaApertura) : "Mesa libre: agregue productos para abrir la cuenta"}`;
 
   const t = Negocio.totales(detalle.items);
   const cuerpo = $("detalle-items");
@@ -269,6 +330,8 @@ function renderDetalle() {
   $("detalle-total").textContent = formatoCOP(t.total);
 
   const puedeCobrar = Auth.tiene("cobros.gestionar");
+  $("btn-confirmar-pago").textContent = puedeCobrar ? "Cerrar cuenta y cobrar" : "Cerrar cuenta (enviar a caja)";
+  $("btn-marcar-pagada").textContent = "Cobrar y emitir comprobante";
   $("btn-confirmar-pago").style.display = cerrando ? "none" : "block";
   $("btn-confirmar-pago").disabled = detalle.items.length === 0;
   $("btn-marcar-pagada").style.display = cerrando && puedeCobrar ? "block" : "none";
@@ -277,10 +340,11 @@ function renderDetalle() {
   $("btn-agregar-productos").disabled = cerrando;
   $("btn-agregar-productos").style.opacity = cerrando ? "0.5" : "1";
 
-  /* Eliminar mesa: solo Administración y solo si no tiene cuenta abierta */
-  $("btn-eliminar-mesa").hidden = !(Auth.esAdmin() && mesa.estado === "libre" && !mesa.cuenta);
+  // Una mesa solo puede eliminarse estando libre y sin consumo.
+  $("btn-eliminar-mesa").hidden = !(Auth.esAdmin() && mesa.estado === "libre" && !conConsumo);
 }
 
+/** Acciones de cada línea: sumar, restar o quitar (esta última pide confirmación). */
 async function manejarAccionItem(accion, idDetalle) {
   const mesa = mesaSeleccionada;
   if (accion === "quitar") {
@@ -303,7 +367,7 @@ async function manejarAccionItem(accion, idDetalle) {
   }
 }
 
-/* ---------- Agregar productos (selector) ---------- */
+/* ---------- Selector de productos ---------- */
 async function abrirPicker() {
   $("buscar-producto-picker").value = "";
   $("lista-productos-picker").innerHTML = `<p class="picker-vacio">Cargando productos...</p>`;
@@ -316,6 +380,7 @@ async function abrirPicker() {
   }
 }
 
+/** Lista de productos activos; los que no tienen stock no se pueden agregar. */
 function renderPickerProductos(filtroTexto) {
   const texto = Negocio.norm(filtroTexto);
   const filtrados = catalogo
@@ -362,7 +427,9 @@ async function agregarProductoAMesa(idProducto) {
   }
 }
 
-/* ---------- Confirmar pago (mesa -> Cerrando) ---------- */
+/* ---------- Cierre de la cuenta ---------- */
+
+/** Pasa la mesa a "Cerrando". Si el usuario puede cobrar, abre de inmediato el comprobante. */
 async function confirmarPago() {
   const mesa = mesaSeleccionada;
   const ok = await ejecutar(
@@ -371,7 +438,8 @@ async function confirmarPago() {
   );
   if (ok) {
     renderDetalle();
-    mostrarToast(`Mesa ${mesa.numero} pasó a "Cerrando": pendiente de cobro en caja`);
+    if (Auth.tiene("cobros.gestionar")) abrirCobro();
+    else mostrarToast(`Mesa ${mesa.numero} pasó a "Cerrando": pendiente de cobro en caja`);
   }
 }
 
@@ -386,19 +454,78 @@ async function reabrirCuenta() {
   }
 }
 
-/* ---------- Cobro: método de pago y liberación de la mesa ---------- */
+/* ---------- Comprobante de pago ----------
+   Paso 1: vista previa del comprobante y selección del método con el que pagó el cliente.
+   Paso 2: registro del pago y comprobante emitido, con número y fecha de cierre. */
 let metodos = [];
+
+/** Comprobante registrado, disponible para imprimir. */
+let comprobanteEmitido = null;
+
+const nombreUsuarioSesion = () => {
+  const el = document.querySelector(".header-usuario-nombre");
+  const u = Auth.usuario();
+  return (el && el.textContent.trim()) || (u && u.email) || "—";
+};
+
+/** Nombre de quien atendió la mesa (usuario del pedido). */
+function nombreMesero() {
+  const p = detalle && detalle.pedidos && detalle.pedidos[0];
+  if (p && p.usuario) return `${p.usuario.nombres || ""} ${p.usuario.apellidos || ""}`.trim() || "—";
+  return p ? `Usuario #${p.idUsuario}` : nombreUsuarioSesion();
+}
+
+/** Datos del comprobante a partir de la cuenta actual. */
+function datosComprobante(extra) {
+  const t = Negocio.totales(detalle.items);
+  return Object.assign({
+    numero: null, borrador: true,
+    mesa: mesaSeleccionada ? mesaSeleccionada.numero : "—",
+    atendio: nombreMesero(),
+    cobro: nombreUsuarioSesion(),
+    apertura: detalle.cuenta && detalle.cuenta.fechaApertura,
+    cierre: null,
+    metodo: "",
+    items: detalle.items.map(i => ({ nombre: nombreProducto(i.idProducto), cantidad: i.cantidad, precioUnitario: i.precioUnitario })),
+    subtotal: t.subtotal, iva: t.iva, total: t.total, tasaIva: Negocio.IVA
+  }, extra || {});
+}
+
+function metodoSeleccionado() {
+  const id = Number($("select-metodo-pago").value);
+  const m = metodos.find(x => x.idMetodo === id);
+  return m ? m.nombreMetodo : "";
+}
+
+function renderVistaPrevia() {
+  $("cobro-comprobante").innerHTML = Comprobante.html(datosComprobante({ metodo: metodoSeleccionado() }));
+}
+
+/** Alterna la ventana entre vista previa (selección del método) y comprobante emitido. */
+function modoCobro(emitido) {
+  $("bloque-seleccion-pago").hidden = emitido;
+  $("pie-cobro").hidden = emitido;
+  $("pie-comprobante").hidden = !emitido;
+  $("cobro-titulo").textContent = emitido ? "Comprobante emitido" : "Comprobante de pago";
+  $("cobro-descripcion").textContent = emitido
+    ? "El pago quedó registrado y la mesa está libre. Puede imprimir el comprobante."
+    : "Revise la cuenta y seleccione con qué pagó el cliente.";
+}
 
 async function abrirCobro() {
   if (!detalle || !detalle.items.length) return;
-  $("cobro-total").textContent = formatoCOP(Negocio.totales(detalle.items).total);
+  comprobanteEmitido = null;
+  modoCobro(false);
   $("cobro-error").textContent = "";
   $("select-metodo-pago").innerHTML = `<option value="">Cargando métodos...</option>`;
   $("bloque-nuevo-metodo").hidden = true;
+  renderVistaPrevia();
   abrirModal("overlay-cobro");
   await cargarMetodos();
+  renderVistaPrevia();
 }
 
+/** Carga los métodos de pago. Si no hay ninguno, quien cobra puede crear uno desde la misma ventana. */
 async function cargarMetodos() {
   try {
     metodos = await Negocio.metodosPago();
@@ -407,11 +534,10 @@ async function cargarMetodos() {
     $("cobro-error").textContent = Api.mensajeError(err, "No fue posible cargar los métodos de pago.");
   }
   const select = $("select-metodo-pago");
-  select.innerHTML = `<option value="">Seleccione un método de pago</option>` +
+  select.innerHTML = `<option value="">Seleccione con qué pagó</option>` +
     metodos.map(m => `<option value="${m.idMetodo}">${esc(m.nombreMetodo)}</option>`).join("");
   if (metodos.length === 1) select.value = String(metodos[0].idMetodo);
 
-  /* Sin métodos registrados: quien puede cobrar puede crear uno aquí mismo */
   $("bloque-nuevo-metodo").hidden = !(metodos.length === 0 && Auth.tiene("cobros.gestionar"));
   if (metodos.length === 0 && !$("cobro-error").textContent) {
     $("cobro-error").textContent = "No hay métodos de pago registrados. Agregue uno para poder cobrar.";
@@ -427,42 +553,70 @@ async function agregarMetodoPago() {
     $("input-nuevo-metodo").value = "";
     $("cobro-error").textContent = "";
   }, "No fue posible crear el método de pago.");
-  if (ok) await cargarMetodos();
+  if (ok) { await cargarMetodos(); renderVistaPrevia(); }
 }
 
+/** Registra el pago y muestra el comprobante emitido. */
 async function confirmarCobro() {
   const idMetodo = Number($("select-metodo-pago").value);
-  if (!idMetodo) { $("cobro-error").textContent = "Seleccione un método de pago."; return; }
+  if (!idMetodo) { $("cobro-error").textContent = "Seleccione con qué pagó el cliente."; return; }
   $("cobro-error").textContent = "";
 
   const mesa = mesaSeleccionada;
-  const numero = mesa.numero;
-  const ok = await ejecutar(
-    () => Negocio.cobrar(mesa, detalle, idMetodo),
-    "No fue posible registrar el pago."
-  );
-  if (ok) {
-    cerrarModal("overlay-cobro");
-    mostrarToast(`Pago registrado. Mesa ${numero} liberada`);
-    await volverAMesas();
-  }
+  const metodo = metodoSeleccionado();
+  const previo = datosComprobante({ metodo });
+  let resultado = null;
+  const ok = await ejecutar(async () => {
+    resultado = await Negocio.cobrar(mesa, detalle, idMetodo);
+  }, "No fue posible registrar el pago.");
+  if (!ok) return;
+
+  comprobanteEmitido = Object.assign(previo, {
+    borrador: false,
+    numero: resultado && resultado.idComprobante,
+    apertura: (resultado && resultado.fechaApertura) || previo.apertura,
+    cierre: (resultado && resultado.fechaCierre) || new Date(),
+    subtotal: resultado ? resultado.subtotal : previo.subtotal,
+    iva: resultado ? resultado.iva : previo.iva,
+    total: resultado ? resultado.total : previo.total
+  });
+  $("cobro-comprobante").innerHTML = Comprobante.html(comprobanteEmitido);
+  modoCobro(true);
+  mostrarToast(`Pago registrado. Mesa ${mesa.numero} liberada`);
 }
 
-/* ---------- Eliminar mesa (solo Administración, mesa libre) ---------- */
+/* ---------- Eliminación de mesas ---------- */
+
+/**
+ * Elimina la mesa. Si el Backend responde 409 (tiene cuentas asociadas), ofrece retirarla del salón
+ * para conservar su historial de ventas.
+ */
 async function eliminarMesa() {
   const mesa = mesaSeleccionada;
+  let conHistorial = false;
   const ok = await ejecutar(async () => {
     try {
       await Negocio.eliminarMesa(mesa);
     } catch (err) {
-      if (err && err.status === 409) {
-        throw { status: 409, mensaje: "No es posible eliminar la mesa porque tiene cuentas o pedidos asociados." };
-      }
+      if (err && err.status === 409) { conHistorial = true; return; }
       throw err;
     }
-    cerrarModal("overlay-eliminar-mesa");
     mostrarToast(`Mesa ${mesa.numero} eliminada`);
   }, "No fue posible eliminar la mesa.");
-  if (ok) await volverAMesas();
-  else cerrarModal("overlay-eliminar-mesa");
+  cerrarModal("overlay-eliminar-mesa");
+  if (!ok) return;
+
+  if (conHistorial) {
+    const retirar = await Confirmar.pedir({
+      titulo: "La mesa tiene historial",
+      mensaje: "La mesa <strong>" + esc(mesa.numero) + "</strong> ya tuvo cuentas, por eso no se puede borrar sin perder el historial de ventas. " +
+        "¿Desea <strong>retirarla del salón</strong>? Dejará de aparecer, pero sus ventas se conservan y podrá reactivarla después.",
+      textoConfirmar: "Sí, retirar mesa", peligro: true
+    });
+    if (!retirar) return;
+    const okRetiro = await ejecutar(() => Negocio.retirarMesa(mesa), "No fue posible retirar la mesa.");
+    if (!okRetiro) return;
+    mostrarToast(`Mesa ${mesa.numero} retirada del salón`);
+  }
+  await volverAMesas();
 }

@@ -1,8 +1,8 @@
 /* ==========================================================================
-   DASHBOARD — El Cuate / Panel Principal
+   dashboard.css
+   Panel Principal: indicadores, gráficas, tablas y estado del inventario.
    ========================================================================== */
 
-/* ---------- Variables ---------- */
 :root {
   --coral: #F06543;
   --coral-oscuro: #E0532F;
@@ -26,7 +26,6 @@
   --sombra: 0 1px 2px rgba(31, 36, 38, 0.06);
 }
 
-/* ---------- Reset / base ---------- */
 * {
   margin: 0;
   padding: 0;
@@ -42,7 +41,6 @@ body {
 
 table { border-collapse: collapse; }
 
-/* ---------- Layout general ---------- */
 .app {
   display: flex;
   min-height: 100vh;
@@ -63,7 +61,6 @@ table { border-collapse: collapse; }
   gap: 20px;
 }
 
-/* ---------- Sidebar ---------- */
 .sidebar {
   width: 220px;
   flex-shrink: 0;
@@ -147,7 +144,6 @@ table { border-collapse: collapse; }
   border-top: 1px solid #454B4E;
 }
 
-/* ---------- Header ---------- */
 .header {
   background-color: #FFFFFF;
   border-bottom: 1px solid var(--borde);
@@ -202,7 +198,6 @@ table { border-collapse: collapse; }
   flex-shrink: 0;
 }
 
-/* ---------- Paneles genéricos ---------- */
 .panel {
   background-color: #FFFFFF;
   border: 1px solid var(--borde);
@@ -234,7 +229,7 @@ table { border-collapse: collapse; }
   padding: 5px 10px;
 }
 
-/* ---------- Tarjetas KPI ---------- */
+/* ---------- Indicadores ---------- */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -292,7 +287,6 @@ table { border-collapse: collapse; }
 .kpi-tendencia--positiva { color: var(--verde-texto); }
 .kpi-tendencia--negativa { color: var(--rojo-texto); }
 
-/* ---------- Gráficas: layout ---------- */
 .graficas-grid {
   display: grid;
   grid-template-columns: 70% 1fr;
@@ -304,7 +298,7 @@ table { border-collapse: collapse; }
   min-width: 0;
 }
 
-/* ---------- Gráfica de línea (sólo HTML + CSS) ---------- */
+/* ---------- Gráficas ---------- */
 .panel--grafica {
   overflow-x: auto;
 }
@@ -398,7 +392,6 @@ table { border-collapse: collapse; }
 .chart-leyenda-punto--sales  { background-color: var(--coral); }
 .chart-leyenda-punto--orders { background-color: var(--naranja); }
 
-/* ---------- Gráfica de barras (sólo HTML + CSS) ---------- */
 .chart-barras {
   display: flex;
   align-items: flex-end;
@@ -429,7 +422,6 @@ table { border-collapse: collapse; }
   color: var(--texto-secundario);
 }
 
-/* ---------- Tablas ---------- */
 .tabla-scroll {
   overflow-x: auto;
 }
@@ -465,7 +457,6 @@ table { border-collapse: collapse; }
 .col-centro  { text-align: center; color: var(--texto-suave); }
 .col-mono    { font-family: "Courier New", monospace; color: var(--texto-secundario); font-size: 12px; }
 
-/* ---------- Insignias (pills) ---------- */
 .pill {
   display: inline-block;
   padding: 3px 9px;
@@ -478,7 +469,6 @@ table { border-collapse: collapse; }
 .pill--negativa { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
 .pill--stock    { background-color: var(--verde-fondo); color: var(--verde-texto); }
 
-/* ---------- Buscador del panel de inventario ---------- */
 .buscador {
   position: relative;
   display: flex;
@@ -509,7 +499,6 @@ table { border-collapse: collapse; }
   border-color: var(--coral);
 }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .graficas-grid { grid-template-columns: 1fr; }

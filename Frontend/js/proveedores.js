@@ -1,16 +1,22 @@
-/* ==========================================================================
-   PROVEEDORES.JS — CRUD del módulo Proveedores
-   Campos: idProveedor, nombreProveedor, telefono (máx. 20),
-   direccion (máx. 150). La colección "compras" es solo relación (no editable).
-   ========================================================================== */
+/**
+ * @file proveedores.js
+ * @description Módulo Proveedores.
+ *   - Consulta: cualquier usuario autenticado.
+ *   - Crear, editar y eliminar: requiere "inventario.gestionar"; sin permisos cargados, las acciones permanecen ocultas.
+ *   - El Backend admite nombres repetidos; la interfaz pide confirmación antes de guardarlos.
+ *   - Un proveedor con compras asociadas no puede eliminarse (409).
+ * @requires admin-data.js, admin-ui.js, data.js, auth.js
+ */
 
+/** Límites de ProveedorCrearDTO. */
 const MAX_NOMBRE = 200;
 const MAX_TELEFONO = 20;
 const MAX_DIRECCION = 150;
 
-let proveedores = [];          // caché de la última consulta (GET)
+/** Estado de la pantalla. */
+let proveedores = [];
 let textoBusqueda = "";
-let proveedorEnEdicion = null; // idProveedor en edición (null = creando)
+let proveedorEnEdicion = null;
 let proveedorAEliminar = null;
 
 const $ = (id) => document.getElementById(id);
@@ -29,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-guardar-proveedor").addEventListener("click", guardarProveedor);
   $("btn-confirmar-eliminar").addEventListener("click", confirmarEliminacion);
 
-  /* Delegación: el proveedor se identifica por data-id (nunca por índice de fila) */
   $("tabla-proveedores").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-accion]");
     if (!btn) return;
@@ -38,18 +43,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.dataset.accion === "eliminar") abrirEliminar(id);
   });
 
-  /* La lectura es libre para cualquier usuario autenticado; escribir exige inventario.gestionar */
+  $("btn-nuevo-proveedor").hidden = true;
   Auth.listo.then(() => {
-    if (!Auth.tiene("inventario.gestionar") && Auth.permisosCargados) {
-      $("btn-nuevo-proveedor").hidden = true;
-    }
+    $("btn-nuevo-proveedor").hidden = !puedeGestionar();
     cargarProveedores();
   });
 });
 
-const puedeGestionar = () => Auth.tiene("inventario.gestionar") || !Auth.permisosCargados;
+/** Permiso de escritura sobre proveedores. */
+const puedeGestionar = () => Auth.permisosCargados && Auth.tiene("inventario.gestionar");
 
-/* ---------- GET ---------- */
+/* ---------- Consulta ---------- */
 function cargarProveedores() {
   $("tabla-proveedores").innerHTML = filaMensaje("Cargando proveedores...");
   apiProveedores.listar()
@@ -59,12 +63,12 @@ function cargarProveedores() {
     });
 }
 
-/* ---------- Render ---------- */
 function filaMensaje(texto, conBoton) {
   const boton = conBoton ? `<div><button class="btn btn--primario" data-nuevo-vacio>+ Nuevo proveedor</button></div>` : "";
   return `<tr class="fila-mensaje"><td colspan="5" class="estado-tabla"><p>${esc(texto)}</p>${boton}</td></tr>`;
 }
 
+/** Búsqueda por id, nombre, teléfono (también solo por dígitos) y dirección. */
 function coincide(p, q) {
   const qDigitos = q.replace(/\D/g, "");
   const campos = [String(p.idProveedor), p.nombreProveedor, p.telefono, p.direccion].map(normalizar);
@@ -105,7 +109,7 @@ function filaProveedor(p) {
     </tr>`;
 }
 
-/* ---------- Formulario: abrir ---------- */
+/* ---------- Formulario ---------- */
 function vaciarFormulario() {
   ["p-nombre", "p-telefono", "p-direccion"].forEach(id => { $(id).value = ""; });
   limpiarErrores($("form-proveedor"));
@@ -134,7 +138,7 @@ function abrirEdicion(id) {
   abrirModal("overlay-proveedor");
 }
 
-/* ---------- Validación ---------- */
+/** Valida campos obligatorios y longitudes según el DTO. */
 function validarFormulario() {
   limpiarErrores($("form-proveedor"));
   let valido = true;
@@ -167,13 +171,30 @@ function leerFormulario() {
   };
 }
 
-/* ---------- POST / PUT ---------- */
+/* ---------- Alta y edición ---------- */
+
+/** Guarda el proveedor. Si el nombre ya existe, pide confirmación (al editar, la advertencia se incluye en el resumen). */
 async function guardarProveedor() {
   if (!validarFormulario()) return;
   const btn = $("btn-guardar-proveedor");
   if (btn.disabled) return;
   const datos = leerFormulario();
   const editando = proveedorEnEdicion !== null;
+
+  const repetido = proveedores.some(p => p.idProveedor !== proveedorEnEdicion &&
+    normalizar(p.nombreProveedor) === normalizar(datos.nombreProveedor));
+  const avisoRepetido = repetido
+    ? "<br><br>Atención: ya existe otro proveedor llamado <strong>" + esc(datos.nombreProveedor) + "</strong>."
+    : "";
+
+  if (!editando && repetido) {
+    const ok = await Confirmar.pedir({
+      titulo: "Proveedor con el mismo nombre",
+      mensaje: "Ya existe un proveedor llamado <strong>" + esc(datos.nombreProveedor) + "</strong>. ¿Desea crearlo de todos modos?",
+      textoConfirmar: "Sí, crear"
+    });
+    if (!ok) return;
+  }
 
   if (editando) {
     const p = proveedores.find(x => x.idProveedor === proveedorEnEdicion);
@@ -182,14 +203,14 @@ async function guardarProveedor() {
       { n: datos.nombreProveedor, t: datos.telefono, d: datos.direccion },
       { n: "Nombre", t: "Teléfono", d: "Dirección" });
     if (!filas.length) { mostrarToast("No hay cambios para guardar."); return; }
-    const ok = await Confirmar.pedir({ titulo: "Confirmar edición", mensaje: "Se modificará el proveedor <strong>" + esc(p.nombreProveedor) + "</strong>. ¿Desea guardar los cambios?", filas, textoConfirmar: "Sí, guardar cambios" });
+    const ok = await Confirmar.pedir({ titulo: "Confirmar edición", mensaje: "Se modificará el proveedor <strong>" + esc(p.nombreProveedor) + "</strong>. ¿Desea guardar los cambios?" + avisoRepetido, filas, textoConfirmar: "Sí, guardar cambios" });
     if (!ok) return;
   }
 
   bloquearBoton(btn, "Guardando...");
   const peticion = editando
-    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion }, proveedores.find(p => p.idProveedor === proveedorEnEdicion))  // PUT
-    : apiProveedores.crear(datos);                                                                   // POST
+    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion }, proveedores.find(p => p.idProveedor === proveedorEnEdicion))
+    : apiProveedores.crear(datos);
 
   peticion
     .then(guardado => {
@@ -214,7 +235,7 @@ async function guardarProveedor() {
     .finally(() => liberarBoton(btn));
 }
 
-/* ---------- DELETE ---------- */
+/* ---------- Eliminación ---------- */
 function abrirEliminar(id) {
   const p = proveedores.find(x => x.idProveedor === id);
   if (!p) return;

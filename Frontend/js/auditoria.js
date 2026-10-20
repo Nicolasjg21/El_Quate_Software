@@ -1,15 +1,20 @@
-/* ==========================================================================
-   AUDITORIA.JS — Consulta, filtros, búsqueda, paginación y detalle
-   Módulo de solo lectura: no crea, edita ni elimina registros.
-   ========================================================================== */
+/**
+ * @file auditoria.js
+ * @description Módulo Auditoría (requiere "auditorias.consultar"). Solo consulta: búsqueda,
+ *   filtros por módulo, acción, usuario y fechas, paginación y detalle con la comparación
+ *   de datos anteriores y nuevos.
+ * @requires auditoria-data.js, admin-ui.js, data.js, auth.js
+ */
 
+/** Registros por página. */
 const POR_PAGINA = 8;
 
-let registros = [];                // resultado del GET
+/** Estado de la pantalla. */
+let registros = [];
 let filtrosAplicados = { tabla: "", accion: "", usuario: "", desde: "", hasta: "" };
 let textoBusqueda = "";
 let paginaActual = 1;
-let resultados = [];               // registros que cumplen búsqueda + filtros
+let resultados = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   conectarCierreModales();
   limpiarErrorAlEscribir($("form-filtros"));
 
-  /* Búsqueda en vivo (se combina con los filtros ya aplicados) */
   $("buscar-auditoria").addEventListener("input", (e) => {
     textoBusqueda = e.target.value;
     paginaActual = 1;
@@ -26,11 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabla();
   });
 
-  /* Filtrar (botón o Enter) */
   $("form-filtros").addEventListener("submit", (e) => { e.preventDefault(); aplicarFiltros(); });
   $("btn-limpiar").addEventListener("click", limpiarFiltros);
 
-  /* Delegación: ojo (detalle) y botones dentro de la tabla */
   $("tabla-auditoria").addEventListener("click", (e) => {
     const ver = e.target.closest("button[data-ver]");
     if (ver) return abrirDetalle(Number(ver.dataset.ver));
@@ -38,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest("[data-reintentar]")) return cargarRegistros();
   });
 
-  /* Paginación */
   $("paginacion").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-pagina]");
     if (!btn || btn.disabled) return;
@@ -49,10 +50,10 @@ document.addEventListener("DOMContentLoaded", () => {
   Auth.listo.then(cargarRegistros);
 });
 
-/* ---------- Formato ---------- */
 const pad = (n) => String(n).padStart(2, "0");
 
-function partesFecha(iso) {           // "2026-09-23T14:32"
+/* ---------- Formato ---------- */
+function partesFecha(iso) {
   if (!iso) return { dia: "", hora: "", solofecha: "" };
   const [f, h] = iso.split("T");
   const [a, m, d] = f.split("-");
@@ -60,11 +61,12 @@ function partesFecha(iso) {           // "2026-09-23T14:32"
 }
 function formatoFecha(iso) { if (!iso) return "Sin fecha"; const p = partesFecha(iso); return `${p.dia} ${p.hora}`; }
 
+/** Clase de color según el código de acción. */
 function claseAccion(accion) {
   return { INSERT: "accion--insert", UPDATE: "accion--update", DELETE: "accion--delete" }[accion] || "accion--acceso";
 }
 
-/* ---------- GET ---------- */
+/* ---------- Consulta ---------- */
 function cargarRegistros() {
   $("tabla-auditoria").innerHTML = filaMensaje("Cargando registros de auditoría...");
   $("conteo-registros").textContent = "Cargando...";
@@ -86,22 +88,25 @@ function cargarRegistros() {
     });
 }
 
+/** Opciones de los filtros: el valor es el código técnico y el texto, el nombre natural. */
 function poblarFiltros() {
-  const tablas = [...new Set(registros.map(r => r.tabla))].sort((a, b) => a.localeCompare(b, "es"));
+  const tablas = [...new Set(registros.map(r => r.tabla))].sort((a, b) => moduloAuditoria(a).localeCompare(moduloAuditoria(b), "es"));
   const acciones = [...new Set([...AUDITORIA_ACCIONES, ...registros.map(r => r.accion)])];
   const usuarios = [...new Set(registros.map(r => r.usuario))].sort((a, b) => a.localeCompare(b, "es"));
 
-  $("filtro-tabla").innerHTML = `<option value="">Todas</option>` + tablas.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
-  $("filtro-accion").innerHTML = `<option value="">Todas</option>` + acciones.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  $("filtro-tabla").innerHTML = `<option value="">Todos</option>` + tablas.map(t => `<option value="${esc(t)}">${esc(moduloAuditoria(t))}</option>`).join("");
+  $("filtro-accion").innerHTML = `<option value="">Todas</option>` + acciones.map(a => `<option value="${esc(a)}">${esc(verboAuditoria(a))}</option>`).join("");
   $("filtro-usuario").innerHTML = `<option value="">Todos</option>` + usuarios.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join("");
 }
 
-/* ---------- Búsqueda + filtros ---------- */
+/* ---------- Búsqueda y filtros ---------- */
+
+/** Texto indexado para la búsqueda: incluye nombres naturales, códigos y valores; los montos coinciden con o sin formato. */
 function textoBuscable(r) {
   const valores = [...Object.entries(r.anteriores || {}), ...Object.entries(r.nuevos || {})]
-    .flatMap(([k, v]) => [k, v, String(v).replace(/[$.\s]/g, "")]);   // "$ 5.500" también coincide con "5500"
+    .flatMap(([k, v]) => [k, etiquetaCampo(k), v, String(v).replace(/[$.\s]/g, "")]);
   return normalizar([
-    r.idAuditoria, r.usuario, r.modulo, r.tabla, r.accion, r.detalle,
+    r.idAuditoria, "#" + r.idAuditoria, r.usuario, r.modulo, r.tabla, r.accion, r.accionTexto, r.detalle,
     formatoFecha(r.fecha), partesFecha(r.fecha).dia, ...valores
   ].join(" | "));
 }
@@ -113,8 +118,8 @@ function calcularResultados() {
     if (f.tabla && r.tabla !== f.tabla) return false;
     if (f.accion && r.accion !== f.accion) return false;
     if (f.usuario && r.usuario !== f.usuario) return false;
-    const dia = partesFecha(r.fecha).solofecha;            // AAAA-MM-DD (comparación inclusiva)
-    if ((f.desde || f.hasta) && !dia) return false;        // sin fecha: no entra en un rango
+    const dia = partesFecha(r.fecha).solofecha;
+    if ((f.desde || f.hasta) && !dia) return false;
     if (f.desde && dia < f.desde) return false;
     if (f.hasta && dia > f.hasta) return false;
     return !q || textoBuscable(r).includes(q);
@@ -126,6 +131,7 @@ function hayCriterios() {
   return !!(normalizar(textoBusqueda) || f.tabla || f.accion || f.usuario || f.desde || f.hasta);
 }
 
+/** Aplica los filtros del formulario. Valida que la fecha inicial no sea posterior a la final. */
 function aplicarFiltros() {
   limpiarErrores($("form-filtros"));
   const desde = $("filtro-desde").value;
@@ -155,10 +161,10 @@ function limpiarFiltros() {
   renderTabla();
 }
 
-/* ---------- Render ---------- */
+/* ---------- Tabla y paginación ---------- */
 function filaMensaje(texto, botonHTML, error) {
   const boton = botonHTML ? `<div>${botonHTML}</div>` : "";
-  return `<tr class="fila-mensaje"><td colspan="6" class="estado-tabla${error ? " estado-tabla--error" : ""}"><p>${esc(texto)}</p>${boton}</td></tr>`;
+  return `<tr class="fila-mensaje"><td colspan="7" class="estado-tabla${error ? " estado-tabla--error" : ""}"><p>${esc(texto)}</p>${boton}</td></tr>`;
 }
 
 function renderTabla() {
@@ -184,10 +190,11 @@ function renderTabla() {
 function filaRegistro(r) {
   return `
     <tr data-id="${r.idAuditoria}">
+      <td class="col-id">#${esc(r.idAuditoria)}</td>
       <td class="col-fecha">${esc(formatoFecha(r.fecha))}</td>
       <td class="col-nombre">${esc(r.usuario)}</td>
       <td>${esc(r.modulo)}</td>
-      <td><span class="accion ${claseAccion(r.accion)}">${esc(r.accion)}</span></td>
+      <td><span class="accion ${claseAccion(r.accion)}">${esc(r.accionTexto)}</span></td>
       <td class="col-detalle">${esc(r.detalle)}</td>
       <td class="col-centro">
         <button type="button" class="btn-icono" data-ver="${r.idAuditoria}" aria-label="Ver detalle" title="Ver detalle">
@@ -216,24 +223,27 @@ function renderPie(total, paginas) {
 }
 
 /* ---------- Detalle ---------- */
+
+/** Bloque de datos del detalle. Con "contraste", resalta los campos que cambiaron. */
 function bloqueDatos(titulo, tipo, datos, contraste) {
   const filas = Object.entries(datos).map(([k, v]) => {
-    const cambio = contraste && contraste[k] !== v;      // resalta lo que cambió en UPDATE
-    return `<div class="dato-fila${cambio ? " dato-fila--cambio" : ""}"><span class="dato-etiqueta">${esc(k)}</span><span class="dato-valor">${esc(v)}</span></div>`;
+    const cambio = contraste && contraste[k] !== v;
+    return `<div class="dato-fila${cambio ? " dato-fila--cambio" : ""}"><span class="dato-etiqueta">${esc(etiquetaCampo(k))}</span><span class="dato-valor">${esc(valorCampo(k, v))}</span></div>`;
   }).join("");
   return `<div class="bloque-datos bloque-datos--${tipo}"><p class="bloque-datos-titulo">${esc(titulo)}</p><div class="datos-lista">${filas}</div></div>`;
 }
 
+/** Muestra el detalle. En una modificación se comparan los datos anteriores con los nuevos. */
 function abrirDetalle(id) {
   const r = registros.find(x => x.idAuditoria === id);
   if (!r) return;
 
-  $("det-id").textContent = r.idAuditoria;
+  $("det-id").textContent = "#" + r.idAuditoria;
   $("det-fecha").textContent = formatoFecha(r.fecha);
-  $("det-usuario").textContent = r.usuario;
+  $("det-usuario").textContent = `${r.usuario} (ID ${r.idUsuario})`;
   $("det-tabla").textContent = r.tabla;
   $("det-modulo").textContent = r.modulo;
-  $("det-accion").innerHTML = `<span class="accion ${claseAccion(r.accion)}">${esc(r.accion)}</span>`;
+  $("det-accion").innerHTML = `<span class="accion ${claseAccion(r.accion)}">${esc(r.accionTexto)}</span>`;
   $("det-descripcion").textContent = r.detalle;
 
   const ant = r.anteriores, nue = r.nuevos;
@@ -241,11 +251,9 @@ function abrirDetalle(id) {
   if (r.accion === "LOGIN" || r.accion === "LOGOUT") {
     html = `<div class="comparacion comparacion--simple">${bloqueDatos(r.accion === "LOGIN" ? "Información del acceso" : "Información de la salida", "nuevo", nue || {})}</div>`;
   } else if (ant && nue) {
-    /* Con los dos lados se comparan; en UPDATE se resalta lo que cambió. */
     const resaltar = r.accion === "UPDATE";
     html = `<div class="comparacion">${bloqueDatos("Datos anteriores", "anterior", ant, resaltar && nue)}${bloqueDatos("Datos nuevos", "nuevo", nue, resaltar && ant)}</div>`;
   } else if (ant || nue) {
-    /* Solo uno de los lados (INSERT, DELETE o un UPDATE incompleto): se muestra el que exista. */
     html = `<div class="comparacion comparacion--simple">${ant ? bloqueDatos("Datos anteriores", "anterior", ant) : bloqueDatos("Datos nuevos", "nuevo", nue)}</div>`;
   } else {
     html = `<p class="estado-tabla">Este registro no tiene datos anteriores ni nuevos.</p>`;

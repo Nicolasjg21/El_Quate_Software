@@ -1,13 +1,20 @@
-/* ==========================================================================
-   ANALITICAS.JS — Ventas y Analíticas con datos reales (solo administración)
-   --------------------------------------------------------------------------
-   Fuentes (todas vía Negocio):
-     · api/Analiticas/Ventas      → indicadores del período y del período anterior
-     · api/Pedidos/Historial      → consumo por producto y categoría
-     · api/Pedidos/filtrar        → órdenes pagadas (tendencia, horas, métodos, recientes)
-   ========================================================================== */
+/**
+ * @file analiticas.js
+ * @description Módulo Ventas y Analíticas (requiere "auditorias.consultar").
+ *   Indicadores del período (ventas, órdenes, ticket promedio, productos vendidos) con variación
+ *   frente al período anterior equivalente, tendencia, consumo por categoría y producto, horas de
+ *   mayor venta, métodos de pago y órdenes recientes. Exporta el resumen a CSV.
+ *   Ventas = total cobrado en comprobantes (incluye IVA); consumo = ventas antes de IVA.
+ * @requires api-negocio.js, data.js, auth.js
+ *
+ * Endpoints: api/Analiticas/Ventas, api/Pedidos/Historial, api/Pedidos/filtrar,
+ *            api/DetallePedidos/GetDetallePedidos, api/Productos/Filtrar, api/Productos/GetProductos
+ */
+
 (function () {
   const $ = (id) => document.getElementById(id);
+
+  /** Constantes de presentación. */
   const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const NOMBRE_PERIODO = {
     hoy: "Hoy", semana: "Esta semana", mes: "Este mes", ultimos30: "Últimos 30 días",
@@ -15,11 +22,13 @@
   };
   const COLORES_EXTRA = ["#E7B25A", "#5CB8B2", "#D97A9B", "#8C9AA8", "#C9A66B"];
 
-  let ordenes = [];           // todas las órdenes pagadas (se cargan una vez)
-  let ultimo = null;          // datos del último render (para exportar)
+  /** Estado: órdenes pagadas, último resultado dibujado y control de solicitudes concurrentes. */
+  let ordenes = [];
+  let ultimo = null;
   let cargando = false;
   let solicitud = 0;
 
+  /* ---------- Utilidades de fecha y formato ---------- */
   const dia0 = (f) => { const d = new Date(f); d.setHours(0, 0, 0, 0); return d; };
   const dia24 = (f) => { const d = new Date(f); d.setHours(23, 59, 59, 0); return d; };
   const sumaDias = (f, n) => { const d = new Date(f); d.setDate(d.getDate() + n); return d; };
@@ -50,12 +59,17 @@
     return r ? r.id.replace("per-", "") : "semana";
   };
 
+  /** Rango personalizado por defecto: últimos 7 días. */
   function inicializarRango() {
     if (!$("desde").value) $("desde").value = iso(sumaDias(new Date(), -6));
     if (!$("hasta").value) $("hasta").value = iso(new Date());
   }
 
-  /** Rango del período elegido y el rango anterior equivalente (null si no aplica). */
+  /**
+   * Rango del período y su período de comparación (el tramo equivalente anterior).
+   * @param {string} clave hoy, semana, mes, ultimos30, anio, todos o personalizado.
+   * @returns {{desde:Date, hasta:Date, previo:Array<Date>|null, error?:string}}
+   */
   function calcularRango(clave) {
     const ahora = new Date();
     const hoy0 = dia0(ahora);
@@ -94,6 +108,7 @@
     return { desde, hasta, previo, clave };
   }
 
+  /** Carga las órdenes pagadas usadas en los paneles de horas, pagos y recientes. */
   async function cargarOrdenes() {
     $("contenido").innerHTML = estado("carga", "&#8987;", "Cargando estadísticas...");
     try { ordenes = await Negocio.ordenesPagadas(); }
@@ -109,6 +124,10 @@
     return `<article class="panel"><div class="estado estado--${tipo}"><span class="estado-icono">${icono}</span><p class="estado-titulo">${esc(texto)}</p></div></article>`;
   }
 
+  /**
+   * Consulta y dibuja el período seleccionado. Si llega una nueva solicitud mientras otra está en curso,
+   * la respuesta anterior se descarta.
+   */
   async function refrescar() {
     if (cargando) { solicitud++; }
     const miSolicitud = ++solicitud;
@@ -152,7 +171,7 @@
     $("contenido").innerHTML = construir(ultimo);
   }
 
-  /* ---------- Construcción del contenido ---------- */
+  /** Texto de variación porcentual frente al período anterior. */
   function variacion(actual, previo) {
     if (previo === null || previo === undefined) return `<p class="kpi-tend kpi-tend--nd">Sin período de comparación</p>`;
     if (!previo) return `<p class="kpi-tend kpi-tend--nd">${actual ? "Sin datos en el período anterior" : "Sin cambios"}</p>`;
@@ -162,6 +181,7 @@
     return `<p class="kpi-tend kpi-tend--${clase}">${flecha} ${fmtPct(Math.abs(v))} vs período anterior</p>`;
   }
 
+  /** Construye el HTML completo de indicadores y paneles. */
   function construir(d) {
     const { ventas, ventasPrev, consumo, enPeriodo } = d;
     const p = ventasPrev;
@@ -181,7 +201,7 @@
       panelRecientes(d);
   }
 
-  /* ---------- Escala "bonita" ---------- */
+  /** Escala "redonda" para el eje vertical de la gráfica. */
   function escala(max, divisiones) {
     if (max <= 0) return { tope: divisiones, paso: 1 };
     const crudo = max / divisiones;
@@ -190,13 +210,18 @@
     const paso = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
     return { tope: paso * divisiones, paso };
   }
+
+  /** Monto abreviado para ejes: "$ 1,5 M", "$ 850 mil". */
   function abreviarCOP(n) {
     if (n >= 1e6) return "$ " + (n / 1e6).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + " M";
     if (n >= 1e3) return "$ " + (n / 1e3).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + " mil";
     return "$ " + Math.round(n);
   }
 
-  /* ---------- Tendencia ---------- */
+  /**
+   * Intervalos de la gráfica de tendencia según la duración del período:
+   * por hora (un día), por día (hasta 92 días) o por mes.
+   */
   function cubos(rango, clave) {
     const lista = [];
     const dias = Math.round((dia0(rango.hasta) - dia0(rango.desde)) / 86400000) + 1;
@@ -225,6 +250,7 @@
     return lista;
   }
 
+  /* ---------- Paneles ---------- */
   function panelTendencia(d) {
     const cs = cubos(d.rango, d.clave);
     cs.forEach((c) => { c.ventas = 0; c.ords = 0; });
@@ -278,7 +304,6 @@
       `<span></span><div class="xl${n > 14 ? " xl--rala" : ""}" aria-hidden="true">${etqs}</div><span></span></div><p class="eje-cap">${pie}</p></article>`;
   }
 
-  /* ---------- Categorías ---------- */
   function panelCategorias(d) {
     const cats = d.consumo.categorias;
     const total = cats.reduce((a, c) => a + c.ingresos, 0);
@@ -291,7 +316,6 @@
       `<div class="cats-total"><span>Total consumo</span><strong>${formatoCOP(total)}</strong></div></article>`;
   }
 
-  /* ---------- Productos ---------- */
   function panelProductos(d) {
     const prods = d.consumo.productos;
     const total = prods.reduce((a, f) => a + f.ingresos, 0);
@@ -308,7 +332,6 @@
       `<div class="tabla-scroll"><table class="tabla tabla--prod"><thead><tr><th class="col-rk">#</th><th>Producto</th><th class="col-cat">Categoría</th><th class="col-derecha"><span class="h-largo">Unidades Vendidas</span><span class="h-corto">Unid.</span></th><th class="col-derecha">Ingresos</th><th class="col-part">Participación</th></tr></thead><tbody>${cuerpo}</tbody></table></div></article>`;
   }
 
-  /* ---------- Actividad por hora ---------- */
   function panelHoras(d) {
     const horas = Array.from({ length: 24 }, () => ({ n: 0, v: 0 }));
     d.enPeriodo.forEach((o) => { const h = new Date(o.fechaHora).getHours(); horas[h].n++; horas[h].v += o.total; });
@@ -327,7 +350,6 @@
       `<p class="eje-cap">Hora del día (24 h)${pico >= 0 ? " · barra destacada: hora con más órdenes" : ""}</p></article>`;
   }
 
-  /* ---------- Métodos de pago ---------- */
   function claseMetodo(nombre) {
     const n = (nombre || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     if (n.startsWith("efectivo")) return "efectivo";
@@ -359,7 +381,6 @@
     return `<article class="panel panel--pagos"><div class="panel-cab"><div><h2 class="panel-titulo">Métodos de Pago</h2><p class="panel-desc">Distribución de las órdenes pagadas</p></div><span class="panel-per">${esc(NOMBRE_PERIODO[d.clave])}</span></div>${cuerpo}</article>`;
   }
 
-  /* ---------- Recientes ---------- */
   const ICONO_OJO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
 
   function panelRecientes(d) {
@@ -384,7 +405,7 @@
     aviso._t = setTimeout(() => t.classList.remove("toast--visible"), 2500);
   }
 
-  /* ---------- Exportar CSV ---------- */
+  /** Exporta el período mostrado a CSV: indicadores, categorías, productos y órdenes. */
   function exportar() {
     if (!ultimo) { aviso("No hay datos para exportar en este período."); return; }
     const u = ultimo;

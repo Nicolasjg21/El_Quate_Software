@@ -1,28 +1,25 @@
-/* ==========================================================================
-   API-NEGOCIO.JS — Operaciones de negocio sobre la API (El Cuate)
-   --------------------------------------------------------------------------
-   Todas las pantallas operativas (Mesas, Inventario, Historiales, Panel y
-   Analíticas) usan este módulo; nada se guarda en localStorage.
+/**
+ * @file api-negocio.js
+ * @description Capa de negocio sobre la API. El Backend expone operaciones por tabla y no
+ *   encadena procesos; este módulo los orquesta en el orden correcto:
+ *     Venta    Cuenta (Abierta) → Pedido (En curso) → DetallePedido + Kardex SALIDA
+ *     Cobro    Comprobante → Cuenta (Cerrada) → Pedidos (Pagado) → Mesa (Libre)
+ *     Compra   Compra → DetalleCompra por producto + Kardex ENTRADA
+ *   El stock de un producto es el stockNuevo de su último movimiento en Kardex.
+ *   Cada alta, cambio o baja registra su auditoría.
+ * @requires api-cliente.js, auth.js
+ * @exports window.Negocio
+ */
 
-   El Backend expone CRUD por tabla y NO encadena operaciones, por eso aquí se
-   orquestan en el orden correcto:
-
-     Vender    : Cuenta (Abierta) -> Pedido (En curso) -> DetallePedido
-                 + Kardex SALIDA (el stock real = último stockNuevo del Kardex)
-     Cobrar    : Comprobante (idMetodo) -> Cuenta (Cerrada) -> Pedido (Pagado)
-                 -> Mesa (Libre)
-     Comprar   : Compra -> DetalleCompra (por producto) + Kardex ENTRADA
-     Auditoría : Api.auditar() tras cada alta / cambio / baja
-
-   Cada llamada rechaza con { status, mensaje, errores } (ver api-cliente.js).
-   Requiere: config.js, api-cliente.js y auth.js.
-   ========================================================================== */
 (function () {
   "use strict";
 
+  /** Tarifa de IVA aplicada a las cuentas. Los valores se manejan en pesos colombianos (COP). */
   const IVA = 0.19;
+
+  /** Valores de estado tal como se almacenan en Mesas.estado, Cuentas.estado y Pedidos.estadoPedido. */
   const ESTADO = {
-    mesaLibre: "Libre", mesaOcupada: "Ocupada", mesaCerrando: "Cerrando",
+    mesaLibre: "Libre", mesaOcupada: "Ocupada", mesaCerrando: "Cerrando", mesaInactiva: "Inactiva",
     cuentaAbierta: "Abierta", cuentaCerrada: "Cerrada",
     pedidoCurso: "En curso", pedidoPagado: "Pagado"
   };
@@ -34,30 +31,46 @@
     .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
   const falla = (status, mensaje) => ({ status, mensaje, errores: {} });
   const datos = (r) => (r && r.data) || null;
+
+  /** Id del usuario de la sesión; requerido por PedidoCrearDTO. */
   const idUsuarioActual = () => {
     const u = Auth.usuario();
     if (!u || !u.idUsuario) throw falla(401, "No fue posible identificar al usuario de la sesión.");
     return u.idUsuario;
   };
 
+  /**
+   * Normaliza el estado de una mesa a: libre, ocupada, cerrando o inactiva (retirada del salón).
+   * @param {string} estado Valor almacenado.
+   * @returns {string}
+   */
   function claveEstadoMesa(estado) {
     const e = norm(estado);
     if (e.startsWith("ocup")) return "ocupada";
     if (e.startsWith("cerr")) return "cerrando";
+    if (e.startsWith("inac") || e.startsWith("retir")) return "inactiva";
     return "libre";
   }
 
+  /**
+   * Totales de una cuenta: subtotal, IVA (redondeado al peso) y total.
+   * @param {Array<{cantidad:number, precioUnitario:number}>} items
+   * @returns {{subtotal:number, iva:number, total:number}}
+   */
   function totales(items) {
     const subtotal = items.reduce((a, i) => a + num(i.cantidad) * num(i.precioUnitario), 0);
     const iva = Math.round(subtotal * IVA);
     return { subtotal, iva, total: subtotal + iva };
   }
 
-  /* ==========================================================================
-     CATÁLOGOS
-     ========================================================================== */
-  /** Productos con stock, categoría, costo promedio y proveedor.
-      Filtrar (sin filtros) trae stock/costo/proveedor; GetProductos trae mínimo, estado y categoría (id). */
+  /* ==================== Catálogos ==================== */
+
+  /**
+   * Productos con stock, costo promedio, proveedor y categoría.
+   * Combina Productos/Filtrar (stock, costo, proveedor, nombre de categoría) con
+   * Productos/GetProductos (stock mínimo, estado e idCategoria), porque ninguno trae todos los datos.
+   * @returns {Promise<Array<object>>}
+   */
   async function productos() {
     const [lista, detalle] = await Promise.all([
       Api.lista("api/Productos/Filtrar"),
@@ -86,10 +99,23 @@
   const proveedores = () => Api.lista("api/Proveedores/GetProveedores");
   const metodosPago = () => Api.lista("api/MetodosPago/GetMetodosPago");
 
+  /** Categorías y métodos de pago. */
   async function crearCategoria(nombreCategoria) {
     const r = datos(await Api.post("api/Categorias/PostCategoria", { nombreCategoria }));
     Api.auditar("Categorias", "INSERT", null, { nombreCategoria });
     return r;
+  }
+
+  async function actualizarCategoria(categoria, nombreCategoria) {
+    await Api.put("api/Categorias/PutCategoria", { idCategoria: categoria.idCategoria, nombreCategoria });
+    Api.auditar("Categorias", "UPDATE",
+      { idCategoria: categoria.idCategoria, nombreCategoria: categoria.nombreCategoria },
+      { idCategoria: categoria.idCategoria, nombreCategoria });
+  }
+
+  async function eliminarCategoria(categoria) {
+    await Api.del("api/Categorias/DeleteCategoria/" + categoria.idCategoria);
+    Api.auditar("Categorias", "DELETE", { idCategoria: categoria.idCategoria, nombreCategoria: categoria.nombreCategoria }, null);
   }
 
   async function crearMetodoPago(nombreMetodo) {
@@ -98,9 +124,9 @@
     return r;
   }
 
-  /* ==========================================================================
-     KARDEX (el stock actual es el stockNuevo del último movimiento)
-     ========================================================================== */
+  /* ==================== Kardex ==================== */
+
+  /** Registra un movimiento de inventario (ENTRADA, SALIDA o AJUSTE). El Backend asigna el usuario. */
   function registrarKardex(idProducto, tipoMovimiento, cantidad, stockAnterior, stockNuevo, motivo) {
     return Api.post("api/Kardex/PostKardex", {
       idProducto, tipoMovimiento, cantidad, stockAnterior, stockNuevo,
@@ -109,7 +135,14 @@
     });
   }
 
-  /** Aplica delta (+entrada / -salida) sobre el stock más reciente del servidor. */
+  /**
+   * Aplica una variación de stock sobre el valor más reciente del servidor.
+   * @param {number} idProducto
+   * @param {number} delta Positivo para entradas, negativo para salidas.
+   * @param {string} motivo
+   * @returns {Promise<number>} Stock resultante.
+   * @throws 409 si el stock resultante sería negativo.
+   */
   async function moverStock(idProducto, delta, motivo) {
     const lista = await Api.lista("api/Productos/Filtrar");
     const p = lista.find((x) => x.idProducto === idProducto);
@@ -123,7 +156,7 @@
     return nuevo;
   }
 
-  /** Ajuste manual del stock a un valor exacto (solo administración). */
+  /** Ajuste manual del stock a un valor exacto (movimiento AJUSTE). */
   async function ajustarStock(idProducto, stockObjetivo, motivo) {
     const lista = await Api.lista("api/Productos/Filtrar");
     const p = lista.find((x) => x.idProducto === idProducto);
@@ -135,10 +168,13 @@
     return stockObjetivo;
   }
 
-  /* ==========================================================================
-     PRODUCTOS (inventario)
-     ========================================================================== */
-  /** Crea el producto y, si hay stock inicial, lo registra como Compra (si hay proveedor y costo) o como entrada de Kardex. */
+  /* ==================== Productos ==================== */
+
+  /**
+   * Crea un producto. Si tiene stock inicial, lo registra como compra (cuando se indican proveedor y costo)
+   * o como entrada de Kardex.
+   * @returns {Promise<{producto:object, aviso:string[]}>} aviso: problemas no bloqueantes con el stock inicial.
+   */
   async function crearProducto(p) {
     const creado = datos(await Api.post("api/Productos/PostProductos", {
       nombreProducto: p.nombre, precioVenta: p.precio, cantidadMinima: p.stockMinimo,
@@ -168,6 +204,7 @@
     return { producto: creado, aviso };
   }
 
+  /** Actualiza un producto conservando el estado indicado (activo o inactivo). */
   async function actualizarProducto(anterior, cambios) {
     const cuerpo = {
       idProducto: anterior.idProducto,
@@ -176,8 +213,8 @@
     };
     const r = datos(await Api.put("api/Productos/PutProductos", cuerpo));
     Api.auditar("Productos", "UPDATE",
-      { idProducto: anterior.idProducto, nombreProducto: anterior.nombre, precioVenta: anterior.precio, cantidadMinima: anterior.stockMinimo, idCategoria: anterior.idCategoria },
-      { idProducto: anterior.idProducto, nombreProducto: cambios.nombre, precioVenta: cambios.precio, cantidadMinima: cambios.stockMinimo, idCategoria: cambios.idCategoria });
+      { idProducto: anterior.idProducto, nombreProducto: anterior.nombre, precioVenta: anterior.precio, cantidadMinima: anterior.stockMinimo, idCategoria: anterior.idCategoria, estado: anterior.activo !== false },
+      { idProducto: anterior.idProducto, nombreProducto: cambios.nombre, precioVenta: cambios.precio, cantidadMinima: cambios.stockMinimo, idCategoria: cambios.idCategoria, estado: cambios.activo !== false });
     return r;
   }
 
@@ -187,9 +224,12 @@
     return true;
   }
 
-  /* ==========================================================================
-     MESAS / CUENTAS / PEDIDOS
-     ========================================================================== */
+  /* ==================== Mesas, cuentas y pedidos ==================== */
+
+  /**
+   * Mesas con su cuenta abierta, si la tienen.
+   * @returns {Promise<Array<{idMesa:number, numero:number, estado:string, estadoTexto:string, cuenta:object|null}>>}
+   */
   async function cargarMesas() {
     const [mesas, cuentas] = await Promise.all([
       Api.lista("api/Mesas/GetMesas"),
@@ -201,15 +241,48 @@
       .sort((a, b) => a.idCuenta - b.idCuenta)
       .forEach((c) => abiertas.set(c.idMesa, c));
     return mesas
-      .map((m) => ({
-        idMesa: m.idMesa, numero: m.numeroMesa,
-        estado: claveEstadoMesa(m.estado), estadoTexto: m.estado,
-        cuenta: abiertas.get(m.idMesa) || null
-      }))
+      .map((m) => {
+        const cuenta = abiertas.get(m.idMesa) || null;
+        const guardado = claveEstadoMesa(m.estado);
+        const estado = estadoEfectivo(guardado, cuenta);
+        return {
+          idMesa: m.idMesa, numero: m.numeroMesa,
+          estado, estadoTexto: m.estado, cuenta,
+          desincronizada: guardado !== estado
+        };
+      })
       .sort((a, b) => a.numero - b.numero);
   }
 
-  /** Detalle de la cuenta abierta de una mesa: pedidos, líneas y comprobantes ya emitidos. */
+  /**
+   * Estado que se muestra para una mesa. Una mesa solo está ocupada o cerrando si tiene una cuenta
+   * abierta con consumo; en cualquier otro caso está libre, aunque el estado guardado diga otra cosa.
+   * El consumo se toma de Cuentas.total, que se recalcula con cada cambio en la cuenta.
+   * @param {string} guardado Estado normalizado de Mesas.estado.
+   * @param {object|null} cuenta Cuenta abierta de la mesa.
+   * @returns {string} libre, ocupada, cerrando o inactiva.
+   */
+  function estadoEfectivo(guardado, cuenta) {
+    if (guardado === "inactiva") return "inactiva";
+    if (!cuenta || num(cuenta.total) <= 0) return "libre";
+    return guardado === "cerrando" ? "cerrando" : "ocupada";
+  }
+
+  /**
+   * Corrige en la base las mesas cuyo estado guardado no coincide con su cuenta
+   * (por ejemplo, "Ocupada" sin consumo). Solo pasa a "Libre"; nunca ocupa una mesa.
+   * @param {Array<object>} mesas Resultado de cargarMesas().
+   */
+  async function sincronizarEstadosMesas(mesas) {
+    for (const m of mesas.filter((x) => x.desincronizada && x.estado === "libre")) {
+      try { await cambiarEstadoMesa(m, ESTADO.mesaLibre); m.desincronizada = false; } catch (e) { /* se reintenta en la próxima carga */ }
+    }
+  }
+
+  /**
+   * Detalle de la cuenta abierta de una mesa: pedidos, líneas y comprobantes emitidos.
+   * @returns {Promise<{cuenta:object, pedidos:Array, items:Array, comprobantes:Array}>}
+   */
   async function cargarDetalle(mesa) {
     const vacio = { cuenta: mesa.cuenta, pedidos: [], items: [], comprobantes: [] };
     if (!mesa.cuenta) return vacio;
@@ -244,6 +317,7 @@
     Api.auditar("Mesas", "UPDATE", { numeroMesa: mesa.numero, estado: anterior }, { numeroMesa: mesa.numero, estado });
   }
 
+  /** Recalcula y guarda el total de la cuenta (con IVA). */
   async function sincronizarCuenta(detalle) {
     const c = detalle.cuenta;
     const t = totales(detalle.items);
@@ -254,6 +328,7 @@
     c.total = t.total;
   }
 
+  /** Abre la cuenta y el pedido de la mesa si aún no existen. */
   async function asegurarCuentaYPedido(mesa, detalle) {
     if (!mesa.cuenta) {
       const c = datos(await Api.post("api/Cuentas/PostCuenta", {
@@ -274,7 +349,11 @@
     }
   }
 
-  /** Agrega 1 unidad del producto a la mesa (descuenta stock en Kardex). Devuelve el detalle actualizado. */
+  /**
+   * Agrega una unidad de un producto a la mesa. El stock se descuenta primero;
+   * si el pedido no se registra, la unidad se devuelve al inventario.
+   * @returns {Promise<object>} Detalle actualizado.
+   */
   async function agregarProducto(mesa, detalle, producto) {
     await moverStock(producto.idProducto, -1, `Venta en Mesa ${mesa.numero}`);
     try {
@@ -299,13 +378,12 @@
       if (mesa.estado === "libre") await cambiarEstadoMesa(mesa, ESTADO.mesaOcupada);
       return detalle;
     } catch (e) {
-      /* El pedido no quedó registrado: se devuelve la unidad al stock. */
       try { await moverStock(producto.idProducto, 1, `Reversión: no se registró el pedido de Mesa ${mesa.numero}`); } catch (_) {}
       throw e;
     }
   }
 
-  /** Cambia la cantidad de una línea en +1 / -1. Al llegar a 0 la línea se elimina. */
+  /** Cambia en ±1 la cantidad de una línea; al llegar a cero la línea se elimina. */
   async function cambiarCantidad(mesa, detalle, idDetalle, delta) {
     const item = detalle.items.find((i) => i.idDetalle === idDetalle);
     if (!item) throw falla(404, "La línea ya no existe.");
@@ -328,9 +406,11 @@
     }
     if (delta < 0) await moverStock(item.idProducto, -delta, `Devolución desde Mesa ${mesa.numero}`);
     await sincronizarCuenta(detalle);
+    await liberarSiVacia(mesa, detalle);
     return detalle;
   }
 
+  /** Elimina una línea y devuelve su cantidad al inventario. */
   async function quitarItem(mesa, detalle, idDetalle) {
     const item = detalle.items.find((i) => i.idDetalle === idDetalle);
     if (!item) throw falla(404, "La línea ya no existe.");
@@ -338,10 +418,16 @@
     detalle.items = detalle.items.filter((i) => i.idDetalle !== idDetalle);
     await moverStock(item.idProducto, item.cantidad, `Devolución desde Mesa ${mesa.numero}`);
     await sincronizarCuenta(detalle);
+    await liberarSiVacia(mesa, detalle);
     return detalle;
   }
 
-  /** La mesa pasa a "Cerrando" (cuenta lista para cobrar). */
+  /** Una mesa que se queda sin productos vuelve a "Libre". La cuenta abierta se conserva y se reutiliza. */
+  async function liberarSiVacia(mesa, detalle) {
+    if (!detalle.items.length && mesa.estado !== "libre") await cambiarEstadoMesa(mesa, ESTADO.mesaLibre);
+  }
+
+  /** Cierra la cuenta para cobro: la mesa pasa a "Cerrando". */
   async function confirmarPago(mesa, detalle) {
     if (!detalle.items.length) throw falla(400, "La mesa no tiene productos para cobrar.");
     await sincronizarCuenta(detalle);
@@ -352,12 +438,18 @@
     await cambiarEstadoMesa(mesa, ESTADO.mesaOcupada);
   }
 
-  /** Cobro: Comprobante -> Cuenta cerrada -> Pedidos pagados -> Mesa libre. Reintentable. */
+  /**
+   * Registra el pago: Comprobante → Cuenta cerrada (con fecha de cierre) → Pedidos pagados → Mesa libre.
+   * Es reintentable: si el comprobante ya existe, no se duplica.
+   * @param {number} idMetodo Método con el que pagó el cliente.
+   * @returns {Promise<{idComprobante:number|null, fechaApertura:string, fechaCierre:string, subtotal:number, iva:number, total:number}>}
+   */
   async function cobrar(mesa, detalle, idMetodo) {
     if (!detalle.items.length || !detalle.cuenta) throw falla(400, "La mesa no tiene una cuenta con productos para cobrar.");
     if (!idMetodo) throw falla(400, "Seleccione un método de pago.");
     const t = totales(detalle.items);
     const c = detalle.cuenta;
+    const fechaCierre = ahora();
 
     if (!detalle.comprobantes.length) {
       const comp = datos(await Api.post("api/Comprobantes/PostComprobante", {
@@ -369,7 +461,7 @@
 
     await Api.put("api/Cuentas/PutCuenta", {
       idCuenta: c.idCuenta, idMesa: c.idMesa, estado: ESTADO.cuentaCerrada,
-      fechaApertura: c.fechaApertura, fechaCierre: ahora(), total: t.total
+      fechaApertura: c.fechaApertura, fechaCierre, total: t.total
     });
     for (const p of detalle.pedidos) {
       await Api.put("api/Pedidos/PutPedidos", {
@@ -379,6 +471,25 @@
     await cambiarEstadoMesa(mesa, ESTADO.mesaLibre);
     Api.auditar("Cuentas", "UPDATE", { idCuenta: c.idCuenta, estado: ESTADO.cuentaAbierta }, { idCuenta: c.idCuenta, estado: ESTADO.cuentaCerrada, total: t.total });
     mesa.cuenta = null;
+    const comp = detalle.comprobantes[0] || {};
+    return {
+      idComprobante: comp.idComprobante || null,
+      fechaApertura: c.fechaApertura,
+      fechaCierre,
+      subtotal: t.subtotal, iva: t.iva, total: t.total
+    };
+  }
+
+  /**
+   * Retira una mesa del salón (estado "Inactiva") sin borrarla. Se usa cuando la mesa tiene cuentas
+   * asociadas: la base no permite eliminarla para conservar el historial de ventas.
+   */
+  async function retirarMesa(mesa) {
+    await cambiarEstadoMesa(mesa, ESTADO.mesaInactiva);
+  }
+
+  async function reactivarMesa(mesa) {
+    await cambiarEstadoMesa(mesa, ESTADO.mesaLibre);
   }
 
   async function crearMesa(numeroMesa) {
@@ -392,11 +503,15 @@
     Api.auditar("Mesas", "DELETE", { numeroMesa: mesa.numero, estado: mesa.estadoTexto }, null);
   }
 
-  /* ==========================================================================
-     HISTORIAL DE ÓRDENES (cuentas cobradas)
-     ========================================================================== */
+  /* ==================== Historial de órdenes ==================== */
+
+  /** Identificador visible de una orden: ORD-000123 (se basa en idCuenta). */
   const idOrden = (idCuenta) => "ORD-" + String(idCuenta).padStart(6, "0");
 
+  /**
+   * Órdenes pagadas (cuentas con comprobante), agrupando los pedidos de cada cuenta.
+   * @returns {Promise<Array<object>>} Ordenadas de la más reciente a la más antigua.
+   */
   async function ordenesPagadas() {
     const pedidos = await Api.solicitar("POST", "api/Pedidos/filtrar", { cuerpo: {} });
     const porCuenta = new Map();
@@ -410,10 +525,14 @@
           id: idOrden(c.idCuenta), idCuenta: c.idCuenta,
           mesa: c.mesa ? c.mesa.numeroMesa : "—",
           mesero: p.usuario ? `${p.usuario.nombres} ${p.usuario.apellidos}`.trim() : `Usuario #${p.idUsuario}`,
+          idUsuario: p.idUsuario,
           fechaHora: comp.fecha || c.fechaCierre || p.fecha,
+          apertura: c.fechaApertura, cierre: c.fechaCierre || comp.fecha,
+          idComprobante: comp.idComprobante || null,
           total: c.comprobantes.reduce((a, x) => a + num(x.total), 0),
           metodoPago: (comp.metodoPago && comp.metodoPago.nombreMetodo) || "—",
-          estado: "Pagada", idPedidos: []
+          idMetodo: comp.idMetodo || (comp.metodoPago && comp.metodoPago.idMetodo) || null,
+          estado: "Pagada", idPedidos: [], items: []
         };
         porCuenta.set(c.idCuenta, o);
       }
@@ -422,7 +541,41 @@
     return [...porCuenta.values()].sort((a, b) => String(b.fechaHora).localeCompare(String(a.fechaHora)));
   }
 
-  /** Líneas de una orden con nombre de producto. */
+  /**
+   * Órdenes pagadas con sus líneas (producto, categoría, cantidad y precio), subtotal e IVA.
+   * Base de los filtros y reportes de Historiales.
+   * @returns {Promise<{ordenes:Array<object>, productos:Array<object>}>}
+   */
+  async function ordenesConItems() {
+    const [ordenes, detalles, prods] = await Promise.all([
+      ordenesPagadas(),
+      Api.lista("api/DetallePedidos/GetDetallePedidos"),
+      productos()
+    ]);
+    const mapa = new Map(prods.map((p) => [p.idProducto, p]));
+    const porPedido = new Map();
+    detalles.forEach((d) => {
+      if (!porPedido.has(d.idPedido)) porPedido.set(d.idPedido, []);
+      porPedido.get(d.idPedido).push(d);
+    });
+    ordenes.forEach((o) => {
+      o.items = [];
+      o.idPedidos.forEach((idp) => (porPedido.get(idp) || []).forEach((d) => {
+        const p = mapa.get(d.idProducto) || {};
+        o.items.push({
+          idProducto: d.idProducto, nombre: p.nombre || `Producto #${d.idProducto}`,
+          categoria: p.categoria || "Sin categoría",
+          cantidad: num(d.cantidad), precioUnitario: num(d.precioUnitario)
+        });
+      }));
+      const t = totales(o.items);
+      o.subtotal = t.subtotal;
+      o.iva = t.iva;
+    });
+    return { ordenes, productos: prods };
+  }
+
+  /** Líneas de una orden con el nombre de cada producto. */
   async function itemsOrden(orden, catalogo) {
     const [detalles, prods] = await Promise.all([
       Api.lista("api/DetallePedidos/GetDetallePedidos"),
@@ -436,11 +589,12 @@
     }));
   }
 
-  /* ==========================================================================
-     COMPRAS
-     ========================================================================== */
+  /* ==================== Compras ==================== */
+
+  /** Identificador visible de una compra: CMP-000123. */
   const idCompraTexto = (id) => "CMP-" + String(id).padStart(6, "0");
 
+  /** Compras con proveedor y líneas de detalle. Costos en COP, sin IVA. */
   async function listarCompras() {
     const [compras, provs, detalles, prods] = await Promise.all([
       Api.lista("api/Compras/GetCompras"),
@@ -454,19 +608,26 @@
       const items = detalles.filter((d) => d.idCompra === c.idCompra).map((d) => {
         const p = mapaProd.get(d.idProducto) || {};
         return {
+          idProducto: d.idProducto,
           nombre: p.nombre || `Producto #${d.idProducto}`, categoria: p.categoria || "—",
           cantidad: num(d.cantidad), costoUnitario: num(d.precioCompra)
         };
       });
       return {
         id: idCompraTexto(c.idCompra), idCompra: c.idCompra,
-        fecha: c.fecha, proveedor: nomProv.get(c.idProveedor) || `Proveedor #${c.idProveedor}`,
+        fecha: c.fecha, idProveedor: c.idProveedor, proveedor: nomProv.get(c.idProveedor) || `Proveedor #${c.idProveedor}`,
         items, costoTotal: num(c.total)
       };
     }).sort((a, b) => b.idCompra - a.idCompra);
   }
 
-  /** items: [{ idProducto, cantidad, costoUnitario }]. fecha: "AAAA-MM-DD" o null (= ahora). */
+  /**
+   * Registra una compra con sus líneas y la entrada de stock de cada producto.
+   * Si falla alguna línea, se eliminan las ya creadas para no dejar la compra incompleta.
+   * @param {{idProveedor:number, fecha:string|null, items:Array<{idProducto:number, cantidad:number, costoUnitario:number}>}} datos
+   *   fecha: "AAAA-MM-DD" o null para usar el momento actual.
+   * @returns {Promise<{compra:object, aviso:string[]}>}
+   */
   async function crearCompra({ idProveedor, fecha, items }) {
     const total = items.reduce((a, i) => a + i.cantidad * i.costoUnitario, 0);
     const hora = ahora().split("T")[1];
@@ -484,7 +645,6 @@
         creados.push(d);
       }
     } catch (e) {
-      /* Deshacer lo creado para no dejar una compra incompleta. */
       for (const d of creados) { try { if (d && d.idDetalleCompra) await Api.del("api/DetalleCompras/DeleteDetalleCompra/" + d.idDetalleCompra); } catch (_) {} }
       try { await Api.del("api/Compras/DeleteCompra/" + compra.idCompra); } catch (_) {}
       throw e;
@@ -499,9 +659,9 @@
     return { compra, aviso };
   }
 
-  /* ==========================================================================
-     ANALÍTICAS
-     ========================================================================== */
+  /* ==================== Analíticas ==================== */
+
+  /** Indicadores de venta del período (Analiticas/Ventas). */
   function ventas(desde, hasta) {
     return Api.get("api/Analiticas/Ventas", { fechaDesde: desde || undefined, fechaHasta: hasta || undefined })
       .then((r) => {
@@ -513,7 +673,7 @@
       });
   }
 
-  /** Consumo por producto y categoría de los pedidos pagados del período (antes de IVA). */
+  /** Consumo por producto y por categoría de los pedidos pagados del período, antes de IVA. */
   async function consumoPeriodo(desde, hasta) {
     const [hist, detalles, prods] = await Promise.all([
       Api.get("api/Pedidos/Historial", { fechaDesde: desde || undefined, fechaHasta: hasta || undefined }).then((r) => (r && r.data) || []),
@@ -540,13 +700,14 @@
     };
   }
 
+  /** API pública de la capa de negocio. */
   window.Negocio = {
     IVA, ESTADO, norm, totales, claveEstadoMesa,
-    productos, categorias, proveedores, metodosPago, crearCategoria, crearMetodoPago,
+    productos, categorias, proveedores, metodosPago, crearCategoria, actualizarCategoria, eliminarCategoria, crearMetodoPago,
     ajustarStock, crearProducto, actualizarProducto, eliminarProducto,
-    cargarMesas, cargarDetalle, agregarProducto, cambiarCantidad, quitarItem,
-    confirmarPago, reabrirCuenta, cobrar, crearMesa, eliminarMesa,
-    ordenesPagadas, itemsOrden, listarCompras, crearCompra,
+    cargarMesas, sincronizarEstadosMesas, cargarDetalle, agregarProducto, cambiarCantidad, quitarItem,
+    confirmarPago, reabrirCuenta, cobrar, crearMesa, eliminarMesa, retirarMesa, reactivarMesa,
+    ordenesPagadas, ordenesConItems, itemsOrden, listarCompras, crearCompra,
     ventas, consumoPeriodo
   };
 })();

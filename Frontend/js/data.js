@@ -1,40 +1,49 @@
-/* ==========================================================================
-   DATA.JS — Utilidades compartidas (El Cuate)
-   --------------------------------------------------------------------------
-   Formato de moneda / fecha y escape de texto. Los datos del negocio
-   (productos, mesas, pedidos, compras…) vienen de la API (api-negocio.js);
-   este archivo ya no guarda nada en localStorage.
-   ========================================================================== */
+/**
+ * @file data.js
+ * @description Utilidades compartidas: formato de moneda y fecha, escape de HTML y
+ *   ventana de confirmación reutilizable.
+ * @exports formatoCOP, horaActual, fechaHoy, esc, Confirmar
+ */
 
-/* ---------- Formato de moneda (COP) ---------- */
+/**
+ * Formatea un valor en pesos colombianos, sin decimales: "$ 12.500".
+ * @param {number} valor
+ * @returns {string}
+ */
 function formatoCOP(valor) {
   return "$ " + Math.round(Number(valor) || 0).toLocaleString("es-CO");
 }
 
+/** Hora local "HH:mm". */
 function horaActual() {
   const ahora = new Date();
   return ahora.getHours().toString().padStart(2, "0") + ":" + ahora.getMinutes().toString().padStart(2, "0");
 }
 
+/** Fecha local "D/M/AAAA" para el encabezado. */
 function fechaHoy() {
   const ahora = new Date();
   return `${ahora.getDate()}/${ahora.getMonth() + 1}/${ahora.getFullYear()}`;
 }
 
-/** Escapa texto para insertarlo en HTML (evita inyección con datos que vienen del servidor). */
+/**
+ * Escapa texto para insertarlo como HTML. Todo dato proveniente del servidor debe pasar por aquí
+ * antes de usarse con innerHTML.
+ * @param {*} valor
+ * @returns {string}
+ */
 function esc(valor) {
   return String(valor === undefined || valor === null ? "" : valor)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-/* ==========================================================================
-   Confirmar — ventana de advertencia antes de crear / editar / eliminar
-   --------------------------------------------------------------------------
-   Confirmar.pedir({ titulo, mensaje, filas: [[etiqueta, valor], ...],
-                     textoConfirmar, peligro }) -> Promise<boolean>
-   Confirmar.cambios(antes, despues, etiquetas) -> filas solo con lo modificado
-   ========================================================================== */
+/**
+ * Ventana de confirmación previa a crear, editar o eliminar.
+ *   Confirmar.pedir({ titulo, mensaje, filas: [[etiqueta, valorHTML]], textoConfirmar, peligro }) -> Promise<boolean>
+ *   Confirmar.cambios(antes, despues, etiquetas) -> filas con los campos modificados
+ * "mensaje" y los valores de "filas" se insertan como HTML: deben venir escapados.
+ */
 const Confirmar = (function () {
   let overlay = null, resolver = null;
 
@@ -81,7 +90,13 @@ const Confirmar = (function () {
     return new Promise((res) => { resolver = res; });
   }
 
-  /** Filas "antes → después" solo de los campos que cambiaron. etiquetas: { campo: "Etiqueta" } */
+  /**
+   * Genera filas "antes → después" solo para los campos que cambiaron.
+   * @param {object} antes
+   * @param {object} despues
+   * @param {Object<string,string>} etiquetas Campo → etiqueta visible.
+   * @returns {Array<[string,string]>}
+   */
   function cambios(antes, despues, etiquetas) {
     const filas = [];
     Object.keys(etiquetas).forEach((k) => {

@@ -1,0 +1,37 @@
+/* ==========================================================================
+   configuracion.css
+   Página Configuración: selector de opción, formulario de contraseña y datos de la cuenta.
+   ========================================================================== */
+
+.config-panel { max-width: 760px; display: flex; flex-direction: column; gap: 22px; }
+.config-selector .campo { max-width: 320px; }
+
+.config-seccion { display: flex; flex-direction: column; gap: 14px; padding-top: 18px; border-top: 1px solid var(--borde); }
+.config-seccion[hidden] { display: none; }
+.config-titulo { font-size: 16px; font-weight: 700; color: var(--texto-principal); }
+
+.config-mostrar { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--texto-secundario); cursor: pointer; }
+.config-mostrar input { accent-color: var(--coral); }
+
+/* ---------- Requisitos de la contraseña ---------- */
+.config-requisitos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--texto-secundario); }
+.config-requisitos li::before { content: "○"; margin-right: 6px; }
+.config-requisitos li.cumplido { color: var(--verde-texto, #1F7A45); }
+.config-requisitos li.cumplido::before { content: "●"; }
+
+/* ---------- Mensajes y acciones ---------- */
+.config-mensaje { padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.config-mensaje--ok { background-color: var(--verde-fondo, #E6F6EC); color: var(--verde-texto, #1F7A45); }
+.config-mensaje--error { background-color: #FCEAE7; color: var(--rojo-texto, #D8432B); }
+.config-acciones { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ---------- Datos de la cuenta ---------- */
+.config-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; }
+.config-datos dt { font-size: 11px; color: var(--texto-secundario); }
+.config-datos dd { margin: 3px 0 0; font-size: 14px; font-weight: 600; color: var(--texto-principal); word-break: break-word; }
+
+@media (max-width: 640px) {
+  .config-datos, .config-panel .campo-fila { grid-template-columns: 1fr; }
+  .config-acciones { flex-direction: column-reverse; }
+  .config-acciones .btn { width: 100%; }
+}

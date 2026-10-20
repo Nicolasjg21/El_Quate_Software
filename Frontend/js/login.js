@@ -1,16 +1,16 @@
-/* ==========================================================================
-   LOGIN.JS — Inicio de sesión (POST api/Autenticador/Login)
-   Validaciones según LoginDTO y AutenticadorController:
-     - email: obligatorio, <= 254 y con el mismo criterio que [EmailAddress]
-       de .NET (exactamente una "@", ni al inicio ni al final, sin saltos de línea).
-     - password: obligatoria (solo espacios cuenta como vacía, igual que
-       [Required] / IsNullOrWhiteSpace) y <= 128. No se recorta: se envía tal cual.
-   ========================================================================== */
+/**
+ * @file login.js
+ * @description Formulario de inicio de sesión. Valida según LoginDTO antes de enviar:
+ *   correo obligatorio, máximo 254 caracteres y con el criterio de EmailAddressAttribute de .NET;
+ *   contraseña obligatoria y de máximo 128 caracteres (se envía sin recortar).
+ * @requires auth.js
+ */
+
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-login");
   const aviso = document.getElementById("login-error");
   const btn = document.getElementById("btn-login");
-  const REGEX_EMAIL = /^[^@\r\n]+@[^@\r\n]+$/;   // = EmailAddressAttribute (.NET)
+  const REGEX_EMAIL = /^[^@\r\n]+@[^@\r\n]+$/;
 
   function mostrar(mensaje) { aviso.textContent = mensaje; aviso.hidden = !mensaje; }
 

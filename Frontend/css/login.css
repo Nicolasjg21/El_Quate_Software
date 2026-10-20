@@ -1,8 +1,8 @@
 /* ==========================================================================
-   LOGIN — El Cuate / Los Cuates de Patty
+   login.css
+   Pantalla de inicio de sesión.
    ========================================================================== */
 
-/* ---------- Variables ---------- */
 :root {
   --coral: #F06543;
   --gris-claro: #E8E9EB;
@@ -15,7 +15,6 @@
   --borde: #D9DBDC;
 }
 
-/* ---------- Reset / base ---------- */
 * {
   margin: 0;
   padding: 0;
@@ -27,7 +26,6 @@ body {
   background-color: var(--carbon);
 }
 
-/* ---------- Layout general ---------- */
 .login-pantalla {
   min-height: 100vh;
   width: 100%;
@@ -39,7 +37,6 @@ body {
   padding: 40px 20px;
 }
 
-/* ---------- Logo ---------- */
 .login-logo {
   width: 150px;
   height: auto;
@@ -47,7 +44,6 @@ body {
   margin-bottom: 44px;
 }
 
-/* ---------- Tarjeta central ---------- */
 .login-tarjeta {
   width: 100%;
   max-width: 400px;
@@ -72,7 +68,6 @@ body {
   margin-bottom: 28px;
 }
 
-/* ---------- Formulario ---------- */
 .login-formulario {
   display: flex;
   flex-direction: column;
@@ -124,7 +119,6 @@ body {
   border-color: var(--coral);
 }
 
-/* ---------- Recordar dispositivo ---------- */
 .login-recordar {
   display: flex;
   align-items: center;
@@ -147,7 +141,6 @@ body {
   accent-color: var(--coral);
 }
 
-/* ---------- Botón ---------- */
 .login-boton {
   width: 100%;
   padding: 13px 0;
@@ -170,7 +163,6 @@ body {
   background-color: #E0532F;
 }
 
-/* ---------- Copyright ---------- */
 .login-copyright {
   margin-top: 32px;
   font-size: 12px;
@@ -178,7 +170,6 @@ body {
   text-align: center;
 }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 480px) {
   .login-logo {
     width: 120px;
@@ -194,7 +185,6 @@ body {
   }
 }
 
-/* Mensaje de error del inicio de sesión */
 .login-error {
   margin: 0;
   padding: 10px 12px;

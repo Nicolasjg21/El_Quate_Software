@@ -1,8 +1,9 @@
 /* ==========================================================================
-   MENÚ RESPONSIVE — El Cuate
+   menu-responsive.css
+   Menú adaptable: en pantallas de hasta 900 px la barra lateral se convierte
+   en barra superior con botón de menú. Se carga después de layout.css.
    ========================================================================== */
 
-/* En escritorio el botón y el checkbox no existen visualmente */
 .menu-toggle,
 .menu-boton { display: none; }
 
@@ -10,7 +11,6 @@
 
   .app { flex-direction: column; }
 
-  /* checkbox oculto pero accesible por teclado */
   .menu-toggle {
     display: block;
     position: absolute;
@@ -63,7 +63,6 @@
   .menu-toggle:checked ~ .sidebar .menu-boton::before { content: "\2715"; font-size: 16px; }
   .menu-toggle:focus-visible ~ .sidebar .menu-boton { outline: 2px solid var(--naranja); outline-offset: 2px; }
 
-  /* navegación: colapsada hasta que se abre el menú */
   .sidebar-nav,
   .sidebar-pie {
     display: none;

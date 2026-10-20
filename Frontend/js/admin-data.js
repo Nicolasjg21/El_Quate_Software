@@ -1,29 +1,21 @@
-/* ==========================================================================
-   ADMIN-DATA.JS — Capa de datos de Usuarios y Proveedores (El Cuate)
-   --------------------------------------------------------------------------
-   Consume la API real mediante Api (api-cliente.js). Mantiene la misma
-   interfaz que usan los módulos (listar / crear / actualizar / eliminar),
-   que devuelven Promises y rechazan con { status, mensaje, errores }.
+/**
+ * @file admin-data.js
+ * @description Acceso a datos de Usuarios, Proveedores y Seguridad (roles y permisos).
+ *   Cada operación de escritura registra su auditoría.
+ * @requires api-cliente.js
+ *
+ * Endpoints:
+ *   Usuarios      GetUsuarios, PostUsuarios, PutUsuarios/{id}, DeleteUsuarios/{id}
+ *   Proveedores   GetProveedores, PostProveedores, PutProveedores (id en el cuerpo), DeleteProveedores/{id}
+ *   Catálogos     TipoDocumento/GetTipoDocumento, Roles/GetRoles
+ *   Seguridad     Roles/PostRoles, RolesPermisos/PostRolesPermisos, RolesPermisos/DeleteRolesPermisos/{idRol}/{idPermiso}
+ */
 
-     apiUsuarios.listar()           GET    api/Usuarios/GetUsuarios
-     apiUsuarios.crear(u)           POST   api/Usuarios/PostUsuarios
-     apiUsuarios.actualizar(id, u)  PUT    api/Usuarios/PutUsuarios/{id}
-     apiUsuarios.eliminar(id)       DELETE api/Usuarios/DeleteUsuarios/{id}
+/** Catálogos cargados por cargarCatalogos(). */
+const TIPOS_DOCUMENTO = [];
+const ROLES = [];
 
-     apiProveedores.listar()        GET    api/Proveedores/GetProveedores
-     apiProveedores.crear(p)        POST   api/Proveedores/PostProveedores
-     apiProveedores.actualizar(id,p)PUT    api/Proveedores/PutProveedores   (id en el cuerpo)
-     apiProveedores.eliminar(id)    DELETE api/Proveedores/DeleteProveedores/{id}
-
-   Requiere: api-cliente.js. Un listado vacío (404 "no se encontraron…") se
-   entrega como [] y las respuestas { data } se devuelven ya desempaquetadas.
-   ========================================================================== */
-
-/* ---------- Catálogos (se llenan desde la API con cargarCatalogos()) ---------- */
-const TIPOS_DOCUMENTO = [];   // { idTipoDocumento, nombre }
-const ROLES = [];             // { idRol, nombre }
-
-/** Carga TipoDocumento y Roles desde el Backend y rellena los arreglos anteriores. */
+/** Carga los tipos de documento y los roles en TIPOS_DOCUMENTO y ROLES. */
 function cargarCatalogos() {
   return Promise.all([
     Api.lista("api/TipoDocumento/GetTipoDocumento"),
@@ -36,21 +28,21 @@ function cargarCatalogos() {
   });
 }
 
+/** Extrae "data" de una respuesta de la API. */
 const datosDe = (respuesta) => (respuesta && respuesta.data) || null;
 
-/* ---------- API: Usuarios ---------- */
+/** Usuarios. La contraseña solo se envía al crear; se cambia con CambiarPassword. */
 const apiUsuarios = {
   listar() {
     return Api.lista("api/Usuarios/GetUsuarios");
   },
   crear(datos) {
     return Api.post("api/Usuarios/PostUsuarios", datos).then(datosDe).then((u) => {
-      Api.auditar("Usuarios", "INSERT", null, u || datos);   // auditar() descarta la contraseña
+      Api.auditar("Usuarios", "INSERT", null, u || datos);
       return u;
     });
   },
   actualizar(id, datos, anterior) {
-    /* UsuarioActualizarDTO no lleva idUsuario ni password: el id viaja en la URL. */
     const { idUsuario, password, ...cuerpo } = datos;
     return Api.put("api/Usuarios/PutUsuarios/" + id, cuerpo).then(datosDe).then((u) => {
       Api.auditar("Usuarios", "UPDATE", anterior || { idUsuario: id }, u || { idUsuario: id, ...cuerpo });
@@ -65,7 +57,7 @@ const apiUsuarios = {
   }
 };
 
-/* ---------- API: Proveedores ---------- */
+/** Proveedores. */
 const apiProveedores = {
   listar() {
     return Api.lista("api/Proveedores/GetProveedores");
@@ -86,6 +78,36 @@ const apiProveedores = {
     return Api.del("api/Proveedores/DeleteProveedores/" + id).then(() => {
       Api.auditar("Proveedores", "DELETE", anterior || { idProveedor: id }, null);
       return true;
+    });
+  }
+};
+
+/**
+ * Roles y permisos (requiere "seguridad.gestionar" en el Backend).
+ * Los permisos se asignan por rol mediante la tabla RolesPermisos; no existen permisos por usuario.
+ */
+const apiSeguridad = {
+  cargar() {
+    return Promise.all([
+      Api.lista("api/Roles/GetRoles"),
+      Api.lista("api/Permisos/GetPermisos"),
+      Api.lista("api/RolesPermisos/GetRolesPermisos")
+    ]).then(([roles, permisos, relaciones]) => ({ roles, permisos, relaciones }));
+  },
+  crearRol(nombreRol) {
+    return Api.post("api/Roles/PostRoles", { nombreRol }).then(datosDe).then((r) => {
+      Api.auditar("Roles", "INSERT", null, r || { nombreRol });
+      return r;
+    });
+  },
+  asignar(rol, permiso) {
+    return Api.post("api/RolesPermisos/PostRolesPermisos", { idRol: rol.idRol, idPermiso: permiso.idPermiso }).then(() => {
+      Api.auditar("RolesPermisos", "INSERT", null, { idRol: rol.idRol, nombreRol: rol.nombreRol, idPermiso: permiso.idPermiso, nombrePermiso: permiso.nombrePermiso });
+    });
+  },
+  quitar(rol, permiso) {
+    return Api.del(`api/RolesPermisos/DeleteRolesPermisos/${rol.idRol}/${permiso.idPermiso}`).then(() => {
+      Api.auditar("RolesPermisos", "DELETE", { idRol: rol.idRol, nombreRol: rol.nombreRol, idPermiso: permiso.idPermiso, nombrePermiso: permiso.nombrePermiso }, null);
     });
   }
 };

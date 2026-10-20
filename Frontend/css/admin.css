@@ -1,14 +1,14 @@
 /* ==========================================================================
-   ADMIN — estilos compartidos de Usuarios y Proveedores
-   Reutiliza variables, botones, modales, campos y toast de layout.css.
+   admin.css
+   Pantallas de administración: Usuarios, Proveedores y Roles y permisos.
    ========================================================================== */
 
 .toolbar-admin { align-items: center; }
 .toolbar-admin .buscador input { width: 300px; max-width: 100%; }
 
-/* ---------- Tabla ---------- */
 .panel--tabla { padding: 8px 16px 12px 16px; }
 
+/* ---------- Tablas de administración ---------- */
 .tabla-admin { min-width: 980px; }
 .tabla-admin--compacta { min-width: 720px; }
 
@@ -30,15 +30,14 @@
 .tabla-admin .col-nombre { white-space: nowrap; }
 .tabla-admin .col-id { color: var(--texto-secundario); }
 
-/* ---------- Badges de rol ---------- */
 .pill--rol-admin { background-color: #FDECE6; color: var(--coral-oscuro); }
 .pill--rol-caja  { background-color: var(--neutro); color: var(--carbon); }
 .pill--rol-mesero{ background-color: #FDEBD3; color: #B9660F; }
 .pill--neutro    { background-color: var(--gris-claro); color: var(--texto-secundario); }
 
-/* ---------- Acciones por fila ---------- */
 .acciones-fila { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
 
+/* ---------- Botones de acción por fila ---------- */
 .btn-icono {
   width: 30px;
   height: 30px;
@@ -55,12 +54,10 @@
 .btn-icono--peligro:hover { background-color: var(--rojo-fondo); color: var(--rojo-texto); }
 .btn-icono:focus-visible { outline: 2px solid var(--coral); outline-offset: 1px; }
 
-/* ---------- Mensajes dentro de la tabla ---------- */
 .estado-tabla { text-align: center; padding: 40px 16px !important; color: var(--texto-secundario); }
 .estado-tabla p { font-size: 13px; }
 .estado-tabla .btn { margin-top: 14px; }
 
-/* ---------- Modales ---------- */
 .modal--admin { max-width: 480px; }
 .modal--admin.modal--corto { max-width: 400px; }
 .modal-cuerpo .campo-fila { align-items: start; }
@@ -79,15 +76,39 @@
 .confirmar-texto { font-size: 13px; color: var(--texto-secundario); line-height: 1.5; }
 .confirmar-texto strong { color: var(--texto-principal); }
 
-/* ---------- Toast de error ---------- */
 .toast--error { background-color: var(--rojo-texto); }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 560px) {
   .toolbar-admin .buscador { flex: 1 1 100%; }
   .toolbar-admin .buscador input { width: 100%; }
   .modal-pie--doble { flex-direction: column-reverse; }
 }
 
-/* El atributo hidden debe ganar a display: flex / grid de los componentes */
 [hidden] { display: none !important; }
+
+/* ---------- Roles y permisos ---------- */
+.modal--roles { max-width: 860px; }
+.roles-cuerpo { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; }
+.roles-subtitulo { font-size: 12px; font-weight: 700; color: var(--texto-secundario); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+.rol-item {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 9px 11px; margin-bottom: 6px; border: 1px solid var(--borde); border-radius: 10px;
+  background: #FFFFFF; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.rol-item:hover { border-color: var(--coral); }
+.rol-item--activo { border-color: var(--coral); background-color: #FFF4F0; font-weight: 700; }
+.rol-item small { color: var(--texto-suave); font-weight: 500; }
+.roles-nuevo { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--borde); }
+.permiso-grupo { margin-top: 10px; }
+.permiso-grupo-titulo { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.permiso-item {
+  display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; margin-bottom: 6px;
+  border: 1px solid var(--borde); border-radius: 10px; cursor: pointer;
+}
+.permiso-item input { margin-top: 3px; accent-color: var(--coral); }
+.permiso-item strong { display: block; font-size: 13px; }
+.permiso-item span { font-size: 12px; color: var(--texto-secundario); }
+.permiso-item code { font-size: 11px; color: var(--texto-suave); }
+.permiso-item--bloqueado { opacity: 0.7; cursor: not-allowed; }
+.permiso-item--sin-uso { border-style: dashed; }
+@media (max-width: 760px) { .roles-cuerpo { grid-template-columns: 1fr; } }
