@@ -189,10 +189,10 @@
       `<article class="kpi"><div class="kpi-fila"><p class="kpi-titulo">${titulo}</p><span class="kpi-icono" aria-hidden="true">${icono}</span></div><p class="kpi-valor">${valor}</p>${variacion(actual, previo)}</article>`;
 
     const kpis = `<section class="kpis" aria-label="Indicadores principales">` +
-      kpi("Ventas Totales", "$", formatoCOP(ventas.totalIngresos), ventas.totalIngresos, p ? p.totalIngresos : null) +
-      kpi("Órdenes Totales", "&#128722;", fmtNum(ventas.totalVentas), ventas.totalVentas, p ? p.totalVentas : null) +
-      kpi("Valor Promedio de Orden", "&#128200;", formatoCOP(ventas.promedioVenta), ventas.promedioVenta, p ? p.promedioVenta : null) +
-      kpi("Productos Vendidos", "&#127866;", fmtNum(ventas.totalProductosVendidos), ventas.totalProductosVendidos, p ? p.totalProductosVendidos : null) +
+      kpi("Ventas Totales", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>', formatoCOP(ventas.totalIngresos), ventas.totalIngresos, p ? p.totalIngresos : null) +
+      kpi("Órdenes Totales", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18" /><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25" /><circle cx="18" cy="20" r="2" /><circle cx="8" cy="20" r="2" /></svg>', fmtNum(ventas.totalVentas), ventas.totalVentas, p ? p.totalVentas : null) +
+      kpi("Valor Promedio de Orden", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></svg>', formatoCOP(ventas.promedioVenta), ventas.promedioVenta, p ? p.promedioVenta : null) +
+      kpi("Productos Vendidos", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1" /><path d="M9 12v6" /><path d="M13 12v6" /><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z" /><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" /></svg>', fmtNum(ventas.totalProductosVendidos), ventas.totalProductosVendidos, p ? p.totalProductosVendidos : null) +
       `</section><p class="nota">Ventas = total cobrado en los comprobantes del período (incluye IVA). Las variaciones comparan contra el tramo equivalente del período anterior.</p>`;
 
     return kpis + panelTendencia(d) +

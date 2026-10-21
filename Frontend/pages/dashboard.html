@@ -106,7 +106,7 @@
           <article class="kpi-card">
             <div class="kpi-card-fila">
               <p class="kpi-titulo">Ventas Totales</p>
-              <span class="kpi-icono kpi-icono--coral">$</span>
+              <span class="kpi-icono kpi-icono--coral"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg></span>
             </div>
             <p class="kpi-valor" id="kpi-ventas">—</p>
             <p class="kpi-tendencia" id="kpi-ventas-t">&nbsp;</p>
@@ -115,7 +115,7 @@
           <article class="kpi-card">
             <div class="kpi-card-fila">
               <p class="kpi-titulo">Órdenes Totales</p>
-              <span class="kpi-icono kpi-icono--coral">&#128722;</span>
+              <span class="kpi-icono kpi-icono--coral"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18" /><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25" /><circle cx="18" cy="20" r="2" /><circle cx="8" cy="20" r="2" /></svg></span>
             </div>
             <p class="kpi-valor" id="kpi-ordenes">—</p>
             <p class="kpi-tendencia" id="kpi-ordenes-t">&nbsp;</p>
@@ -124,7 +124,7 @@
           <article class="kpi-card">
             <div class="kpi-card-fila">
               <p class="kpi-titulo">Artículos de Inventario</p>
-              <span class="kpi-icono kpi-icono--coral">&#128230;</span>
+              <span class="kpi-icono kpi-icono--coral"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><polyline points="3.29 7 12 12 20.71 7" /><path d="m7.5 4.27 9 5.15" /></svg></span>
             </div>
             <p class="kpi-valor" id="kpi-articulos">—</p>
             <p class="kpi-tendencia" id="kpi-articulos-t">&nbsp;</p>
@@ -133,7 +133,7 @@
           <article class="kpi-card">
             <div class="kpi-card-fila">
               <p class="kpi-titulo">Valor Promedio de Orden</p>
-              <span class="kpi-icono kpi-icono--coral">&#128200;</span>
+              <span class="kpi-icono kpi-icono--coral"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></svg></span>
             </div>
             <p class="kpi-valor" id="kpi-promedio">—</p>
             <p class="kpi-tendencia" id="kpi-promedio-t">&nbsp;</p>
@@ -149,34 +149,33 @@
               <span class="selector-visual">Últimos 7 días</span>
             </div>
 
-            <div class="chart-linea">
-              <div class="chart-linea-ejes" id="chart-ejes"></div>
-              <div class="chart-linea-area" id="chart-area">
-                <div class="chart-linea-guia" style="top:0%"></div>
-                <div class="chart-linea-guia" style="top:25%"></div>
-                <div class="chart-linea-guia" style="top:50%"></div>
-                <div class="chart-linea-guia" style="top:75%"></div>
-                <div class="chart-linea-guia" style="top:100%"></div>
-                <div id="chart-series"></div>
-              </div>
-              <div class="chart-linea-dias" id="chart-dias"></div>
-            </div>
+            <div class="grafica" id="chart-tendencia" role="img" aria-label="Ventas y órdenes de los últimos 7 días"></div>
 
             <div class="chart-leyenda">
-              <span><i class="chart-leyenda-punto chart-leyenda-punto--sales"></i>Ventas ($)</span>
-              <span><i class="chart-leyenda-punto chart-leyenda-punto--orders"></i>Órdenes (escala propia)</span>
+              <span><i class="chart-leyenda-punto chart-leyenda-punto--sales"></i>Ventas ($) · eje izquierdo</span>
+              <span><i class="chart-leyenda-punto chart-leyenda-punto--orders"></i>Órdenes · eje derecho</span>
             </div>
           </article>
 
           <article class="panel panel--grafica">
-            <h2 class="panel-titulo">Ingresos por Categoría</h2>
-            <div class="chart-barras" id="chart-categorias"></div>
+            <div class="panel-header">
+              <h2 class="panel-titulo">Ingresos por Categoría</h2>
+              <select class="selector-periodo" id="periodo-categorias" aria-label="Período de categorías y productos más vendidos">
+                <option value="7">Últimos 7 días</option>
+                <option value="30" selected>Últimos 30 días</option>
+                <option value="anio">Este año</option>
+              </select>
+            </div>
+            <div class="grafica" id="chart-categorias" role="img" aria-label="Ingresos por categoría en el período seleccionado"></div>
           </article>
 
         </section>
 
         <section class="panel panel--tabla">
-          <h2 class="panel-titulo">Productos Más Vendidos</h2>
+          <div class="panel-header">
+            <h2 class="panel-titulo">Productos Más Vendidos</h2>
+            <span class="selector-visual" id="periodo-top">Últimos 30 días</span>
+          </div>
 
           <div class="tabla-scroll">
             <table class="tabla">
@@ -197,7 +196,7 @@
           <div class="panel-header">
             <h2 class="panel-titulo">Estado del Inventario</h2>
             <div class="buscador">
-              <span class="buscador-icono" aria-hidden="true">&#128269;</span>
+              <span class="buscador-icono" aria-hidden="true"><svg width="14" height="14" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg></span>
               <input type="text" id="buscar-panel-inventario" placeholder="Buscar inventario...">
             </div>
           </div>

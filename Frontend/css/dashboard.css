@@ -303,75 +303,68 @@ table { border-collapse: collapse; }
   overflow-x: auto;
 }
 
-.chart-linea {
-  display: flex;
-  gap: 8px;
-  width: 680px;
+.grafica {
+  width: 100%;
+  min-height: 240px;
 }
 
-.chart-linea-ejes {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--texto-suave);
-  height: 210px;
-  width: 32px;
-  text-align: right;
-  padding-bottom: 2px;
-  flex-shrink: 0;
+.grafica svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
-.chart-linea-area {
-  position: relative;
-  width: 640px;
-  height: 210px;
+.g-guia { stroke: var(--borde); stroke-dasharray: 3 3; }
+.g-base { stroke: #C9CDD1; }
+.g-eje { font-size: 11px; fill: var(--texto-suave); }
+.g-eje--x { fill: var(--texto-secundario); }
+
+.g-linea {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.chart-linea-guia {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px dashed var(--borde);
-}
+.g-linea--ventas  { stroke: var(--coral); }
+.g-linea--ordenes { stroke: var(--naranja); }
 
-.chart-segmento {
-  position: absolute;
-  height: 2px;
-  border-radius: 2px;
-  transform-origin: left center;
-}
+.g-punto { stroke: #FFFFFF; stroke-width: 2; }
+.g-punto--ventas  { fill: var(--coral); }
+.g-punto--ordenes { fill: var(--naranja); }
 
-.chart-segmento--sales  { background-color: var(--coral); }
-.chart-segmento--orders { background-color: var(--naranja); }
+.g-barra { fill: var(--coral); }
+.g-barra:hover,
+.g-punto:hover { opacity: 0.8; }
 
-.chart-punto {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transform: translate(-4px, -4px);
-  border: 2px solid #FFFFFF;
-}
-
-.chart-punto--sales  { background-color: var(--coral); }
-.chart-punto--orders { background-color: var(--naranja); }
-
-.chart-linea-dias {
-  display: flex;
-  justify-content: space-between;
-  width: 640px;
-  margin-left: 40px;
-  margin-top: 6px;
-  font-size: 11px;
+.grafica-vacia {
+  padding: 60px 12px;
+  text-align: center;
+  font-size: 13px;
   color: var(--texto-secundario);
+}
+
+.selector-periodo {
+  font: inherit;
+  font-size: 12px;
+  color: var(--texto-secundario);
+  background-color: #FFFFFF;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.selector-periodo:focus-visible {
+  outline: none;
+  border-color: var(--coral);
 }
 
 .chart-leyenda {
   display: flex;
   gap: 18px;
   margin-top: 10px;
-  padding-left: 40px;
+  padding-left: 52px;
   font-size: 11px;
   color: var(--texto-secundario);
 }
@@ -391,36 +384,6 @@ table { border-collapse: collapse; }
 
 .chart-leyenda-punto--sales  { background-color: var(--coral); }
 .chart-leyenda-punto--orders { background-color: var(--naranja); }
-
-.chart-barras {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 210px;
-  border-bottom: 1px solid var(--borde);
-  padding: 0 6px;
-}
-
-.chart-barra-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  gap: 8px;
-  flex: 1;
-}
-
-.chart-barra {
-  width: 32px;
-  background-color: var(--coral);
-  border-radius: 4px 4px 0 0;
-}
-
-.chart-barra-etiqueta {
-  font-size: 10px;
-  color: var(--texto-secundario);
-}
 
 .tabla-scroll {
   overflow-x: auto;
