@@ -1,15 +1,22 @@
-/* ==========================================================================
-   PROVEEDORES.JS — CRUD del módulo Proveedores
-   Campos: idProveedor, nombreProveedor, telefono (máx. 20),
-   direccion (máx. 150). La colección "compras" es solo relación (no editable).
-   ========================================================================== */
+/**
+ * @file proveedores.js
+ * @description Módulo Proveedores.
+ *   - Consulta: cualquier usuario autenticado.
+ *   - Crear, editar y eliminar: requiere "inventario.gestionar"; sin permisos cargados, las acciones permanecen ocultas.
+ *   - El Backend admite nombres repetidos; la interfaz pide confirmación antes de guardarlos.
+ *   - Un proveedor con compras asociadas no puede eliminarse (409).
+ * @requires admin-data.js, admin-ui.js, data.js, auth.js
+ */
 
+/** Límites de ProveedorCrearDTO. */
+const MAX_NOMBRE = 200;
 const MAX_TELEFONO = 20;
 const MAX_DIRECCION = 150;
 
-let proveedores = [];          // caché de la última consulta (GET)
+/** Estado de la pantalla. */
+let proveedores = [];
 let textoBusqueda = "";
-let proveedorEnEdicion = null; // idProveedor en edición (null = creando)
+let proveedorEnEdicion = null;
 let proveedorAEliminar = null;
 
 const $ = (id) => document.getElementById(id);
@@ -28,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-guardar-proveedor").addEventListener("click", guardarProveedor);
   $("btn-confirmar-eliminar").addEventListener("click", confirmarEliminacion);
 
-  /* Delegación: el proveedor se identifica por data-id (nunca por índice de fila) */
   $("tabla-proveedores").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-accion]");
     if (!btn) return;
@@ -37,25 +43,32 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.dataset.accion === "eliminar") abrirEliminar(id);
   });
 
-  cargarProveedores();
+  $("btn-nuevo-proveedor").hidden = true;
+  Auth.listo.then(() => {
+    $("btn-nuevo-proveedor").hidden = !puedeGestionar();
+    cargarProveedores();
+  });
 });
 
-/* ---------- GET ---------- */
+/** Permiso de escritura sobre proveedores. */
+const puedeGestionar = () => Auth.permisosCargados && Auth.tiene("inventario.gestionar");
+
+/* ---------- Consulta ---------- */
 function cargarProveedores() {
   $("tabla-proveedores").innerHTML = filaMensaje("Cargando proveedores...");
   apiProveedores.listar()
     .then(datos => { proveedores = datos; renderTabla(); })
-    .catch(() => {
-      $("tabla-proveedores").innerHTML = filaMensaje("No fue posible cargar los proveedores. Intente de nuevo.");
+    .catch(err => {
+      $("tabla-proveedores").innerHTML = filaMensaje(Api.mensajeError(err, "No fue posible cargar los proveedores. Intente de nuevo."));
     });
 }
 
-/* ---------- Render ---------- */
 function filaMensaje(texto, conBoton) {
   const boton = conBoton ? `<div><button class="btn btn--primario" data-nuevo-vacio>+ Nuevo proveedor</button></div>` : "";
   return `<tr class="fila-mensaje"><td colspan="5" class="estado-tabla"><p>${esc(texto)}</p>${boton}</td></tr>`;
 }
 
+/** Búsqueda por id, nombre, teléfono (también solo por dígitos) y dirección. */
 function coincide(p, q) {
   const qDigitos = q.replace(/\D/g, "");
   const campos = [String(p.idProveedor), p.nombreProveedor, p.telefono, p.direccion].map(normalizar);
@@ -69,7 +82,7 @@ function renderTabla() {
   const visibles = proveedores.filter(p => !q || coincide(p, q));
 
   if (proveedores.length === 0) {
-    cuerpo.innerHTML = filaMensaje("No hay proveedores registrados.", true);
+    cuerpo.innerHTML = filaMensaje("No hay proveedores registrados.", puedeGestionar());
     const btn = cuerpo.querySelector("[data-nuevo-vacio]");
     if (btn) btn.addEventListener("click", abrirNuevo);
   } else if (visibles.length === 0) {
@@ -88,15 +101,15 @@ function filaProveedor(p) {
       <td class="col-nombre">${esc(p.telefono)}</td>
       <td>${esc(p.direccion)}</td>
       <td class="col-centro">
-        <div class="acciones-fila">
+        ${puedeGestionar() ? `<div class="acciones-fila">
           <button class="btn-icono" data-accion="editar" data-id="${p.idProveedor}" aria-label="Editar proveedor ${esc(p.nombreProveedor)}" title="Editar proveedor">${ICONO_EDITAR}</button>
           <button class="btn-icono btn-icono--peligro" data-accion="eliminar" data-id="${p.idProveedor}" aria-label="Eliminar proveedor ${esc(p.nombreProveedor)}" title="Eliminar proveedor">${ICONO_ELIMINAR}</button>
-        </div>
+        </div>` : ""}
       </td>
     </tr>`;
 }
 
-/* ---------- Formulario: abrir ---------- */
+/* ---------- Formulario ---------- */
 function vaciarFormulario() {
   ["p-nombre", "p-telefono", "p-direccion"].forEach(id => { $(id).value = ""; });
   limpiarErrores($("form-proveedor"));
@@ -125,13 +138,15 @@ function abrirEdicion(id) {
   abrirModal("overlay-proveedor");
 }
 
-/* ---------- Validación ---------- */
+/** Valida campos obligatorios y longitudes según el DTO. */
 function validarFormulario() {
   limpiarErrores($("form-proveedor"));
   let valido = true;
   const falla = (id, msg) => { marcarError($(id), msg); valido = false; };
 
-  if (!$("p-nombre").value.trim()) falla("p-nombre", "El nombre del proveedor es obligatorio.");
+  const nom = $("p-nombre").value.trim();
+  if (!nom) falla("p-nombre", "El nombre del proveedor es obligatorio.");
+  else if (nom.length > MAX_NOMBRE) falla("p-nombre", "El nombre del proveedor no puede superar los 200 caracteres.");
 
   const tel = $("p-telefono").value.trim();
   if (!tel) falla("p-telefono", "El teléfono es obligatorio.");
@@ -156,18 +171,46 @@ function leerFormulario() {
   };
 }
 
-/* ---------- POST / PUT ---------- */
-function guardarProveedor() {
+/* ---------- Alta y edición ---------- */
+
+/** Guarda el proveedor. Si el nombre ya existe, pide confirmación (al editar, la advertencia se incluye en el resumen). */
+async function guardarProveedor() {
   if (!validarFormulario()) return;
   const btn = $("btn-guardar-proveedor");
   if (btn.disabled) return;
   const datos = leerFormulario();
   const editando = proveedorEnEdicion !== null;
 
+  const repetido = proveedores.some(p => p.idProveedor !== proveedorEnEdicion &&
+    normalizar(p.nombreProveedor) === normalizar(datos.nombreProveedor));
+  const avisoRepetido = repetido
+    ? "<br><br>Atención: ya existe otro proveedor llamado <strong>" + esc(datos.nombreProveedor) + "</strong>."
+    : "";
+
+  if (!editando && repetido) {
+    const ok = await Confirmar.pedir({
+      titulo: "Proveedor con el mismo nombre",
+      mensaje: "Ya existe un proveedor llamado <strong>" + esc(datos.nombreProveedor) + "</strong>. ¿Desea crearlo de todos modos?",
+      textoConfirmar: "Sí, crear"
+    });
+    if (!ok) return;
+  }
+
+  if (editando) {
+    const p = proveedores.find(x => x.idProveedor === proveedorEnEdicion);
+    const filas = Confirmar.cambios(
+      { n: p.nombreProveedor, t: p.telefono, d: p.direccion },
+      { n: datos.nombreProveedor, t: datos.telefono, d: datos.direccion },
+      { n: "Nombre", t: "Teléfono", d: "Dirección" });
+    if (!filas.length) { mostrarToast("No hay cambios para guardar."); return; }
+    const ok = await Confirmar.pedir({ titulo: "Confirmar edición", mensaje: "Se modificará el proveedor <strong>" + esc(p.nombreProveedor) + "</strong>. ¿Desea guardar los cambios?" + avisoRepetido, filas, textoConfirmar: "Sí, guardar cambios" });
+    if (!ok) return;
+  }
+
   bloquearBoton(btn, "Guardando...");
   const peticion = editando
-    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion })  // PUT
-    : apiProveedores.crear(datos);                                                                   // POST
+    ? apiProveedores.actualizar(proveedorEnEdicion, { ...datos, idProveedor: proveedorEnEdicion }, proveedores.find(p => p.idProveedor === proveedorEnEdicion))
+    : apiProveedores.crear(datos);
 
   peticion
     .then(guardado => {
@@ -182,12 +225,17 @@ function guardarProveedor() {
       mostrarToast(editando ? "Proveedor actualizado correctamente." : "Proveedor creado correctamente.");
     })
     .catch(err => {
-      mostrarToast((err && err.status === 404) ? err.mensaje : "No fue posible guardar el proveedor. Intente de nuevo.", "error");
+      const mapa = { nombreproveedor: "p-nombre", telefono: "p-telefono", direccion: "p-direccion" };
+      Object.keys((err && err.errores) || {}).forEach(c => {
+        const id = mapa[c.toLowerCase()];
+        if (id) marcarError($(id), err.errores[c][0]);
+      });
+      mostrarToast(Api.mensajeError(err, "No fue posible guardar el proveedor. Intente de nuevo."), "error");
     })
     .finally(() => liberarBoton(btn));
 }
 
-/* ---------- DELETE ---------- */
+/* ---------- Eliminación ---------- */
 function abrirEliminar(id) {
   const p = proveedores.find(x => x.idProveedor === id);
   if (!p) return;
@@ -203,7 +251,7 @@ function confirmarEliminacion() {
   const id = proveedorAEliminar;
 
   bloquearBoton(btn, "Eliminando...");
-  apiProveedores.eliminar(id)
+  apiProveedores.eliminar(id, proveedores.find(p => p.idProveedor === id))
     .then(() => {
       proveedores = proveedores.filter(p => p.idProveedor !== id);
       cerrarModal("overlay-eliminar");
@@ -214,8 +262,7 @@ function confirmarEliminacion() {
       cerrarModal("overlay-eliminar");
       mostrarToast(
         err && err.status === 409 ? "No es posible eliminar este proveedor porque tiene compras asociadas."
-        : err && err.status === 404 ? err.mensaje
-        : "No fue posible eliminar el proveedor. Intente de nuevo.",
+        : Api.mensajeError(err, "No fue posible eliminar el proveedor. Intente de nuevo."),
         "error"
       );
     })

@@ -128,6 +128,67 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
+        [HttpPost("PostMesa")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(409)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> PostMesa([FromBody] MesaCrearDTO dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid || dto == null)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "Los datos de la mesa no son válidos."
+                    });
+                }
+
+                var mesa = dto.ToEntity();
+
+                var response = await mesasRepository.PostMesas(mesa);
+
+                if (!response)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message = "No fue posible registrar la mesa."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Mesa registrada correctamente.",
+                    data = mesa.ToRespuestaDTO()
+                });
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogWarning(ex, "Conflicto de integridad en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message = "La operación no pudo completarse porque viola restricciones de integridad (registro relacionado inexistente o con registros asociados)."
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno en el servidor."
+                });
+            }
+        }
+
         [HttpPut("PutMesa")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]

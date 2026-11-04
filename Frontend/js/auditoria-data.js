@@ -1,81 +1,174 @@
-/* ==========================================================================
-   AUDITORIA-DATA.JS — Capa de consulta de Auditoría (El Cuate)
-   --------------------------------------------------------------------------
-   Auditoría es SOLO CONSULTA: los registros los genera el backend cuando
-   ocurren operaciones. Aquí no existe crear / editar / eliminar.
+/**
+ * @file auditoria-data.js
+ * @description Datos del módulo Auditoría: consulta de registros y presentación en lenguaje natural.
+ *   La base almacena códigos técnicos (INSERT, UPDATE, DELETE, LOGIN, LOGOUT) y nombres de tabla;
+ *   este módulo los presenta como verbos en pasado (Creó, Modificó, Eliminó, Inició sesión, Cerró sesión),
+ *   módulos y campos legibles.
+ * @requires api-cliente.js, data.js
+ *
+ * Endpoints: api/Auditorias/GetAuditorias (requiere "auditorias.consultar"),
+ *            api/Usuarios/GetUsuarios (opcional, para mostrar nombres en lugar de ids).
+ */
 
-   Cuando exista el endpoint real, solo hay que reemplazar el cuerpo de
-   apiAuditoria.listar() por la llamada GET correspondiente.
-
-   IMPORTANTE: los registros de abajo son DATOS DE DEMOSTRACIÓN, no provienen
-   de producción. Respetan la separación de roles:
-     - Patricia (Administradora): operaciones administrativas.
-     - Empleados: solo operaciones operativas (Mesas, Pedidos, Comprobantes)
-       y acceso (LOGIN / LOGOUT).
-   ========================================================================== */
-
+/** Códigos de acción almacenados en Auditorias.accion. */
 const AUDITORIA_ACCIONES = ["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT"];
-const AUDITORIA_TABLAS = ["Productos", "Pedidos", "Mesas", "Compras", "Usuarios", "Proveedores", "Inventario", "Comprobantes"];
 
-/* fecha: "AAAA-MM-DDTHH:mm" (hora local). anteriores / nuevos: pares etiqueta → valor. */
-const AUDITORIA_SEMILLA = [
-  { idAuditoria: 15, fecha: "2026-09-23T14:32", usuario: "Patricia", tabla: "Productos", modulo: "Productos", accion: "UPDATE",
-    detalle: "Actualización de producto",
-    anteriores: { "Nombre": "Club Colombia Dorada", "Precio": "$ 5.500", "Estado": "Activo" },
-    nuevos:     { "Nombre": "Club Colombia Dorada", "Precio": "$ 6.000", "Estado": "Activo" } },
-  { idAuditoria: 14, fecha: "2026-09-23T14:18", usuario: "Patricia", tabla: "Productos", modulo: "Productos", accion: "INSERT",
-    detalle: "Creación del producto Aguardiente Antioqueño Verde.",
-    nuevos: { "Nombre": "Aguardiente Antioqueño Verde", "Categoría": "Licores", "Precio de venta": "$ 19.000", "Estado": "Activo" } },
-  { idAuditoria: 13, fecha: "2026-09-23T13:47", usuario: "Carlos Ramírez", tabla: "Pedidos", modulo: "Pedidos", accion: "INSERT",
-    detalle: "Creación de pedido para Mesa 3.",
-    nuevos: { "Mesa": "3", "Mesero": "Carlos Ramírez", "Productos": "Club Colombia Dorada × 2, Red Bull × 1" } },
-  { idAuditoria: 12, fecha: "2026-09-23T13:39", usuario: "Andrés Gómez", tabla: "Mesas", modulo: "Mesas", accion: "UPDATE",
-    detalle: "Actualización del estado de la Mesa 5.",
-    anteriores: { "Estado": "Libre" }, nuevos: { "Estado": "Ocupada" } },
-  { idAuditoria: 11, fecha: "2026-09-23T13:25", usuario: "Carlos Ramírez", tabla: "Comprobantes", modulo: "Comprobantes", accion: "INSERT",
-    detalle: "Generación de comprobante correspondiente a una orden pagada.",
-    nuevos: { "Mesa": "5", "Total pagado": "$ 148.000", "Método de pago": "Efectivo" } },
-  { idAuditoria: 10, fecha: "2026-09-23T12:51", usuario: "Patricia", tabla: "Proveedores", modulo: "Proveedores", accion: "UPDATE",
-    detalle: "Actualización de información del proveedor.",
-    anteriores: { "Teléfono": "310 456 7821", "Dirección": "Calle 80 # 68-45, Bogotá" },
-    nuevos:     { "Teléfono": "315 628 4190", "Dirección": "Calle 80 # 68-45, Bogotá" } },
-  { idAuditoria: 9, fecha: "2026-09-23T11:42", usuario: "Patricia", tabla: "Usuarios", modulo: "Usuarios", accion: "INSERT",
-    detalle: "Creación de nuevo usuario.",
-    nuevos: { "Nombres": "Carlos", "Apellidos": "Ramírez", "Rol": "Mesero", "Estado": "Activo" } },
-  { idAuditoria: 8, fecha: "2026-09-23T10:35", usuario: "María López", tabla: "Pedidos", modulo: "Pedidos", accion: "UPDATE",
-    detalle: "Actualización del pedido de la Mesa 3.",
-    anteriores: { "Estado": "En curso", "Cantidad": "2" }, nuevos: { "Estado": "Listo", "Cantidad": "3" } },
-  { idAuditoria: 7, fecha: "2026-09-23T09:48", usuario: "Patricia", tabla: "Inventario", modulo: "Inventario", accion: "UPDATE",
-    detalle: "Actualización del stock mínimo de un producto.",
-    anteriores: { "Producto": "Corona Extra 330 ml", "Stock mínimo": "15" },
-    nuevos:     { "Producto": "Corona Extra 330 ml", "Stock mínimo": "20" } },
-  { idAuditoria: 6, fecha: "2026-09-23T08:15", usuario: "Patricia", tabla: "Productos", modulo: "Productos", accion: "DELETE",
-    detalle: "Eliminación del producto.",
-    anteriores: { "Nombre": "Producto retirado", "Precio": "$ 12.000", "Estado": "Inactivo" } },
-  { idAuditoria: 5, fecha: "2026-09-23T08:01", usuario: "Patricia", tabla: "Usuarios", modulo: "Usuarios", accion: "LOGIN",
-    detalle: "Inicio de sesión.",
-    nuevos: { "Usuario": "Patricia", "Rol": "Administrador" } },
-  { idAuditoria: 4, fecha: "2026-09-22T22:10", usuario: "Carlos Ramírez", tabla: "Usuarios", modulo: "Usuarios", accion: "LOGOUT",
-    detalle: "Cierre de sesión.",
-    nuevos: { "Usuario": "Carlos Ramírez", "Rol": "Mesero" } },
-  { idAuditoria: 3, fecha: "2026-09-22T18:04", usuario: "Carlos Ramírez", tabla: "Usuarios", modulo: "Usuarios", accion: "LOGIN",
-    detalle: "Inicio de sesión.",
-    nuevos: { "Usuario": "Carlos Ramírez", "Rol": "Mesero" } },
-  { idAuditoria: 2, fecha: "2026-09-21T20:15", usuario: "Patricia", tabla: "Compras", modulo: "Compras", accion: "INSERT",
-    detalle: "Registro de compra a proveedor.",
-    nuevos: { "Proveedor": "Distribuidora Bavaria", "Productos": "Águila Original × 48, Poker × 24", "Costo total": "$ 282.000" } },
-  { idAuditoria: 1, fecha: "2026-09-21T19:40", usuario: "Andrés Gómez", tabla: "Mesas", modulo: "Mesas", accion: "UPDATE",
-    detalle: "Actualización del estado de la Mesa 2.",
-    anteriores: { "Estado": "Ocupada" }, nuevos: { "Estado": "Libre" } }
-];
+/** Código de acción → verbo mostrado al usuario. */
+const AUDITORIA_VERBOS = {
+  INSERT: "Creó",
+  UPDATE: "Modificó",
+  DELETE: "Eliminó",
+  LOGIN: "Inició sesión",
+  LOGOUT: "Cerró sesión"
+};
 
-const LATENCIA_AUDITORIA_MS = 350;
+/** Tabla → nombre del módulo y forma de referirse a uno de sus registros. */
+const AUDITORIA_MODULOS = {
+  Usuarios:      { modulo: "Usuarios",               objeto: "el usuario" },
+  Proveedores:   { modulo: "Proveedores",            objeto: "el proveedor" },
+  Productos:     { modulo: "Productos",              objeto: "el producto" },
+  Categorias:    { modulo: "Categorías",             objeto: "la categoría" },
+  MetodosPago:   { modulo: "Métodos de pago",        objeto: "el método de pago" },
+  Inventario:    { modulo: "Inventario (stock)",     objeto: "el stock de" },
+  Kardex:        { modulo: "Inventario (stock)",     objeto: "un movimiento de" },
+  Mesas:         { modulo: "Mesas",                  objeto: "la mesa" },
+  Cuentas:       { modulo: "Cuentas",                objeto: "la cuenta" },
+  Pedidos:       { modulo: "Pedidos",                objeto: "el pedido" },
+  DetallePedidos:{ modulo: "Pedidos",                objeto: "una línea del pedido" },
+  Comprobantes:  { modulo: "Comprobantes de pago",   objeto: "el comprobante de la cuenta" },
+  Compras:       { modulo: "Compras",                objeto: "la compra" },
+  Roles:         { modulo: "Roles",                  objeto: "el rol" },
+  RolesPermisos: { modulo: "Roles y permisos",       objeto: "un permiso del rol" },
+  Permisos:      { modulo: "Roles y permisos",       objeto: "el permiso" }
+};
 
+/** Nombre técnico del campo → etiqueta visible en el detalle. */
+const AUDITORIA_CAMPOS = {
+  Usuario: "Usuario", idUsuario: "ID de usuario", nombres: "Nombres", apellidos: "Apellidos",
+  documento: "Documento", idTipoDocumento: "Tipo de documento (ID)", telefono: "Teléfono",
+  estado: "Estado", idRol: "Rol (ID)", nombreRol: "Rol", email: "Correo electrónico",
+  idProveedor: "ID de proveedor", nombreProveedor: "Proveedor", direccion: "Dirección",
+  idProducto: "ID de producto", nombreProducto: "Producto", producto: "Producto",
+  precioVenta: "Precio de venta", cantidadMinima: "Stock mínimo", stock: "Stock",
+  idCategoria: "ID de categoría", nombreCategoria: "Categoría",
+  numeroMesa: "Mesa", idCuenta: "ID de cuenta", idPedido: "ID de pedido",
+  total: "Total", idMetodo: "Método de pago (ID)", nombreMetodo: "Método de pago",
+  idCompra: "ID de compra", productos: "Productos diferentes",
+  idPermiso: "ID de permiso", nombrePermiso: "Permiso", Datos: "Datos"
+};
+
+/** Campos que se muestran como valores en pesos (COP). */
+const AUDITORIA_CAMPOS_COP = ["precioVenta", "total"];
+
+function verboAuditoria(codigo) { return AUDITORIA_VERBOS[codigo] || codigo || "—"; }
+function moduloAuditoria(tabla) { return (AUDITORIA_MODULOS[tabla] || {}).modulo || tabla || "—"; }
+function etiquetaCampo(k) { return AUDITORIA_CAMPOS[k] || k; }
+
+/** Valor legible: booleanos como Sí/No (o Activo/Inactivo para "estado") y montos en COP. */
+function valorCampo(k, v) {
+  if (v === "true") return k === "estado" ? "Activo" : "Sí";
+  if (v === "false") return k === "estado" ? "Inactivo" : "No";
+  if (AUDITORIA_CAMPOS_COP.includes(k) && v !== "" && !isNaN(Number(v))) return formatoCOP(Number(v));
+  return v;
+}
+
+/** Nombre del registro afectado a partir de sus datos (producto, proveedor, usuario, mesa…). */
+function nombreRegistro(datos) {
+  if (!datos) return "";
+  const d = datos;
+  if (d.nombreProducto || d.producto) return d.nombreProducto || d.producto;
+  if (d.nombreProveedor) return d.nombreProveedor;
+  if (d.nombreCategoria) return d.nombreCategoria;
+  if (d.nombreMetodo) return d.nombreMetodo;
+  if (d.nombreRol) return d.nombreRol;
+  if (d.nombrePermiso) return d.nombrePermiso;
+  if (d.nombres) return `${d.nombres} ${d.apellidos || ""}`.trim();
+  if (d.numeroMesa) return `Mesa ${d.numeroMesa}`;
+  if (d.idCompra) return `N.º ${d.idCompra}`;
+  if (d.idCuenta) return `N.º ${d.idCuenta}`;
+  if (d.idPedido) return `N.º ${d.idPedido}`;
+  if (d.email) return d.email;
+  return "";
+}
+
+/**
+ * Registro afectado, redactado para leerse junto a la acción: "Modificó" · "El producto «Limonada»".
+ * @returns {string}
+ */
+function descripcionAuditoria(accion, tabla, anteriores, nuevos) {
+  if (accion === "LOGIN") return "Ingresó al sistema";
+  if (accion === "LOGOUT") return "Salió del sistema";
+  const info = AUDITORIA_MODULOS[tabla];
+  const nombre = nombreRegistro(nuevos) || nombreRegistro(anteriores);
+  const objeto = info ? info.objeto : `un registro de ${tabla}`;
+  const texto = `${objeto}${nombre ? ` «${nombre}»` : ""}`;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+/**
+ * Fecha del Backend → "AAAA-MM-DDTHH:mm". Las fechas con zona horaria se convierten a hora local.
+ * @returns {string} Cadena vacía si el registro no tiene fecha.
+ */
+function fechaAuditoria(valor) {
+  if (!valor) return "";
+  const texto = String(valor);
+  if (/(Z|[+-]\d{2}:?\d{2})$/.test(texto)) {
+    const d = new Date(texto);
+    if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texto) ? texto.slice(0, 16) : "";
+}
+
+/** datosAnteriores/datosNuevos (JSON) → pares clave/valor. Un texto que no es JSON se muestra tal cual. */
+function datosAPares(texto) {
+  if (texto === null || texto === undefined || texto === "") return undefined;
+  try {
+    const obj = JSON.parse(texto);
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      const salida = {};
+      Object.keys(obj).forEach(k => {
+        const v = obj[k];
+        salida[k] = (v !== null && typeof v === "object") ? JSON.stringify(v) : String(v);
+      });
+      return salida;
+    }
+  } catch (e) { }
+  return { "Datos": String(texto) };
+}
+
+/** Convierte un AuditoriaRespuestaDTO al modelo de la pantalla. */
+function adaptarAuditoria(a, nombresUsuarios) {
+  const accion = String(a.accion || "").toUpperCase();
+  const tabla = a.tabla || "—";
+  const anteriores = datosAPares(a.datosAnteriores);
+  const nuevos = datosAPares(a.datosNuevos);
+  return {
+    idAuditoria: a.idAuditoria,
+    fecha: fechaAuditoria(a.fecha),
+    idUsuario: a.idUsuario,
+    usuario: nombresUsuarios[a.idUsuario] || `Usuario #${a.idUsuario}`,
+    tabla,
+    modulo: moduloAuditoria(tabla),
+    accion,
+    accionTexto: verboAuditoria(accion),
+    detalle: descripcionAuditoria(accion, tabla, anteriores, nuevos),
+    anteriores,
+    nuevos
+  };
+}
+
+/** Consulta de auditorías con los nombres de usuario; si no se pueden obtener, se muestra "Usuario #id". */
 const apiAuditoria = {
-  /* GET — pendiente de conectar al endpoint real. */
   listar() {
-    return new Promise((resolver) => {
-      setTimeout(() => resolver(AUDITORIA_SEMILLA.map(r => ({ ...r }))), LATENCIA_AUDITORIA_MS);
+    return Promise.all([
+      Api.lista("api/Auditorias/GetAuditorias"),
+      Api.lista("api/Usuarios/GetUsuarios").catch(() => [])
+    ]).then(([auditorias, usuarios]) => {
+      const nombres = {};
+      usuarios.forEach(u => { nombres[u.idUsuario] = `${u.nombres} ${u.apellidos}`.trim(); });
+      return auditorias.map(a => adaptarAuditoria(a, nombres));
     });
   }
 };

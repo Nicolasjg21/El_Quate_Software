@@ -1,0 +1,73 @@
+/* ==========================================================================
+   comprobante.css
+   Comprobante de pago dentro de la ventana modal. La versión impresa tiene
+   estilos propios en comprobante.js.
+   ========================================================================== */
+
+.modal--comprobante { max-width: 560px; }
+.modal--comprobante .modal-cuerpo { gap: 16px; }
+
+.cpb {
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background-color: #FFFFFF;
+}
+.cpb--borrador { border-style: dashed; }
+
+.cpb-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--borde);
+}
+.cpb-negocio { font-size: 18px; font-weight: 800; color: var(--texto-principal); }
+.cpb-tipo { font-size: 12px; color: var(--texto-secundario); margin-top: 2px; }
+.cpb-numero { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-weight: 700; font-size: 13px; }
+.cpb-sello {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--amarillo-fondo, #FFF4D6);
+  color: var(--amarillo-texto, #9A6B00);
+}
+.cpb-sello--pagado { background-color: var(--verde-fondo, #E6F6EC); color: var(--verde-texto, #1F7A45); }
+
+.cpb-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 14px; }
+.cpb-datos dt { font-size: 11px; color: var(--texto-secundario); }
+.cpb-datos dd { font-size: 13px; font-weight: 600; color: var(--texto-principal); margin: 2px 0 0; }
+
+.cpb-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cpb-tabla thead th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--texto-secundario);
+  font-weight: 700;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--borde);
+}
+.cpb-tabla tbody td { padding: 7px 4px; border-bottom: 1px solid var(--borde); }
+.cpb-centro { text-align: center !important; }
+.cpb-derecha { text-align: right !important; white-space: nowrap; }
+
+.cpb-totales { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.cpb-totales div { display: flex; justify-content: space-between; }
+.cpb-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--coral);
+  border-top: 1px solid var(--borde);
+  padding-top: 8px;
+}
+.cpb-nota { margin-top: 12px; font-size: 11px; color: var(--texto-suave); text-align: center; }
+
+.cobro-pregunta { font-size: 14px; font-weight: 700; color: var(--texto-principal); }
+.cobro-ayuda { font-size: 12px; color: var(--texto-secundario); margin-top: -8px; }
+
+@media (max-width: 560px) {
+  .cpb-datos { grid-template-columns: 1fr; }
+}

@@ -308,4 +308,28 @@ app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
+
+using (var alcance = app.Services.CreateScope())
+{
+    var contexto = alcance.ServiceProvider
+        .GetRequiredService<ElQuateDePatty.Context.ElQuateDePattyContext>();
+    var limite = DateTime.Now.AddMinutes(3);
+
+    app.Logger.LogInformation("Esperando a la base de datos (puede estar reanudándose)...");
+
+    while (!await contexto.Database.CanConnectAsync())
+    {
+        if (DateTime.Now > limite)
+        {
+            throw new InvalidOperationException(
+                "La base de datos no respondió en 3 minutos. Verifique su estado en Azure y la conexión a internet.");
+        }
+
+        app.Logger.LogInformation("La base de datos aún no responde; nuevo intento en 5 segundos...");
+        await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+
+    app.Logger.LogInformation("Base de datos disponible.");
+}
+
 app.Run();
