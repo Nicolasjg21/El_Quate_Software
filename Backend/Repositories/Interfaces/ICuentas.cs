@@ -4,7 +4,11 @@ namespace ElQuateDePatty.Repositories.Interfaces
 {
     public interface ICuentasRepository
     {
-        Task<List<Cuentas>> GetCuentas();
+        /// <summary>
+        /// Lista las cuentas. Si se indica <paramref name="estado"/> (por ejemplo, Abierta),
+        /// devuelve solo las de ese estado; sin él devuelve todas.
+        /// </summary>
+        Task<List<Cuentas>> GetCuentas(string? estado = null);
 
         Task<Cuentas?> GetCuentasById(int id);
 
