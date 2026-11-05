@@ -126,7 +126,7 @@ function filaEstadoVacio(colspan, contextoLimpiar) {
     <tr>
       <td colspan="${colspan}">
         <div class="estado-vacio">
-          <span class="estado-vacio-icono" aria-hidden="true">&#128269;</span>
+          <span class="estado-vacio-icono" aria-hidden="true"><svg width="26" height="26" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg></span>
           <span class="estado-vacio-titulo">No se encontraron registros.</span>
           <span class="estado-vacio-texto">Intenta ajustar la búsqueda o el período seleccionado.</span>
           <button class="btn btn--secundario" data-limpiar="${contextoLimpiar}" style="margin-top:6px;">Limpiar filtros</button>
@@ -927,7 +927,7 @@ function renderTablaCompra() {
         </td>
         <td class="col-subtotal">${formatoCOP(Math.max(0, linea.cantidad) * Math.max(0, linea.costoUnitario))}</td>
         <td class="col-acciones">
-          <button class="btn-quitar-fila" data-quitar-linea="${linea.id}" title="Eliminar producto" aria-label="Eliminar producto">&#128465;</button>
+          <button class="btn-quitar-fila" data-quitar-linea="${linea.id}" title="Eliminar producto" aria-label="Eliminar producto"><svg width="15" height="15" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg></button>
         </td>
       </tr>`).join("");
   }

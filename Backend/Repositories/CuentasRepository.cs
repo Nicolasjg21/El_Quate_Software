@@ -14,10 +14,21 @@ namespace ElQuateDePatty.Repositories
             this.context = context;
         }
 
-        public async Task<List<Cuentas>> GetCuentas()
+        /// <summary>
+        /// Lista las cuentas. El filtro por estado se resuelve en la base de datos, de modo que
+        /// solo viajan las filas solicitadas (por ejemplo, las cuentas abiertas que usa Mesas).
+        /// </summary>
+        public async Task<List<Cuentas>> GetCuentas(string? estado = null)
         {
-            var data = await context.cuentas.AsNoTracking().ToListAsync();
-            return data;
+            var consulta = context.cuentas.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(estado))
+            {
+                var filtro = estado.Trim();
+                consulta = consulta.Where(c => c.estado == filtro);
+            }
+
+            return await consulta.ToListAsync();
         }
 
         public async Task<Cuentas?> GetCuentasById(int id)

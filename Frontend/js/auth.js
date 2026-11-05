@@ -235,15 +235,21 @@
    * @returns {Promise<object>} Respuesta del Backend.
    */
   async function login(email, password) {
-    const r = await window.Api.post("api/Autenticador/Login", { email, password }, { publico: true });
+    // Primera petición de la jornada: espera ampliada y reintento, porque la base de datos
+    // puede estar reanudándose. Reintentar el login no tiene efectos secundarios.
+    const r = await window.Api.post("api/Autenticador/Login", { email, password }, {
+      publico: true, reintentable: true, timeout: window.ELCUATE_CONFIG.TIMEOUT_LOGIN_MS
+    });
     if (!r || !r.token) throw { status: 500, mensaje: "Respuesta de inicio de sesión inválida.", errores: {} };
     borrarSesionLocal();
     if (!guardarToken(r.token)) {
       throw { status: 0, mensaje: "El navegador no permite guardar la sesión. Habilite el almacenamiento del sitio.", errores: {} };
     }
-    await cargarPermisos();
     const u = usuario();
-    await window.Api.auditar("Usuarios", "LOGIN", null, { Usuario: email, idRol: u ? u.idRol : undefined });
+    await Promise.all([
+      cargarPermisos(),
+      window.Api.auditar("Usuarios", "LOGIN", null, { Usuario: email, idRol: u ? u.idRol : undefined })
+    ]);
     return r;
   }
 
@@ -318,17 +324,24 @@
       }).catch(() => { });
     }
 
-    await cargarPermisos(true);
+    // Con permisos en caché la página se habilita de inmediato y la consulta de permisos
+    // se actualiza en segundo plano; sin caché, la página espera la respuesta.
+    const habiaCache = permisosCargados;
+    if (habiaCache) aplicarPermisosPagina();
+    const refresco = cargarPermisos(true).then(aplicarPermisosPagina);
+    if (!habiaCache) await refresco;
+  }
 
-    if (permisosCargados) {
-      Object.keys(PERMISO_PAGINA).forEach((pg) => {
-        if (!tiene(PERMISO_PAGINA[pg])) {
-          document.querySelectorAll('.sidebar a[href$="' + pg + '"]').forEach((a) => a.remove());
-        }
-      });
-      const req = PERMISO_PAGINA[pagina];
-      if (req && !tiene(req)) location.replace(paginaInicio());
-    }
+  /** Quita del menú las páginas sin permiso y redirige si la página actual dejó de estar permitida. */
+  function aplicarPermisosPagina() {
+    if (!permisosCargados) return;
+    Object.keys(PERMISO_PAGINA).forEach((pg) => {
+      if (!tiene(PERMISO_PAGINA[pg])) {
+        document.querySelectorAll('.sidebar a[href$="' + pg + '"]').forEach((a) => a.remove());
+      }
+    });
+    const req = PERMISO_PAGINA[pagina];
+    if (req && !tiene(req)) location.replace(paginaInicio());
   }
 
   /* ---------- Protección inmediata de la página ----------

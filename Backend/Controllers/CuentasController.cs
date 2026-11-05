@@ -25,17 +25,21 @@ namespace ElQuateDePatty.Controllers
             this.logger = logger;
         }
 
+        /// <summary>
+        /// Lista las cuentas. El parámetro opcional <paramref name="estado"/> (por ejemplo, Abierta)
+        /// limita el resultado a ese estado; sin él se devuelven todas las cuentas, como antes.
+        /// </summary>
         [HttpGet("GetCuentas")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetCuentas()
+        public async Task<IActionResult> GetCuentas([FromQuery] string? estado = null)
         {
             try
             {
-                var response = await cuentasRepository.GetCuentas();
+                var response = await cuentasRepository.GetCuentas(estado);
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de cuentas." });
@@ -102,8 +106,12 @@ namespace ElQuateDePatty.Controllers
                 if (!response)
                     return BadRequest(new { statusCode = 400, message = "No fue posible registrar la cuenta." });
 
-                return Ok(new { statusCode = 200, message = "Cuenta registrada correctamente.",
-                    data = cuentas.ToRespuestaDTO() });
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Cuenta registrada correctamente.",
+                    data = cuentas.ToRespuestaDTO()
+                });
             }
             catch (DbUpdateException ex)
             {

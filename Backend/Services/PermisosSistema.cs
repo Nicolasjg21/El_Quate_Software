@@ -15,5 +15,11 @@ namespace ElQuateDePatty.Services
         public const string auditoriasConsultar = "auditorias.consultar";
 
         public const string auditoriasModificar = "auditorias.modificar";
+
+        /// <summary>
+        /// Administración de inventario y compras. En Kardex se exige para los ajustes
+        /// manuales de stock (tipo AJUSTE); las entradas y salidas no lo requieren.
+        /// </summary>
+        public const string inventarioGestionar = "inventario.gestionar";
     }
 }

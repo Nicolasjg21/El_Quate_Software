@@ -16,13 +16,16 @@ namespace ElQuateDePatty.Controllers
     public class KardexController : ControllerBase
     {
         private readonly IKardexRepository kardexRepository;
+        private readonly IAuthorizationService authorizationService;
         private readonly ILogger<KardexController> logger;
 
         public KardexController(
             IKardexRepository kardexRepository,
+            IAuthorizationService authorizationService,
             ILogger<KardexController> logger)
         {
             this.kardexRepository = kardexRepository;
+            this.authorizationService = authorizationService;
             this.logger = logger;
         }
 
@@ -79,17 +82,23 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
+        /// <summary>
+        /// Registra un movimiento de inventario. El servidor calcula stockAnterior, stockNuevo y fecha
+        /// a partir del último movimiento del producto; los valores enviados en esos campos se ignoran,
+        /// salvo stockNuevo en un AJUSTE, que exige el permiso inventario.gestionar.
+        /// Responde 409 si una salida supera el stock disponible.
+        /// </summary>
         [HttpPost("PostKardex")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> PostKardex([FromBody] KardexCrearDTO dto)
         {
             try
             {
-                var kardex = dto.ToEntity();
-
                 var idUsuarioActual = User.ObtenerIdUsuario();
 
                 if (idUsuarioActual == null)
@@ -101,18 +110,53 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
-                kardex.idUsuario = idUsuarioActual.Value;
-
-                if (!ModelState.IsValid || kardex == null)
+                if (!ModelState.IsValid || dto == null)
                     return BadRequest(new { statusCode = 400, message = "Los datos del movimiento no son válidos." });
 
-                var response = await kardexRepository.PostKardex(kardex);
+                var tipo = (dto.tipoMovimiento ?? string.Empty).Trim().ToUpperInvariant();
 
-                if (!response)
-                    return BadRequest(new { statusCode = 400, message = "No fue posible registrar el movimiento." });
+                if (tipo != "ENTRADA" && tipo != "SALIDA" && tipo != "AJUSTE")
+                    return BadRequest(new { statusCode = 400, message = "El tipo de movimiento debe ser ENTRADA, SALIDA o AJUSTE." });
 
-                return Ok(new { statusCode = 200, message = "Movimiento registrado correctamente.",
-                    data = kardex.ToRespuestaDTO() });
+                if (tipo == "AJUSTE")
+                {
+                    // Fijar el stock a un valor exacto es una operación administrativa.
+                    var autorizado = (await authorizationService.AuthorizeAsync(
+                        User, PoliticasAutorizacion.Permiso(PermisosSistema.inventarioGestionar))).Succeeded;
+
+                    if (!autorizado)
+                        return StatusCode(403, new { statusCode = 403, message = "No tiene permiso para ajustar el inventario." });
+
+                    if (dto.stockNuevo < 0)
+                        return BadRequest(new { statusCode = 400, message = "El stock ajustado no puede ser negativo." });
+                }
+                else if (dto.cantidad <= 0)
+                {
+                    return BadRequest(new { statusCode = 400, message = "La cantidad del movimiento debe ser mayor que cero." });
+                }
+
+                var kardex = dto.ToEntity();
+                kardex.tipoMovimiento = tipo;
+                kardex.idUsuario = idUsuarioActual.Value;
+
+                // stockAnterior, stockNuevo (salvo en AJUSTE) y fecha se calculan en el servidor.
+                var (registrado, stock) = await kardexRepository.RegistrarMovimiento(kardex);
+
+                if (!registrado)
+                {
+                    return Conflict(new
+                    {
+                        statusCode = 409,
+                        message = $"Stock insuficiente: hay {stock} unidad(es) disponible(s)."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Movimiento registrado correctamente.",
+                    data = kardex.ToRespuestaDTO()
+                });
             }
             catch (DbUpdateException ex)
             {

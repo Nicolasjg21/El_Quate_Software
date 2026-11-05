@@ -4,7 +4,11 @@ namespace ElQuateDePatty.Repositories.Interfaces
 {
     public interface IDetallePedidosRepository
     {
-        Task<List<DetallePedidos>> GetDetallePedidos();
+        /// <summary>
+        /// Lista las líneas de pedido. Si se indica <paramref name="idCuenta"/>, devuelve solo las
+        /// líneas de los pedidos de esa cuenta; sin él devuelve todas.
+        /// </summary>
+        Task<List<DetallePedidos>> GetDetallePedidos(int? idCuenta = null);
 
         Task<DetallePedidos?> GetDetallePedidosById(int id);
 

@@ -309,27 +309,35 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 
-using (var alcance = app.Services.CreateScope())
+// -------------------------------------------------------------
+// Reanudación de la base de datos en segundo plano: Azure SQL sin servidor se pausa por
+// inactividad. El servidor abre de inmediato (Swagger disponible) y, en paralelo, despierta
+// la base para que esté lista antes del primer inicio de sesión. Nunca detiene la aplicación.
+// -------------------------------------------------------------
+app.Lifetime.ApplicationStarted.Register(() =>
 {
-    var contexto = alcance.ServiceProvider
-        .GetRequiredService<ElQuateDePatty.Context.ElQuateDePattyContext>();
-    var limite = DateTime.Now.AddMinutes(3);
-
-    app.Logger.LogInformation("Esperando a la base de datos (puede estar reanudándose)...");
-
-    while (!await contexto.Database.CanConnectAsync())
+    _ = Task.Run(async () =>
     {
-        if (DateTime.Now > limite)
+        using var alcance = app.Services.CreateScope();
+        var contexto = alcance.ServiceProvider
+            .GetRequiredService<ElQuateDePatty.Context.ElQuateDePattyContext>();
+        var limite = DateTime.Now.AddMinutes(3);
+
+        app.Logger.LogInformation("Reanudando la base de datos en segundo plano...");
+
+        while (DateTime.Now < limite)
         {
-            throw new InvalidOperationException(
-                "La base de datos no respondió en 3 minutos. Verifique su estado en Azure y la conexión a internet.");
+            if (await contexto.Database.CanConnectAsync())
+            {
+                app.Logger.LogInformation("Base de datos disponible.");
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5));
         }
 
-        app.Logger.LogInformation("La base de datos aún no responde; nuevo intento en 5 segundos...");
-        await Task.Delay(TimeSpan.FromSeconds(5));
-    }
-
-    app.Logger.LogInformation("Base de datos disponible.");
-}
+        app.Logger.LogWarning("La base de datos no respondió en 3 minutos. Verifique su estado en Azure.");
+    });
+});
 
 app.Run();

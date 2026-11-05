@@ -154,8 +154,8 @@ function renderInventario() {
     cuerpo.innerHTML = visibles.map((p) => {
       let claseStock = "stock-valor";
       let alerta = "";
-      if (p.stock <= 0) { claseStock += " stock-valor--sin"; alerta = `<span class="stock-alerta" title="Sin existencias">&#9888;</span>`; }
-      else if (p.stock <= p.stockMinimo) { claseStock += " stock-valor--bajo"; alerta = `<span class="stock-alerta" title="Stock bajo">&#9888;</span>`; }
+      if (p.stock <= 0) { claseStock += " stock-valor--sin"; alerta = `<span class="stock-alerta" title="Sin existencias"><svg width="14" height="14" style="display:inline-block;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg></span>`; }
+      else if (p.stock <= p.stockMinimo) { claseStock += " stock-valor--bajo"; alerta = `<span class="stock-alerta" title="Stock bajo"><svg width="14" height="14" style="display:inline-block;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg></span>`; }
 
       const acciones = gestiona ? `
         <td class="col-centro">
