@@ -255,7 +255,7 @@
   async function cargarMesas() {
     const [mesas, cuentas] = await Promise.all([
       Api.lista("api/Mesas/GetMesas"),
-      Api.lista("api/Cuentas/GetCuentas")
+      Api.lista("api/Cuentas/GetCuentas", { estado: ESTADO.cuentaAbierta })
     ]);
     const abiertas = new Map();
     cuentas
@@ -313,7 +313,7 @@
     // solo lectura, por eso se marca como reintentable.
     const [todos, detalles] = await Promise.all([
       Api.solicitar("POST", "api/Pedidos/filtrar", { cuerpo: { numeroMesa: mesa.numero }, reintentable: true }),
-      Api.lista("api/DetallePedidos/GetDetallePedidos")
+      Api.lista("api/DetallePedidos/GetDetallePedidos", { idCuenta: mesa.cuenta.idCuenta })
     ]);
     const pedidos = (Array.isArray(todos) ? todos : []).filter((p) => p.idCuenta === mesa.cuenta.idCuenta);
     if (!pedidos.length) return vacio;

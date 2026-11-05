@@ -25,17 +25,24 @@ namespace ElQuateDePatty.Controllers
             this.logger = logger;
         }
 
+        /// <summary>
+        /// Lista las líneas de pedido. El parámetro opcional <paramref name="idCuenta"/> limita el
+        /// resultado a las líneas de los pedidos de esa cuenta; sin él se devuelven todas, como antes.
+        /// </summary>
         [HttpGet("GetDetallePedidos")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> GetDetallePedidos()
+        public async Task<IActionResult> GetDetallePedidos([FromQuery] int? idCuenta = null)
         {
             try
             {
-                var response = await detallePedidosRepository.GetDetallePedidos();
+                if (idCuenta.HasValue && idCuenta.Value <= 0)
+                    return BadRequest(new { statusCode = 400, message = "El identificador de la cuenta debe ser mayor que cero." });
+
+                var response = await detallePedidosRepository.GetDetallePedidos(idCuenta);
 
                 if (response == null || response.Count == 0)
                     return NotFound(new { statusCode = 404, message = "No se encontró información de detalles de pedidos." });

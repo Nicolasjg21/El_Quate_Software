@@ -14,10 +14,21 @@ namespace ElQuateDePatty.Repositories
             this.context = context;
         }
 
-        public async Task<List<DetallePedidos>> GetDetallePedidos()
+        /// <summary>
+        /// Lista las líneas de pedido. El filtro por cuenta se resuelve en la base de datos a través
+        /// del pedido de cada línea, de modo que solo viajan las líneas de la cuenta solicitada.
+        /// </summary>
+        public async Task<List<DetallePedidos>> GetDetallePedidos(int? idCuenta = null)
         {
-            var data = await context.detallePedidos.AsNoTracking().ToListAsync();
-            return data;
+            var consulta = context.detallePedidos.AsNoTracking();
+
+            if (idCuenta.HasValue)
+            {
+                var cuenta = idCuenta.Value;
+                consulta = consulta.Where(d => d.pedido.idCuenta == cuenta);
+            }
+
+            return await consulta.ToListAsync();
         }
 
         public async Task<DetallePedidos?> GetDetallePedidosById(int id)
