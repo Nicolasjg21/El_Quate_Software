@@ -179,7 +179,7 @@ function mesaCardEl(mesa) {
   } else {
     const etiqueta = estado === "cerrando" ? "Cerrando cuenta" : "Total actual";
     cuerpo = `
-      <p class="mesa-card-info">&#128337; ${horaDe(mesa.cuenta && mesa.cuenta.fechaApertura)}</p>
+      <p class="mesa-card-info"><svg width="13" height="13" style="display:inline-block;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> ${horaDe(mesa.cuenta && mesa.cuenta.fechaApertura)}</p>
       <div class="mesa-card-total">
         <p class="mesa-card-total-valor">${formatoCOP(mesa.cuenta ? mesa.cuenta.total : 0)}</p>
         <p class="mesa-card-total-etiqueta">${etiqueta}</p>
@@ -297,7 +297,7 @@ function renderDetalle() {
 
   $("detalle-titulo").textContent = `Mesa ${mesa.numero}`;
   const conConsumo = detalle.items.length > 0;
-  $("detalle-meta").innerHTML = `&#128337; ${mesa.cuenta && conConsumo ? "Abierta desde " + horaDe(mesa.cuenta.fechaApertura) : "Mesa libre: agregue productos para abrir la cuenta"}`;
+  $("detalle-meta").innerHTML = `<svg width="14" height="14" style="display:inline-block;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> ${mesa.cuenta && conConsumo ? "Abierta desde " + horaDe(mesa.cuenta.fechaApertura) : "Mesa libre: agregue productos para abrir la cuenta"}`;
 
   const t = Negocio.totales(detalle.items);
   const cuerpo = $("detalle-items");
@@ -362,9 +362,20 @@ async function manejarAccionItem(accion, idDetalle) {
     else if (accion === "quitar") await Negocio.quitarItem(mesa, detalle, idDetalle);
   }, "No fue posible actualizar el pedido.");
   if (ok) {
-    catalogo = await Negocio.productos().catch(() => catalogo);
+    aplicarStock();
     renderDetalle();
   }
+}
+
+/**
+ * Actualiza en el catálogo local el stock que dejó la última operación (detalle.stock),
+ * sin volver a descargar el catálogo completo.
+ */
+function aplicarStock() {
+  const s = detalle && detalle.stock;
+  if (!s || s.stock === null || s.stock === undefined) return;
+  const p = catalogo.find(x => x.idProducto === s.idProducto);
+  if (p) { p.stock = s.stock; p.stockBajo = s.stock <= p.stockMinimo; }
 }
 
 /* ---------- Selector de productos ---------- */
@@ -421,7 +432,7 @@ async function agregarProductoAMesa(idProducto) {
     "No fue posible agregar el producto."
   );
   if (ok) {
-    catalogo = await Negocio.productos().catch(() => catalogo);
+    aplicarStock();
     renderDetalle();
     renderPickerProductos($("buscar-producto-picker").value);
   }

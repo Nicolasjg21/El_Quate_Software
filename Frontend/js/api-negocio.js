@@ -77,6 +77,7 @@
       Api.lista("api/Productos/GetProductos")
     ]);
     const det = new Map(detalle.map((d) => [d.idProducto, d]));
+    lista.forEach((p) => { if (p.nombreProducto) nombresProducto.set(p.idProducto, p.nombreProducto); });
     return lista.map((p) => {
       const d = det.get(p.idProducto) || {};
       return {
@@ -136,6 +137,33 @@
   }
 
   /**
+   * Nombres de producto ya conocidos (se llenan con productos()). Permiten consultar el stock de
+   * un solo producto con Productos/Filtrar?nombre=..., en lugar de calcular el de todo el catálogo.
+   */
+  const nombresProducto = new Map();
+
+  /**
+   * Fila actual de Productos/Filtrar para un producto (incluye stockActual).
+   * Consulta por nombre cuando se conoce; si no aparece, consulta el catálogo completo.
+   * @throws 404 si el producto ya no existe.
+   */
+  async function stockServidor(idProducto) {
+    const nombre = nombresProducto.get(idProducto);
+    let p = null;
+    if (nombre) {
+      const parcial = await Api.lista("api/Productos/Filtrar", { nombre: nombre.slice(0, 200) });
+      p = parcial.find((x) => x.idProducto === idProducto) || null;
+    }
+    if (!p) {
+      const lista = await Api.lista("api/Productos/Filtrar");
+      p = lista.find((x) => x.idProducto === idProducto) || null;
+    }
+    if (!p) throw falla(404, "El producto ya no existe.");
+    nombresProducto.set(idProducto, p.nombreProducto || nombre || "");
+    return p;
+  }
+
+  /**
    * Aplica una variación de stock sobre el valor más reciente del servidor.
    * @param {number} idProducto
    * @param {number} delta Positivo para entradas, negativo para salidas.
@@ -144,9 +172,7 @@
    * @throws 409 si el stock resultante sería negativo.
    */
   async function moverStock(idProducto, delta, motivo) {
-    const lista = await Api.lista("api/Productos/Filtrar");
-    const p = lista.find((x) => x.idProducto === idProducto);
-    if (!p) throw falla(404, "El producto ya no existe.");
+    const p = await stockServidor(idProducto);
     const anterior = num(p.stockActual);
     const nuevo = anterior + delta;
     if (nuevo < 0) {
@@ -158,9 +184,7 @@
 
   /** Ajuste manual del stock a un valor exacto (movimiento AJUSTE). */
   async function ajustarStock(idProducto, stockObjetivo, motivo) {
-    const lista = await Api.lista("api/Productos/Filtrar");
-    const p = lista.find((x) => x.idProducto === idProducto);
-    if (!p) throw falla(404, "El producto ya no existe.");
+    const p = await stockServidor(idProducto);
     const anterior = num(p.stockActual);
     if (anterior === stockObjetivo) return anterior;
     await registrarKardex(idProducto, "AJUSTE", Math.abs(stockObjetivo - anterior), anterior, stockObjetivo, motivo || "Ajuste manual de inventario");
@@ -287,12 +311,16 @@
     const vacio = { cuenta: mesa.cuenta, pedidos: [], items: [], comprobantes: [] };
     if (!mesa.cuenta) return vacio;
 
-    const todos = await Api.solicitar("POST", "api/Pedidos/filtrar", { cuerpo: { numeroMesa: mesa.numero } });
+    // Ambas consultas son independientes: se lanzan en paralelo. Pedidos/filtrar es POST de
+    // solo lectura, por eso se marca como reintentable.
+    const [todos, detalles] = await Promise.all([
+      Api.solicitar("POST", "api/Pedidos/filtrar", { cuerpo: { numeroMesa: mesa.numero }, reintentable: true }),
+      Api.lista("api/DetallePedidos/GetDetallePedidos")
+    ]);
     const pedidos = (Array.isArray(todos) ? todos : []).filter((p) => p.idCuenta === mesa.cuenta.idCuenta);
     if (!pedidos.length) return vacio;
 
     const ids = new Set(pedidos.map((p) => p.idPedido));
-    const detalles = await Api.lista("api/DetallePedidos/GetDetallePedidos");
     const comprobantes = (pedidos[0].cuenta && pedidos[0].cuenta.comprobantes) || [];
     return {
       cuenta: mesa.cuenta,
@@ -352,10 +380,11 @@
   /**
    * Agrega una unidad de un producto a la mesa. El stock se descuenta primero;
    * si el pedido no se registra, la unidad se devuelve al inventario.
-   * @returns {Promise<object>} Detalle actualizado.
+   * @returns {Promise<object>} Detalle actualizado; detalle.stock = { idProducto, stock } con el stock resultante.
    */
   async function agregarProducto(mesa, detalle, producto) {
-    await moverStock(producto.idProducto, -1, `Venta en Mesa ${mesa.numero}`);
+    nombresProducto.set(producto.idProducto, producto.nombre);
+    const stock = await moverStock(producto.idProducto, -1, `Venta en Mesa ${mesa.numero}`);
     try {
       await asegurarCuentaYPedido(mesa, detalle);
       const existente = detalle.items.find((i) => i.idProducto === producto.idProducto);
@@ -374,8 +403,11 @@
           idDetalle: d && d.idDetalle, idPedido, idProducto: producto.idProducto, cantidad: 1, precioUnitario: producto.precio
         });
       }
-      await sincronizarCuenta(detalle);
-      if (mesa.estado === "libre") await cambiarEstadoMesa(mesa, ESTADO.mesaOcupada);
+      await Promise.all([
+        sincronizarCuenta(detalle),
+        mesa.estado === "libre" ? cambiarEstadoMesa(mesa, ESTADO.mesaOcupada) : null
+      ]);
+      detalle.stock = { idProducto: producto.idProducto, stock };
       return detalle;
     } catch (e) {
       try { await moverStock(producto.idProducto, 1, `Reversión: no se registró el pedido de Mesa ${mesa.numero}`); } catch (_) {}
@@ -387,7 +419,8 @@
   async function cambiarCantidad(mesa, detalle, idDetalle, delta) {
     const item = detalle.items.find((i) => i.idDetalle === idDetalle);
     if (!item) throw falla(404, "La línea ya no existe.");
-    if (delta > 0) await moverStock(item.idProducto, -delta, `Venta en Mesa ${mesa.numero}`);
+    let stock = null;
+    if (delta > 0) stock = await moverStock(item.idProducto, -delta, `Venta en Mesa ${mesa.numero}`);
 
     try {
       const nueva = item.cantidad + delta;
@@ -404,9 +437,9 @@
       if (delta > 0) { try { await moverStock(item.idProducto, delta, `Reversión: no se registró el pedido de Mesa ${mesa.numero}`); } catch (_) {} }
       throw e;
     }
-    if (delta < 0) await moverStock(item.idProducto, -delta, `Devolución desde Mesa ${mesa.numero}`);
-    await sincronizarCuenta(detalle);
-    await liberarSiVacia(mesa, detalle);
+    if (delta < 0) stock = await moverStock(item.idProducto, -delta, `Devolución desde Mesa ${mesa.numero}`);
+    await Promise.all([sincronizarCuenta(detalle), liberarSiVacia(mesa, detalle)]);
+    detalle.stock = { idProducto: item.idProducto, stock };
     return detalle;
   }
 
@@ -416,9 +449,9 @@
     if (!item) throw falla(404, "La línea ya no existe.");
     await Api.del("api/DetallePedidos/DeleteDetallePedido/" + idDetalle);
     detalle.items = detalle.items.filter((i) => i.idDetalle !== idDetalle);
-    await moverStock(item.idProducto, item.cantidad, `Devolución desde Mesa ${mesa.numero}`);
-    await sincronizarCuenta(detalle);
-    await liberarSiVacia(mesa, detalle);
+    const stock = await moverStock(item.idProducto, item.cantidad, `Devolución desde Mesa ${mesa.numero}`);
+    await Promise.all([sincronizarCuenta(detalle), liberarSiVacia(mesa, detalle)]);
+    detalle.stock = { idProducto: item.idProducto, stock };
     return detalle;
   }
 
@@ -430,8 +463,7 @@
   /** Cierra la cuenta para cobro: la mesa pasa a "Cerrando". */
   async function confirmarPago(mesa, detalle) {
     if (!detalle.items.length) throw falla(400, "La mesa no tiene productos para cobrar.");
-    await sincronizarCuenta(detalle);
-    await cambiarEstadoMesa(mesa, ESTADO.mesaCerrando);
+    await Promise.all([sincronizarCuenta(detalle), cambiarEstadoMesa(mesa, ESTADO.mesaCerrando)]);
   }
 
   async function reabrirCuenta(mesa) {
@@ -459,15 +491,16 @@
       Api.auditar("Comprobantes", "INSERT", null, { idCuenta: c.idCuenta, numeroMesa: mesa.numero, total: t.total, idMetodo });
     }
 
-    await Api.put("api/Cuentas/PutCuenta", {
-      idCuenta: c.idCuenta, idMesa: c.idMesa, estado: ESTADO.cuentaCerrada,
-      fechaApertura: c.fechaApertura, fechaCierre, total: t.total
-    });
-    for (const p of detalle.pedidos) {
-      await Api.put("api/Pedidos/PutPedidos", {
+    // Cierre de la cuenta y pedidos pagados en paralelo; la mesa se libera al final.
+    await Promise.all([
+      Api.put("api/Cuentas/PutCuenta", {
+        idCuenta: c.idCuenta, idMesa: c.idMesa, estado: ESTADO.cuentaCerrada,
+        fechaApertura: c.fechaApertura, fechaCierre, total: t.total
+      }),
+      ...detalle.pedidos.map((p) => Api.put("api/Pedidos/PutPedidos", {
         idPedido: p.idPedido, idCuenta: p.idCuenta, idUsuario: p.idUsuario, fecha: p.fecha, estadoPedido: ESTADO.pedidoPagado
-      });
-    }
+      }))
+    ]);
     await cambiarEstadoMesa(mesa, ESTADO.mesaLibre);
     Api.auditar("Cuentas", "UPDATE", { idCuenta: c.idCuenta, estado: ESTADO.cuentaAbierta }, { idCuenta: c.idCuenta, estado: ESTADO.cuentaCerrada, total: t.total });
     mesa.cuenta = null;

@@ -8,6 +8,7 @@
  *
  * Toda petición rechazada entrega { status, mensaje, errores, cuerpo }, donde status 0
  * indica falta de conexión o tiempo agotado. Un 401 en una ruta protegida cierra la sesión.
+ * Las consultas se reintentan ante fallos transitorios y las esperas largas muestran un aviso.
  */
 
 (function () {
@@ -72,19 +73,81 @@
     return url;
   }
 
+  /* ---------- Aviso de conexión lenta ----------
+     Mientras alguna petición supere AVISO_LENTO_MS sin respuesta se muestra una franja
+     informativa. Cubre la reanudación de la base de datos en la primera conexión del día. */
+  let pendientesLentas = 0;
+  let franja = null;
+
+  function mostrarFranja() {
+    if (!document.body) return;
+    if (!franja) {
+      franja = document.createElement("div");
+      franja.setAttribute("role", "status");
+      franja.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:4000;padding:10px 16px;" +
+        "background:#FFF4D6;color:#7A5300;border-bottom:1px solid #F0D58A;text-align:center;" +
+        "font:600 13px system-ui,-apple-system,'Segoe UI',sans-serif";
+      franja.textContent = "Conectando con el servidor… La primera conexión del día puede tardar hasta un minuto.";
+    }
+    if (!franja.isConnected) document.body.appendChild(franja);
+  }
+
+  function ocultarFranja() {
+    if (franja && franja.isConnected) franja.remove();
+  }
+
+  /** Marca una petición en curso; devuelve la función que la da por terminada. */
+  function vigilarDemora() {
+    let lenta = false;
+    const t = setTimeout(() => { lenta = true; pendientesLentas++; mostrarFranja(); },
+      window.ELCUATE_CONFIG.AVISO_LENTO_MS || 4000);
+    return () => {
+      clearTimeout(t);
+      if (lenta && --pendientesLentas <= 0) { pendientesLentas = 0; ocultarFranja(); }
+    };
+  }
+
+  const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+
   /**
    * Ejecuta una petición a la API.
+   * Las consultas (GET) y las peticiones marcadas como reintentables se repiten automáticamente
+   * cuando no hubo respuesta o el servidor respondió 5xx. Las escrituras no se repiten, porque el
+   * servidor pudo haberlas aplicado aunque la respuesta no llegara.
    * @param {string} metodo GET, POST, PUT o DELETE.
    * @param {string} ruta Ruta relativa del endpoint.
    * @param {object} [opciones]
    * @param {object} [opciones.cuerpo] Cuerpo a enviar como JSON.
    * @param {object} [opciones.query] Parámetros de consulta.
    * @param {boolean} [opciones.publico] true para no enviar el token (por ejemplo, Login).
+   * @param {number} [opciones.timeout] Espera máxima en milisegundos (por defecto TIMEOUT_MS).
+   * @param {boolean} [opciones.reintentable] true para reintentar una petición que no es GET.
    * @returns {Promise<object|null>} Cuerpo de la respuesta.
    * @throws {{status:number, mensaje:string, errores:object, cuerpo:object}}
    */
   async function solicitar(metodo, ruta, opciones) {
     const op = opciones || {};
+    const reintentos = (metodo === "GET" || op.reintentable)
+      ? Math.max(0, Number(window.ELCUATE_CONFIG.REINTENTOS_LECTURA) || 0)
+      : 0;
+    const terminar = vigilarDemora();
+    try {
+      for (let intento = 0; ; intento++) {
+        try {
+          return await solicitarUnaVez(metodo, ruta, op);
+        } catch (e) {
+          const transitorio = e && (e.status === 0 || e.status >= 500);
+          if (!transitorio || intento >= reintentos) throw e;
+          await esperar(1500 * (intento + 1));
+        }
+      }
+    } finally {
+      terminar();
+    }
+  }
+
+  /** Un único intento de petición. */
+  async function solicitarUnaVez(metodo, ruta, op) {
     const headers = { Accept: "application/json" };
     const init = { method: metodo, headers, cache: "no-store" };
 
@@ -99,13 +162,18 @@
 
     const control = new AbortController();
     init.signal = control.signal;
-    const temporizador = setTimeout(() => control.abort(), window.ELCUATE_CONFIG.TIMEOUT_MS || 20000);
+    let agotado = false;
+    const temporizador = setTimeout(() => { agotado = true; control.abort(); },
+      op.timeout || window.ELCUATE_CONFIG.TIMEOUT_MS || 45000);
 
     let resp;
     try {
       resp = await fetch(construirUrl(ruta, op.query), init);
     } catch (e) {
-      throw { status: 0, mensaje: MENSAJES[0], errores: {}, cuerpo: null };
+      const mensaje = agotado
+        ? "El servidor tardó demasiado en responder. Verifique que el Backend y la base de datos estén en línea e intente de nuevo."
+        : MENSAJES[0];
+      throw { status: 0, mensaje, errores: {}, cuerpo: null };
     } finally {
       clearTimeout(temporizador);
     }
