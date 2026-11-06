@@ -34,7 +34,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var tipos = await tipoDocumentoRepository.GetTipoDocumento();
 
-                if (tipos == null || !tipos.Any())
+                if (tipos == null || tipos.Count == 0)
                 {
                     return NotFound(new
                     {

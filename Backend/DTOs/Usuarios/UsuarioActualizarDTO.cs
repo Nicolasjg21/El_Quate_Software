@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
 
 namespace ElQuateDePatty.DTOs.Usuarios
 {
@@ -25,6 +26,7 @@ namespace ElQuateDePatty.DTOs.Usuarios
         public string telefono { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El estado es obligatorio")]
+        [JsonRequired]
         public bool estado { get; set; }
 
         [Required(ErrorMessage = "El rol es obligatorio")]

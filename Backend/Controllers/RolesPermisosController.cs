@@ -35,7 +35,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var rolesPermisos = await rolesPermisosRepository.GetRolesPermisos();
 
-                if (rolesPermisos == null || !rolesPermisos.Any())
+                if (rolesPermisos == null || rolesPermisos.Count == 0)
                 {
                     return NotFound(new
                     {

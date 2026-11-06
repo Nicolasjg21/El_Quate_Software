@@ -36,7 +36,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var pedidos = await pedidosRepository.GetPedidos();
 
-                if (pedidos == null || !pedidos.Any())
+                if (pedidos == null || pedidos.Count == 0)
                 {
                     return NotFound(new
                     {

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
 using ElQuateDePatty.DTOs.Validaciones;
 
 namespace ElQuateDePatty.DTOs.Productos
@@ -16,6 +17,7 @@ namespace ElQuateDePatty.DTOs.Productos
         [Range(0, int.MaxValue, ErrorMessage = "El campo cantidadMinima no puede ser negativo.")]
         public int cantidadMinima { get; set; }
 
+        [JsonRequired]
         public bool estado { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "El campo idCategoria debe ser mayor que cero.")]
