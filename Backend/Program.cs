@@ -80,37 +80,19 @@ builder.Services.AddSwaggerGen(c =>
 // -------------------------------------------------------------
 // CORS: orígenes permitidos desde configuración (Cors:AllowedOrigins)
 // -------------------------------------------------------------
-var origenesPermitidos = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>()?
-    .Where(o => !string.IsNullOrWhiteSpace(o))
-    .ToArray() ?? Array.Empty<string>();
-
-if (origenesPermitidos.Length == 0 && !builder.Environment.IsDevelopment())
-{
-    throw new InvalidOperationException(
-        "Cors:AllowedOrigins no está configurado. Defina los orígenes del Frontend " +
-        "(variable de entorno Cors__AllowedOrigins__0, etc.).");
-}
+// En Development sin configuración usa los orígenes locales; en otros entornos exige configurarlos.
+var origenesPermitidos = OrigenesCors.Resolver(
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>(),
+    builder.Environment.IsDevelopment());
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", policy =>
     {
-        if (origenesPermitidos.Length > 0)
-        {
-            policy.WithOrigins(origenesPermitidos)
-                .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .WithHeaders("Authorization", "Content-Type")
-                .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
-        }
-        else
-        {
-            // Solo Development: sin orígenes configurados se permite cualquiera.
-            policy.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        }
+        policy.WithOrigins(origenesPermitidos)
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Authorization", "Content-Type")
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
 
@@ -221,12 +203,10 @@ builder.Services.AddSingleton(new AutorizacionSettings { rolesAdministrador = ro
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermisoAuthorizationHandler>();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .Build();
-});
+        .Build());
 
 // -------------------------------------------------------------
 // Proxy inverso (opcional): solo se confía en X-Forwarded-* si se habilita por configuración
@@ -284,14 +264,14 @@ app.UseHttpsRedirection();
 
 app.Use(async (context, next) =>
 {
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
-    context.Response.Headers["Cache-Control"] = "no-store";
+    context.Response.Headers.CacheControl = "no-store";
 
     if (!context.Request.Path.StartsWithSegments("/swagger"))
     {
-        context.Response.Headers["X-Frame-Options"] = "DENY";
-        context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+        context.Response.Headers.XFrameOptions = "DENY";
+        context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
     }
 
     await next();
@@ -340,6 +320,6 @@ app.Lifetime.ApplicationStarted.Register(() =>
     });
 });
 
-app.Run();
+await app.RunAsync();
 
 public partial class Program { }

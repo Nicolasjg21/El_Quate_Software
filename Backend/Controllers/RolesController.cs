@@ -35,7 +35,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var roles = await rolesRepository.GetRoles();
 
-                if (roles == null || !roles.Any())
+                if (roles == null || roles.Count == 0)
                 {
                     return NotFound(new
                     {

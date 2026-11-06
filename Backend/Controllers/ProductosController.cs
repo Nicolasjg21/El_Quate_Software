@@ -35,7 +35,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var productos = await productosRepository.GetProductos();
 
-                if (productos == null || !productos.Any())
+                if (productos == null || productos.Count == 0)
                 {
                     return NotFound(new
                     {

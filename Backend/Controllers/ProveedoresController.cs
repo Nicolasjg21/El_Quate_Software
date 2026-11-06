@@ -35,7 +35,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var proveedores = await proveedoresRepository.GetProveedores();
 
-                if (proveedores == null || !proveedores.Any())
+                if (proveedores == null || proveedores.Count == 0)
                 {
                     return NotFound(new
                     {

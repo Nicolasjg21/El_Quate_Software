@@ -34,7 +34,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var metodos = await metodosPagoRepository.GetMetodosPago();
 
-                if (metodos == null || !metodos.Any())
+                if (metodos == null || metodos.Count == 0)
                 {
                     return NotFound(new
                     {

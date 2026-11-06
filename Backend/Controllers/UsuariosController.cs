@@ -48,7 +48,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var usuarios = await usuariosRepository.GetUsuarios();
 
-                if (usuarios == null || !usuarios.Any())
+                if (usuarios == null || usuarios.Count == 0)
                 {
                     return NotFound(new
                     {

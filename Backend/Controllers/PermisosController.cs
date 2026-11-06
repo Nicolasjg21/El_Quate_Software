@@ -35,7 +35,7 @@ namespace ElQuateDePatty.Controllers
             {
                 var permisos = await permisosRepository.GetPermisos();
 
-                if (permisos == null || !permisos.Any())
+                if (permisos == null || permisos.Count == 0)
                 {
                     return NotFound(new
                     {

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 
 namespace ElQuateDePatty.DTOs.Kardex
@@ -11,10 +12,13 @@ namespace ElQuateDePatty.DTOs.Kardex
         [StringLength(10, ErrorMessage = "El campo tipoMovimiento no puede superar 10 caracteres.")]
         public string tipoMovimiento { get; set; } = string.Empty;
 
+        [JsonRequired]
         public int cantidad { get; set; }
 
+        [JsonRequired]
         public int stockAnterior { get; set; }
 
+        [JsonRequired]
         public int stockNuevo { get; set; }
 
         [StringLength(500, ErrorMessage = "El campo motivo no puede superar 500 caracteres.")]
