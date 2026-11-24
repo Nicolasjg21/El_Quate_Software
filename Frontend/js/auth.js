@@ -3,6 +3,7 @@
  * @description Sesión, autorización en la interfaz y cierre de sesión.
  *   - Guarda el JWT exclusivamente en sessionStorage (la sesión termina al cerrar la pestaña).
  *   - Protege cada página según los permisos del rol y oculta las opciones de menú no autorizadas.
+ *   - Las páginas de PAGINAS_PUBLICAS (la ayuda) también se abren sin sesión.
  *   El cambio de contraseña se realiza en la página Configuración (configuracion.js).
  * @requires config.js, api-cliente.js
  * @exports window.Auth
@@ -37,8 +38,12 @@
   /** Página de inicio de los roles operativos (caja y mesero). */
   const PAGINA_OPERATIVA = "mesas.html";
 
+  /** Páginas que se pueden abrir sin sesión. La ayuda se ofrece también desde el inicio de sesión (RF15). */
+  const PAGINAS_PUBLICAS = ["ayuda.html"];
+
   const pagina = (location.pathname.split("/").pop() || "").toLowerCase();
   const enLogin = pagina === PAGINA_LOGIN;
+  const enPublica = PAGINAS_PUBLICAS.indexOf(pagina) !== -1;
 
   /** Claves obsoletas en localStorage que se eliminan al cargar cualquier página. */
   const CLAVES_ANTIGUAS = ["token", "cuate.sesion", "nombreUsuario"];
@@ -355,7 +360,8 @@
   } else if (!sesionValida()) {
     const habiaToken = !!leer(K_TOKEN);
     borrarSesionLocal();
-    irALogin(habiaToken ? "expirada" : "");
+    if (enPublica) resolverListo();
+    else irALogin(habiaToken ? "expirada" : "");
   } else {
     programarExpiracion();
 

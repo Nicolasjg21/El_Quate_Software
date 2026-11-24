@@ -449,3 +449,17 @@ input, select { font-family: inherit; }
 
 [hidden] { display: none !important; }
 .toast--error { background-color: var(--rojo-texto); }
+
+/* Botón "?" del encabezado: abre la ayuda de la pantalla actual (RF15). */
+.btn-ayuda-contextual {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--borde);
+  background: var(--blanco, #fff);
+  color: var(--coral-oscuro);
+  font-weight: 700; font-size: 15px;
+  text-decoration: none;
+}
+.btn-ayuda-contextual:hover { background: var(--coral); color: #fff; border-color: var(--coral); }
+.btn-ayuda-contextual:focus-visible { outline: 2px solid var(--naranja); outline-offset: 2px; }
