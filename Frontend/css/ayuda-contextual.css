@@ -1,0 +1,28 @@
+/* ==========================================================================
+   ayuda-contextual.css
+   Botón "?" del encabezado (RF15). Hoja propia para que se vea igual en todas
+   las pantallas, incluido el Panel Principal, que no carga layout.css.
+   ========================================================================== */
+
+.btn-ayuda-contextual {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #E3E5E6;
+  background: #FFFFFF;
+  color: #E0532F;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.btn-ayuda-contextual:hover { background: #F06543; color: #FFFFFF; border-color: #F06543; }
+.btn-ayuda-contextual:focus-visible { outline: 2px solid #F09D51; outline-offset: 2px; }
+.btn-ayuda-contextual:visited { color: #E0532F; }
+.btn-ayuda-contextual:visited:hover { color: #FFFFFF; }
