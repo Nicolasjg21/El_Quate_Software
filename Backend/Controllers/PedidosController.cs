@@ -4,6 +4,7 @@ using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -260,6 +261,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeletePedidos/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

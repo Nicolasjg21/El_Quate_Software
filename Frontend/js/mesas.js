@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   Auth.listo.then(() => {
     // Solo la administración crea o elimina mesas.
-    $("btn-nueva-mesa").hidden = !Auth.esAdmin();
+    $("btn-nueva-mesa").hidden = !Auth.tiene("mesas.gestionar");
     cargarMesas();
   });
 });
@@ -199,7 +199,7 @@ function mesaCardEl(mesa) {
 function renderMesasRetiradas() {
   const retiradas = mesas.filter(m => m.estado === "inactiva");
   const bloque = $("bloque-mesas-retiradas");
-  bloque.hidden = !(Auth.esAdmin() && retiradas.length);
+  bloque.hidden = !(Auth.tiene("mesas.gestionar") && retiradas.length);
   $("lista-mesas-retiradas").innerHTML = retiradas.map(m => `
     <div class="mesa-retirada">
       <span>Mesa ${esc(m.numero)}</span>
@@ -341,7 +341,7 @@ function renderDetalle() {
   $("btn-agregar-productos").style.opacity = cerrando ? "0.5" : "1";
 
   // Una mesa solo puede eliminarse estando libre y sin consumo.
-  $("btn-eliminar-mesa").hidden = !(Auth.esAdmin() && mesa.estado === "libre" && !conConsumo);
+  $("btn-eliminar-mesa").hidden = !(Auth.tiene("mesas.gestionar") && mesa.estado === "libre" && !conConsumo);
 }
 
 /** Acciones de cada línea: sumar, restar o quitar (esta última pide confirmación). */

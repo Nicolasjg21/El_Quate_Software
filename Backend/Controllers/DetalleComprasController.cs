@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.DetalleCompras;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +80,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostDetalleCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -119,6 +121,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutDetalleCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -195,6 +198,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteDetalleCompra/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]

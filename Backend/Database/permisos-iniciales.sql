@@ -9,7 +9,10 @@ FROM (VALUES
     ('seguridad.gestionar'),
     ('kardex.modificar'),
     ('auditorias.consultar'),
-    ('auditorias.modificar')
+    ('auditorias.modificar'),
+    ('inventario.gestionar'),
+    ('cobros.gestionar'),
+    ('mesas.gestionar')
 ) AS v(nombrePermiso)
 WHERE NOT EXISTS (SELECT 1 FROM Permisos p WHERE p.nombrePermiso = v.nombrePermiso);
 
@@ -17,5 +20,9 @@ WHERE NOT EXISTS (SELECT 1 FROM Permisos p WHERE p.nombrePermiso = v.nombrePermi
 -- INSERT INTO RolesPermisos (idRol, idPermiso)
 -- SELECT 1, p.idPermiso
 -- FROM Permisos p
--- WHERE p.nombrePermiso IN ('usuarios.gestionar','seguridad.gestionar','kardex.modificar','auditorias.consultar','auditorias.modificar')
+-- WHERE p.nombrePermiso IN ('usuarios.gestionar','seguridad.gestionar','kardex.modificar','auditorias.consultar','auditorias.modificar',
+--                           'inventario.gestionar','cobros.gestionar','mesas.gestionar')
 --   AND NOT EXISTS (SELECT 1 FROM RolesPermisos rp WHERE rp.idRol = 1 AND rp.idPermiso = p.idPermiso);
+
+-- El rol que cobra (Cajero) necesita cobros.gestionar. La atención (cuentas, pedidos,
+-- ocupar y liberar mesas) no exige permiso: la hace cualquier rol con sesión.

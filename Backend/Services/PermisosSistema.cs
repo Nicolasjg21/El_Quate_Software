@@ -21,5 +21,11 @@ namespace ElQuateDePatty.Services
         /// manuales de stock (tipo AJUSTE); las entradas y salidas no lo requieren.
         /// </summary>
         public const string inventarioGestionar = "inventario.gestionar";
+
+        /// <summary>Cobrar cuentas (emitir comprobantes) y administrar los métodos de pago.</summary>
+        public const string cobrosGestionar = "cobros.gestionar";
+
+        /// <summary>Crear, eliminar, renumerar, retirar y reactivar mesas. Ocuparlas y liberarlas no lo requiere.</summary>
+        public const string mesasGestionar = "mesas.gestionar";
     }
 }

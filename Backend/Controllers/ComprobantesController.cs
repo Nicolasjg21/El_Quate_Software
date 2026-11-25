@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.Comprobantes;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +85,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostComprobante")]
+        [RequierePermiso(PermisosSistema.cobrosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -124,6 +126,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutComprobante")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -194,6 +197,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteComprobante/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

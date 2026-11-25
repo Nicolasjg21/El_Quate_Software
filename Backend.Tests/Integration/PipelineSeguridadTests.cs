@@ -210,4 +210,46 @@ public class PipelineSeguridadTests : IClassFixture<ApiFactory>
 
         (await Enviar(HttpMethod.Get, "/api/Auditorias/GetAuditorias", Token(mesero))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Theory]
+    [InlineData("/api/Productos/PostProductos")]
+    [InlineData("/api/Comprobantes/PostComprobante")]
+    [InlineData("/api/MetodosPago/PostMetodosPago")]
+    [InlineData("/api/Mesas/PostMesa")]
+    public async Task UsuarioSinPermiso_EscrituraAdministrativa_Retorna403(string ruta)
+    {
+        var mesero = Sembrar();
+
+        (await Enviar(HttpMethod.Post, ruta, Token(mesero), new { })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UsuarioSinPermiso_BorrarComprobante_Retorna403()
+    {
+        var cajero = Sembrar(permiso: PermisosSistema.cobrosGestionar);   // cobra, pero no administra
+
+        (await Enviar(HttpMethod.Delete, "/api/Comprobantes/DeleteComprobante/1", Token(cajero))).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UsuarioConCobros_CobrarConDatosVacios_PasaLaAutorizacion()
+    {
+        var cajero = Sembrar(permiso: PermisosSistema.cobrosGestionar);
+
+        // Cualquier respuesta distinta de 401/403 demuestra que la autorización dejó pasar.
+        var estado = (await Enviar(HttpMethod.Post, "/api/Comprobantes/PostComprobante", Token(cajero), new { })).StatusCode;
+
+        estado.Should().NotBe(HttpStatusCode.Forbidden).And.NotBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UsuarioSinPermiso_TomarPedido_PasaLaAutorizacion()
+    {
+        var mesero = Sembrar();
+
+        var estado = (await Enviar(HttpMethod.Post, "/api/Pedidos/PostPedidos", Token(mesero), new { })).StatusCode;
+
+        estado.Should().NotBe(HttpStatusCode.Forbidden).And.NotBe(HttpStatusCode.Unauthorized);
+    }
 }
