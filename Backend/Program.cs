@@ -104,7 +104,8 @@ var jwtSettings = new JwtSettings
     key = builder.Configuration["Jwt:Key"] ?? string.Empty,
     issuer = builder.Configuration["Jwt:Issuer"] ?? string.Empty,
     audience = builder.Configuration["Jwt:Audience"] ?? string.Empty,
-    expirationMinutes = builder.Configuration.GetValue("Jwt:ExpirationMinutes", 30)
+    expirationMinutes = builder.Configuration.GetValue("Jwt:ExpirationMinutes", 60),
+    sesionMaximaHoras = builder.Configuration.GetValue("Jwt:SesionMaximaHoras", 14)
 };
 
 jwtSettings.Validar();

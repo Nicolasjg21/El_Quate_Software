@@ -14,16 +14,29 @@ public class TokenServiceTests
 {
     private static readonly JwtSettings ajustes = new()
     {
-        key = "clave-de-pruebas-unitarias-de-mas-de-32-bytes", issuer = "ElQuateDePatty", audience = "ElQuateDePatty", expirationMinutes = 30
+        key = "clave-de-pruebas-unitarias-de-mas-de-32-bytes",
+        issuer = "ElQuateDePatty",
+        audience = "ElQuateDePatty",
+        expirationMinutes = 30
     };
 
     private static readonly Usuarios laura = new() { idUsuario = 5, idRol = 2, email = "laura@elcuate.com", passwordHash = "HASH-LAURA" };
+
+    private static readonly JwtSettings ajustes60 = new()
+    {
+        key = "clave-de-pruebas-unitarias-de-mas-de-32-bytes",
+        issuer = "ElQuateDePatty",
+        audience = "ElQuateDePatty",
+        expirationMinutes = 60,
+        sesionMaximaHoras = 14
+    };
 
     private static ClaimsPrincipal Validar(string token, string clave)
     {
         var parametros = new TokenValidationParameters
         {
-            ValidIssuer = "ElQuateDePatty", ValidAudience = "ElQuateDePatty",
+            ValidIssuer = "ElQuateDePatty",
+            ValidAudience = "ElQuateDePatty",
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(clave)),
             ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
         };
@@ -91,5 +104,47 @@ public class TokenServiceTests
         var s2 = Validar(servicio.GenerarToken(laura).token, ajustes.key).FindFirst(SelloSeguridad.claimSesion)!.Value;
 
         s1.Should().NotBe(s2);   // así un logout solo revoca esa sesión
+    }
+
+    // ---------- Sesión renovable ----------
+
+    [Fact]
+    public void GenerarToken_LlevaElInicioDeSesion()
+    {
+        var antes = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var principal = Validar(new TokenService(ajustes60).GenerarToken(laura).token, ajustes60.key);
+
+        long.Parse(principal.FindFirst(SelloSeguridad.claimInicio)!.Value).Should().BeCloseTo(antes, 5);
+    }
+
+    [Fact]
+    public void RenovarToken_ConservaLaSesionYElInicioYDura60Minutos()
+    {
+        var inicio = DateTime.UtcNow.AddHours(-2);
+
+        var resultado = new TokenService(ajustes60).RenovarToken(laura, "sesion-1", inicio)!;
+        var principal = Validar(resultado.token, ajustes60.key);
+
+        principal.FindFirst(SelloSeguridad.claimSesion)!.Value.Should().Be("sesion-1");
+        principal.FindFirst(SelloSeguridad.claimInicio)!.Value.Should().Be(new DateTimeOffset(inicio).ToUnixTimeSeconds().ToString());
+        resultado.expiraEn.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(60), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void RenovarToken_SesionQueSuperoLas14Horas_RetornaNull()
+    {
+        new TokenService(ajustes60).RenovarToken(laura, "sesion-1", DateTime.UtcNow.AddHours(-14).AddSeconds(-1))
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public void RenovarToken_CercaDelTope_NoVencePasadasLas14Horas()
+    {
+        var inicio = DateTime.UtcNow.AddHours(-14).AddMinutes(20);
+
+        var resultado = new TokenService(ajustes60).RenovarToken(laura, "sesion-1", inicio)!;
+
+        resultado.expiraEn.Should().BeCloseTo(inicio.AddHours(14), TimeSpan.FromSeconds(2));
     }
 }

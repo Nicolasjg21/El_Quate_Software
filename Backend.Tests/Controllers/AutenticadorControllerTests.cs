@@ -46,7 +46,11 @@ public class AutenticadorControllerTests
 
     private static Usuarios Admin(bool activo = true) => new()
     {
-        idUsuario = 1, email = "admin@elcuate.com", passwordHash = "HASH-GUARDADO", estado = activo, idRol = 1
+        idUsuario = 1,
+        email = "admin@elcuate.com",
+        passwordHash = "HASH-GUARDADO",
+        estado = activo,
+        idRol = 1
     };
 
     private void ContrasenaEs(PasswordVerificationResult resultado) =>
@@ -204,5 +208,69 @@ public class AutenticadorControllerTests
 
         sut.Logout().Should().BeOfType<OkObjectResult>();
         revocacionMock.Verify(r => r.Revocar(It.IsAny<string>(), It.IsAny<DateTimeOffset>()), Times.Never);
+    }
+
+    // ---------- Renovar ----------
+
+    private void SesionCon(long? inicio)
+    {
+        var claims = new List<Claim> { new Claim(SelloSeguridad.claimSesion, "sesion-abc") };
+        if (inicio.HasValue) claims.Add(new Claim(SelloSeguridad.claimInicio, inicio.Value.ToString()));
+        sut.ControllerContext = Respuestas.ContextoConUsuario(1, claims.ToArray());
+    }
+
+    [Fact]
+    public async Task Renovar_SesionActiva_Retorna200ConLaMismaSesionYElMismoInicio()
+    {
+        var inicio = DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeSeconds();
+        SesionCon(inicio);
+        repoMock.Setup(r => r.GetUsuariosById(1)).ReturnsAsync(Admin());
+        tokenMock.Setup(t => t.RenovarToken(It.IsAny<Usuarios>(), "sesion-abc", It.IsAny<DateTime>()))
+                 .Returns(new TokenResultado { token = "jwt-nuevo", expiraEn = DateTime.UtcNow.AddMinutes(60) });
+
+        var resultado = await sut.Renovar();
+
+        resultado.Should().BeOfType<OkObjectResult>();
+        tokenMock.Verify(t => t.RenovarToken(It.IsAny<Usuarios>(), "sesion-abc",
+            DateTimeOffset.FromUnixTimeSeconds(inicio).UtcDateTime), Times.Once);
+    }
+
+    [Fact]
+    public async Task Renovar_TokenSinInicio_Retorna401SinRenovar()
+    {
+        SesionCon(null);
+
+        (await sut.Renovar()).Should().BeOfType<UnauthorizedObjectResult>();
+        tokenMock.Verify(t => t.RenovarToken(It.IsAny<Usuarios>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Renovar_UsuarioInactivo_Retorna401()
+    {
+        SesionCon(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        repoMock.Setup(r => r.GetUsuariosById(1)).ReturnsAsync(Admin(activo: false));
+
+        (await sut.Renovar()).Should().BeOfType<UnauthorizedObjectResult>();
+        tokenMock.Verify(t => t.RenovarToken(It.IsAny<Usuarios>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Renovar_DuracionMaximaAlcanzada_Retorna401()
+    {
+        SesionCon(DateTimeOffset.UtcNow.AddHours(-15).ToUnixTimeSeconds());
+        repoMock.Setup(r => r.GetUsuariosById(1)).ReturnsAsync(Admin());
+        tokenMock.Setup(t => t.RenovarToken(It.IsAny<Usuarios>(), It.IsAny<string>(), It.IsAny<DateTime>()))
+                 .Returns((TokenResultado?)null);
+
+        (await sut.Renovar()).Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
+    public async Task Renovar_ErrorInesperado_Retorna500()
+    {
+        SesionCon(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        repoMock.Setup(r => r.GetUsuariosById(It.IsAny<int>())).ThrowsAsync(new Exception("Base de datos caída"));
+
+        (await sut.Renovar()).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
     }
 }

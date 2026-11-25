@@ -12,7 +12,9 @@ namespace ElQuateDePatty.Services
 
         public string audience { get; set; } = string.Empty;
 
-        public int expirationMinutes { get; set; } = 30;
+        public int expirationMinutes { get; set; } = 60;
+
+        public int sesionMaximaHoras { get; set; } = 14;
 
         public void Validar()
         {
@@ -31,6 +33,11 @@ namespace ElQuateDePatty.Services
             if (expirationMinutes < 1 || expirationMinutes > 1440)
             {
                 throw new InvalidOperationException("Jwt:ExpirationMinutes debe estar entre 1 y 1440.");
+            }
+
+            if (sesionMaximaHoras < 1 || sesionMaximaHoras > 24)
+            {
+                throw new InvalidOperationException("Jwt:SesionMaximaHoras debe estar entre 1 y 24.");
             }
         }
     }

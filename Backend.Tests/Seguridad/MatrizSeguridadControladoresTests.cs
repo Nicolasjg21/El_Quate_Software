@@ -52,6 +52,7 @@ public class MatrizSeguridadControladoresTests
     {
         typeof(AutenticadorController).GetMethod("Login")!.GetCustomAttribute<AllowAnonymousAttribute>().Should().NotBeNull();
         typeof(AutenticadorController).GetMethod("Logout")!.GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(AutenticadorController).GetMethod("Renovar")!.GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
     }
 
     [Theory]
