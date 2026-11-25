@@ -40,7 +40,7 @@
         { p: "¿Por qué el primer ingreso del día tarda más?",
           r: "Cuando el sistema lleva un tiempo sin uso, la base de datos tarda en reanudarse. Aparece el aviso Conectando con el servidor y puede tardar hasta un minuto. Las siguientes operaciones responden con normalidad." },
         { p: "¿Por qué se cerró mi sesión?",
-          r: "La sesión se cierra al cerrar la pestaña del navegador, cuando vence su tiempo o cuando se cambia la contraseña. Inicie sesión nuevamente." }
+          r: "La sesión se cierra al cerrar la pestaña del navegador, después de 1 hora sin usar el sistema, a las 14 horas de haber iniciado sesión o cuando se cambia la contraseña. Mientras usted trabaja, la sesión se renueva sola. Inicie sesión nuevamente." }
       ]
     },
     {

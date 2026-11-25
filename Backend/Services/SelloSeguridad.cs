@@ -13,6 +13,8 @@ namespace ElQuateDePatty.Services
 
         public const string claimSesion = "sesion";
 
+        public const string claimInicio = "inicio";
+
         public static string Calcular(string passwordHash)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));

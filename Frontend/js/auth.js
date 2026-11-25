@@ -13,8 +13,8 @@
  *   elcuate_permisos  { idRol, nombres[] } para pintar el menú sin esperar a la API.
  *                     No es fuente de verdad: se vuelve a consultar en cada página y el Backend valida cada acción.
  *
- * Endpoints: api/Autenticador/Login, api/Autenticador/Logout, api/RolesPermisos/GetRolesPermisos,
- *            api/Permisos/GetPermisos, api/Usuarios/GetUsuariosById/{id}
+ * Endpoints: api/Autenticador/Login, api/Autenticador/Logout, api/Autenticador/Renovar,
+ *            api/RolesPermisos/GetRolesPermisos, api/Permisos/GetPermisos, api/Usuarios/GetUsuariosById/{id}
  */
 
 (function () {
@@ -143,6 +143,7 @@
 
   /** Sustituye el token actual; se usa tras CambiarPassword, que invalida el anterior. */
   function reemplazarToken(nuevo) {
+    sesionEnTope = false;   // CambiarPassword abre una sesión nueva, con su propio tope.
     return guardarToken(nuevo);
   }
 
@@ -156,6 +157,58 @@
     const ms = p.exp * 1000 - Date.now();
     if (ms <= 0) return;
     temporizadorExpira = setTimeout(sesionExpirada, Math.min(ms + 500, 2147483000));
+  }
+
+  /* ---------- Renovación de la sesión mientras se usa el sistema ----------
+     Cada clic o tecla cuenta como uso. Con uso, el token se renueva cuando ya tiene más de 5 minutos
+     (o un tercio de su vida, si es más corto), así que siempre le quedan al menos 55 de sus 60 minutos.
+     Sin uso, nadie lo renueva y vence solo: la sesión se cierra entre 55 y 60 minutos después del último uso. */
+  const RENOVAR_DESPUES_MS = 5 * 60 * 1000;
+  /** Mínimo entre dos revisiones de actividad, para no evaluar cada tecla. */
+  const REVISAR_CADA_MS = 15 * 1000;
+  let ultimaRevision = 0;
+  let renovando = false;
+  /** true cuando el servidor ya no alarga el token (tope de horas de la sesión): no se vuelve a pedir. */
+  let sesionEnTope = false;
+
+  /** Payload del token guardado, o null si no hay uno legible. */
+  function datosToken() {
+    const t = leer(K_TOKEN);
+    const p = t && decodificar(t);
+    return p && typeof p.exp === "number" ? p : null;
+  }
+
+  /** Pide un token nuevo. Un 401 ya cierra la sesión desde Api; otros errores se reintentan con el siguiente uso. */
+  async function renovarSesion() {
+    if (renovando || sesionEnTope || !token()) return;
+    renovando = true;
+    const expAnterior = (datosToken() || { exp: 0 }).exp;
+    try {
+      const r = await window.Api.post("api/Autenticador/Renovar");
+      const p = r && r.token && decodificar(r.token);
+      if (p && typeof p.exp === "number") {
+        // Si el token nuevo no vence después que el anterior, la sesión llegó a su duración máxima.
+        if (p.exp <= expAnterior) sesionEnTope = true;
+        guardarToken(r.token);
+      }
+    } catch (e) {
+      /* 401: sesión vencida o duración máxima alcanzada; Api ya llevó al login. */
+    } finally {
+      renovando = false;
+    }
+  }
+
+  /** Con cada uso del sistema (como máximo cada 15 s) renueva el token si ya tiene la edad suficiente. */
+  function registrarActividad() {
+    const ahora = Date.now();
+    if (renovando || sesionEnTope || ahora - ultimaRevision < REVISAR_CADA_MS) return;
+    ultimaRevision = ahora;
+    const p = datosToken();
+    const emitido = p && (typeof p.nbf === "number" ? p.nbf : p.iat);
+    if (typeof emitido !== "number" || p.exp * 1000 <= ahora) return;
+    const vida = (p.exp - emitido) * 1000;
+    const edad = ahora - emitido * 1000;
+    if (edad >= Math.min(RENOVAR_DESPUES_MS, vida / 3)) renovarSesion();
   }
 
   function irALogin(motivo) {
@@ -364,6 +417,8 @@
     else irALogin(habiaToken ? "expirada" : "");
   } else {
     programarExpiracion();
+    ["pointerdown", "keydown", "wheel", "touchstart"].forEach((evento) =>
+      document.addEventListener(evento, registrarActividad, { passive: true, capture: true }));
 
     const cache = leerCachePermisos();
     if (cache) { permisos = cache; permisosCargados = true; }

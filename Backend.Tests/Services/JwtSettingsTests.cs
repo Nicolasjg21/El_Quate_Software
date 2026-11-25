@@ -65,4 +65,29 @@ public class JwtSettingsTests
     {
         Crear(minutos: minutos).Invoking(s => s.Validar()).Should().NotThrow();
     }
+
+    // Duración máxima de la sesión fuera del rango 1..24 horas.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(25)]
+    public void Validar_SesionMaximaFueraDeRango_LanzaExcepcion(int horas)
+    {
+        var sut = Crear();
+        sut.sesionMaximaHoras = horas;
+
+        sut.Invoking(s => s.Validar()).Should().Throw<InvalidOperationException>()
+            .WithMessage("*SesionMaximaHoras*");
+    }
+
+    // En los bordes del rango.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(24)]
+    public void Validar_SesionMaximaEnLosBordes_NoLanza(int horas)
+    {
+        var sut = Crear();
+        sut.sesionMaximaHoras = horas;
+
+        sut.Invoking(s => s.Validar()).Should().NotThrow();
+    }
 }
