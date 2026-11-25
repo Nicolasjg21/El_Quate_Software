@@ -4,6 +4,7 @@ using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Compras;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -99,6 +100,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -158,6 +160,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -225,6 +228,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteCompra/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

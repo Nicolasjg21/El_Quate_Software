@@ -27,7 +27,7 @@ public class ConsultasEspecialesTests
     public async Task GetMesasByEstado_EstadoVacio_Retorna400(string estado)
     {
         var repo = new Mock<IMesasRepository>();
-        var sut = new MesasController(repo.Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
+        var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
         (await sut.GetMesasByEstado(estado)).Should().BeOfType<BadRequestObjectResult>();
         repo.Verify(r => r.GetMesasByEstado(It.IsAny<string>()), Times.Never);
@@ -38,7 +38,7 @@ public class ConsultasEspecialesTests
     {
         var repo = new Mock<IMesasRepository>();
         repo.Setup(r => r.GetMesasByEstado("Libre")).ReturnsAsync(new List<Mesas> { new() { idMesa = 1, numeroMesa = 1, estado = "Libre" } });
-        var sut = new MesasController(repo.Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
+        var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
         (await sut.GetMesasByEstado("Libre")).Should().BeOfType<OkObjectResult>();
     }
@@ -48,7 +48,7 @@ public class ConsultasEspecialesTests
     {
         var repo = new Mock<IMesasRepository>();
         repo.Setup(r => r.GetMesasByEstado("Ocupada")).ReturnsAsync(new List<Mesas>());
-        var sut = new MesasController(repo.Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
+        var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
         (await sut.GetMesasByEstado("Ocupada")).Should().BeOfType<NotFoundObjectResult>();
     }
@@ -58,7 +58,7 @@ public class ConsultasEspecialesTests
     {
         var repo = new Mock<IMesasRepository>();
         repo.Setup(r => r.GetMesasByEstado(It.IsAny<string>())).ThrowsAsync(new Exception("Error"));
-        var sut = new MesasController(repo.Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
+        var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
         (await sut.GetMesasByEstado("Libre")).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
     }
@@ -69,7 +69,7 @@ public class ConsultasEspecialesTests
         var repo = new Mock<IMesasRepository>();
         var filtro = new MesaFiltroDTO { estado = "Libre" };
         repo.Setup(r => r.FiltrarMesas(filtro)).ReturnsAsync(new List<Mesas>());
-        var sut = new MesasController(repo.Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
+        var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
         (await sut.FiltrarMesas(filtro)).Should().BeOfType<OkObjectResult>();
         repo.Verify(r => r.FiltrarMesas(filtro), Times.Once);

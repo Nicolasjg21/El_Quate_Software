@@ -2,6 +2,8 @@ using ElQuateDePatty.Controllers;
 using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,15 +21,21 @@ namespace Backend.Tests.Controllers;
 public class MesasControllerCrudTests
 {
     private readonly Mock<IMesasRepository> repoMock = new();
+    private readonly Mock<IAuthorizationService> authMock = new();
     private readonly MesasController sut;
 
     public MesasControllerCrudTests()
     {
-        sut = new MesasController(repoMock.Object, NullLogger<MesasController>.Instance)
+        PuedeAdministrarMesas(true);
+        sut = new MesasController(repoMock.Object, authMock.Object, NullLogger<MesasController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
     }
+
+    private void PuedeAdministrarMesas(bool valor) =>
+        authMock.Setup(a => a.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>()))
+                .ReturnsAsync(valor ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
     // ---------- GetMesas ----------
 
@@ -156,6 +164,47 @@ public class MesasControllerCrudTests
         var resultado = await sut.PostMesa(new MesaCrearDTO { numeroMesa = 3, estado = "Libre" });
 
         resultado.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
+    }
+
+    // ---------- PutMesa: qué puede hacer cada rol ----------
+
+    [Fact]
+    public async Task PutMesa_SinPermiso_OcuparMesaLibre_Retorna200()
+    {
+        PuedeAdministrarMesas(false);
+        repoMock.Setup(r => r.GetMesasById(1)).ReturnsAsync(new Mesas { idMesa = 1, numeroMesa = 3, estado = "Libre" });
+        repoMock.Setup(r => r.PutMesas(It.IsAny<Mesas>())).ReturnsAsync(true);
+
+        var resultado = await sut.PutMesa(new MesaActualizarDTO { idMesa = 1, numeroMesa = 3, estado = "Ocupada" });
+
+        resultado.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Theory]
+    [InlineData(3, "Libre", 3, "Inactiva")]    // retirar
+    [InlineData(3, "Inactiva", 3, "Libre")]    // reactivar
+    [InlineData(3, "Libre", 9, "Libre")]       // renumerar
+    public async Task PutMesa_SinPermiso_AdministrarMesa_Retorna403SinActualizar(int numeroActual, string estadoActual, int numeroNuevo, string estadoNuevo)
+    {
+        PuedeAdministrarMesas(false);
+        repoMock.Setup(r => r.GetMesasById(1)).ReturnsAsync(new Mesas { idMesa = 1, numeroMesa = numeroActual, estado = estadoActual });
+
+        var resultado = await sut.PutMesa(new MesaActualizarDTO { idMesa = 1, numeroMesa = numeroNuevo, estado = estadoNuevo });
+
+        resultado.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(403);
+        repoMock.Verify(r => r.PutMesas(It.IsAny<Mesas>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PutMesa_ConPermiso_RetirarMesa_Retorna200()
+    {
+        repoMock.Setup(r => r.GetMesasById(1)).ReturnsAsync(new Mesas { idMesa = 1, numeroMesa = 3, estado = "Libre" });
+        repoMock.Setup(r => r.PutMesas(It.IsAny<Mesas>())).ReturnsAsync(true);
+
+        var resultado = await sut.PutMesa(new MesaActualizarDTO { idMesa = 1, numeroMesa = 3, estado = "Inactiva" });
+
+        resultado.Should().BeOfType<OkObjectResult>();
+        repoMock.Verify(r => r.PutMesas(It.Is<Mesas>(x => x.estado == "Inactiva")), Times.Once);
     }
 
     // ---------- PutMesa ----------

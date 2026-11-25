@@ -82,11 +82,59 @@ public class MatrizSeguridadControladoresTests
     [InlineData(typeof(AuditoriasController), "GetAuditoriaById", PermisosSistema.auditoriasConsultar)]
     [InlineData(typeof(AuditoriasController), "PutAuditoria", PermisosSistema.auditoriasModificar)]
     [InlineData(typeof(AuditoriasController), "DeleteAuditoria", PermisosSistema.auditoriasModificar)]
+    [InlineData(typeof(CategoriasController), "PostCategoria", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(CategoriasController), "PutCategoria", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(CategoriasController), "DeleteCategoria", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProductosController), "PostProductos", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProductosController), "PutProductos", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProductosController), "DeleteProductos", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProveedoresController), "PostProveedores", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProveedoresController), "PutProveedores", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ProveedoresController), "DeleteProveedores", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ComprasController), "PostCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ComprasController), "PutCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ComprasController), "DeleteCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(DetalleComprasController), "PostDetalleCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(DetalleComprasController), "PutDetalleCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(DetalleComprasController), "DeleteDetalleCompra", PermisosSistema.inventarioGestionar)]
+    [InlineData(typeof(ComprobantesController), "PostComprobante", PermisosSistema.cobrosGestionar)]
+    [InlineData(typeof(ComprobantesController), "PutComprobante", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(ComprobantesController), "DeleteComprobante", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(MetodosPagoController), "PostMetodosPago", PermisosSistema.cobrosGestionar)]
+    [InlineData(typeof(MetodosPagoController), "PutMetodosPago", PermisosSistema.cobrosGestionar)]
+    [InlineData(typeof(MetodosPagoController), "DeleteMetodosPago", PermisosSistema.cobrosGestionar)]
+    [InlineData(typeof(CuentasController), "DeleteCuenta", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(PedidosController), "DeletePedidos", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(TipoDocumentoController), "PostTipoDocumento", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(TipoDocumentoController), "PutTipoDocumento", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(TipoDocumentoController), "DeleteTipoDocumento", PermisosSistema.seguridadGestionar)]
+    [InlineData(typeof(MesasController), "PostMesa", PermisosSistema.mesasGestionar)]
+    [InlineData(typeof(MesasController), "DeleteMesa", PermisosSistema.mesasGestionar)]
     public void AccionSensible_ExigeSuPermiso(Type controlador, string accion, string permiso)
     {
         var atributo = controlador.GetMethod(accion)!.GetCustomAttribute<RequierePermisoAttribute>();
 
         atributo.Should().NotBeNull($"{controlador.Name}.{accion} debe exigir el permiso {permiso}");
         atributo!.Policy.Should().Be(PoliticasAutorizacion.Permiso(permiso));
+    }
+
+    /// <summary>
+    /// La atención del salón queda abierta a cualquier rol con sesión: si alguien les pone un permiso
+    /// por error, el mesero deja de poder tomar pedidos.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(CuentasController), "PostCuenta")]
+    [InlineData(typeof(CuentasController), "PutCuenta")]
+    [InlineData(typeof(PedidosController), "PostPedidos")]
+    [InlineData(typeof(PedidosController), "PutPedidos")]
+    [InlineData(typeof(DetallePedidosController), "PostDetallePedido")]
+    [InlineData(typeof(DetallePedidosController), "PutDetallePedido")]
+    [InlineData(typeof(DetallePedidosController), "DeleteDetallePedido")]
+    [InlineData(typeof(MesasController), "PutMesa")]
+    [InlineData(typeof(KardexController), "PostKardex")]
+    [InlineData(typeof(AuditoriasController), "PostAuditoria")]
+    public void AccionDeAtencion_NoExigePermisoAdicional(Type controlador, string accion)
+    {
+        controlador.GetMethod(accion)!.GetCustomAttribute<RequierePermisoAttribute>().Should().BeNull();
     }
 }

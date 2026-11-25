@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.TipoDocumento;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -112,6 +113,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostTipoDocumento")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -173,6 +175,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutTipoDocumento")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -255,6 +258,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteTipoDocumento/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
