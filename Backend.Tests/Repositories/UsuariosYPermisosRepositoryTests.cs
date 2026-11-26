@@ -69,6 +69,61 @@ public class UsuariosYPermisosRepositoryTests
     }
 
     [Fact]
+    public async Task ObtenerUsuarioActivoParaSesion_TraeLaMarcaDeContrasenaTemporal()
+    {
+        using var ctx = EscenarioBar.Crear();
+        var u = await ctx.usuarios.FindAsync(2);
+        u!.debeCambiarPassword = true;
+        await ctx.SaveChangesAsync();
+
+        (await Usuarios(ctx).ObtenerUsuarioActivoParaSesion(2))!.debeCambiarPassword.Should().BeTrue();
+    }
+
+    private static Auditorias AuditoriaDe(string accion) =>
+        new() { tabla = "Usuarios", accion = accion, idUsuario = 1, fecha = DateTime.Now, datosNuevos = "{}" };
+
+    [Fact]
+    public async Task CrearConAuditoria_GuardaElUsuarioYSuAuditoria()
+    {
+        using var ctx = EscenarioBar.Crear();
+        var nuevo = new Usuarios { nombres = "Nuevo", apellidos = "Usuario", documento = "99", idTipoDocumento = 1, telefono = "300",
+                                   passwordHash = "H", estado = true, idRol = 2, email = "nuevo@elcuate.com" };
+
+        (await Usuarios(ctx).CrearConAuditoria(nuevo, AuditoriaDe("INSERT"))).Should().BeTrue();
+
+        ctx.usuarios.Should().Contain(x => x.email == "nuevo@elcuate.com");
+        ctx.auditorias.Should().ContainSingle(a => a.accion == "INSERT" && a.tabla == "Usuarios");
+    }
+
+    [Fact]
+    public async Task ActualizarConAuditoria_GuardaElCambioYSuAuditoriaYRefrescaLaSesion()
+    {
+        using var ctx = EscenarioBar.Crear();
+        var repo = Usuarios(ctx);
+        (await repo.ObtenerUsuarioActivoParaSesion(2))!.passwordHash.Should().Be("HASH-2");   // queda en caché
+        var u = await repo.GetUsuariosById(2);
+        u!.passwordHash = "HASH-NUEVO";
+
+        (await repo.ActualizarConAuditoria(u, AuditoriaDe("UPDATE"))).Should().BeTrue();
+
+        ctx.auditorias.Should().ContainSingle(a => a.accion == "UPDATE");
+        (await repo.ObtenerUsuarioActivoParaSesion(2))!.passwordHash.Should().Be("HASH-NUEVO");
+    }
+
+    [Fact]
+    public async Task EliminarConAuditoria_EliminaYRegistraLaAuditoria()
+    {
+        using var ctx = EscenarioBar.Crear();
+        var repo = Usuarios(ctx);
+        var u = await repo.GetUsuariosById(3);
+
+        (await repo.EliminarConAuditoria(u!, AuditoriaDe("DELETE"))).Should().BeTrue();
+
+        ctx.usuarios.Should().NotContain(x => x.idUsuario == 3);
+        ctx.auditorias.Should().ContainSingle(a => a.accion == "DELETE");
+    }
+
+    [Fact]
     public async Task ObtenerUsuarioActivoParaSesion_Inactivo_DevuelveNull()
     {
         using var ctx = EscenarioBar.Crear();

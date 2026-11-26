@@ -37,6 +37,12 @@ namespace ElQuateDePatty.Models
         [EmailAddress]
         public string email { get; set; } = string.Empty;
 
+        /// <summary>true mientras tenga una contraseña temporal asignada por la administración.</summary>
+        public bool debeCambiarPassword { get; set; }
+
+        /// <summary>Vencimiento de la contraseña temporal, en UTC. Null si no hay una vigente.</summary>
+        public DateTime? passwordTemporalExpira { get; set; }
+
         // Relaciones
         public TipoDocumento tipoDocumento { get; set; } = null!;
 

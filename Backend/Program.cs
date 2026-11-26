@@ -112,6 +112,20 @@ jwtSettings.Validar();
 
 builder.Services.AddSingleton(jwtSettings);
 
+// -------------------------------------------------------------
+// Usuarios protegidos (Soporte técnico y administradora principal)
+// -------------------------------------------------------------
+var usuariosProtegidos = new UsuariosProtegidosSettings
+{
+    idSoporte = builder.Configuration.GetValue("UsuariosProtegidos:IdSoporte", 0),
+    idAdministradora = builder.Configuration.GetValue("UsuariosProtegidos:IdAdministradora", 0)
+};
+
+usuariosProtegidos.Validar();
+
+builder.Services.AddSingleton(usuariosProtegidos);
+builder.Services.AddSingleton<ReglasUsuarios>();
+
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -184,6 +198,21 @@ builder.Services.AddAuthentication(x =>
                     .GetRequiredService<IRevocacionTokenService>().EstaRevocada(idSesion))
             {
                 contexto.Fail("La sesión fue cerrada.");
+                return;
+            }
+
+            // Contraseña temporal pendiente: la fuente de verdad es la base, no el token.
+            if (contexto.Principal?.Identity is ClaimsIdentity identidad)
+            {
+                foreach (var claim in identidad.FindAll(SelloSeguridad.claimCambioPendiente).ToList())
+                {
+                    identidad.RemoveClaim(claim);
+                }
+
+                if (usuario.debeCambiarPassword)
+                {
+                    identidad.AddClaim(new Claim(SelloSeguridad.claimCambioPendiente, "true"));
+                }
             }
         }
     };
@@ -283,6 +312,27 @@ app.UseCors("AllowSpecificOrigin");
 app.UseRateLimiter();
 
 app.UseAuthentication();
+
+// Con una contraseña temporal sin cambiar solo se permiten las acciones marcadas con
+// [PermitidoConCambioPendiente]; el resto responde 403 aunque el usuario tenga el permiso.
+app.Use(async (contexto, siguiente) =>
+{
+    if (contexto.User.HasClaim(SelloSeguridad.claimCambioPendiente, "true") &&
+        contexto.GetEndpoint()?.Metadata.GetMetadata<PermitidoConCambioPendienteAttribute>() == null)
+    {
+        contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await contexto.Response.WriteAsJsonAsync(new
+        {
+            statusCode = 403,
+            codigo = PermitidoConCambioPendienteAttribute.codigoError,
+            message = "Debe cambiar su contraseña temporal antes de continuar."
+        });
+        return;
+    }
+
+    await siguiente();
+});
+
 app.UseAuthorization();
 
 app.MapControllers();

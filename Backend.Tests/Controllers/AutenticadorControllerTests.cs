@@ -273,4 +273,37 @@ public class AutenticadorControllerTests
 
         (await sut.Renovar()).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
     }
+
+    // ---------- Contraseña temporal ----------
+
+    [Fact]
+    public async Task Login_ContrasenaTemporalVigente_Retorna200ConLaMarcaDeCambioObligatorio()
+    {
+        var u = Admin();
+        u.debeCambiarPassword = true;
+        u.passwordTemporalExpira = DateTime.UtcNow.AddHours(2);
+        repoMock.Setup(r => r.GetUsuariosByEmail("admin@elcuate.com")).ReturnsAsync(u);
+        ContrasenaEs(PasswordVerificationResult.Success);
+
+        var resultado = await sut.Login(Login());
+
+        resultado.Should().BeOfType<OkObjectResult>();
+        Respuestas.Leer(resultado, "debeCambiarPassword").Should().Be(true);
+    }
+
+    [Fact]
+    public async Task Login_ContrasenaTemporalVencida_Retorna401SinToken()
+    {
+        var u = Admin();
+        u.debeCambiarPassword = true;
+        u.passwordTemporalExpira = DateTime.UtcNow.AddMinutes(-5);
+        repoMock.Setup(r => r.GetUsuariosByEmail("admin@elcuate.com")).ReturnsAsync(u);
+        ContrasenaEs(PasswordVerificationResult.Success);
+
+        var resultado = await sut.Login(Login());
+
+        resultado.Should().BeOfType<UnauthorizedObjectResult>();
+        ((string)Respuestas.Leer(resultado, "message")!).Should().Contain("temporal");
+        tokenMock.Verify(t => t.GenerarToken(It.IsAny<Usuarios>()), Times.Never);
+    }
 }

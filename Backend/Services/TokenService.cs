@@ -58,6 +58,12 @@ namespace ElQuateDePatty.Services
                 new Claim(SelloSeguridad.claimInicio, inicioUnix.ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64)
             };
 
+            // La pantalla lo lee para bloquearse hasta el cambio; el servidor lo vuelve a comprobar contra la base.
+            if (usuario.debeCambiarPassword)
+            {
+                claims.Add(new Claim(SelloSeguridad.claimCambioPendiente, "true"));
+            }
+
             var ahora = DateTime.UtcNow;
             var expiraEn = ahora.AddMinutes(jwtSettings.expirationMinutes);
             var limite = inicioUtc.AddHours(jwtSettings.sesionMaximaHoras);

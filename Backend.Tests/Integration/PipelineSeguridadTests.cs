@@ -252,4 +252,64 @@ public class PipelineSeguridadTests : IClassFixture<ApiFactory>
 
         estado.Should().NotBe(HttpStatusCode.Forbidden).And.NotBe(HttpStatusCode.Unauthorized);
     }
+
+    // ---------- Contraseña temporal: el servidor bloquea todo menos el cambio ----------
+
+    private void MarcarContrasenaTemporal(Usuarios u)
+    {
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<ElQuateDePattyContext>();
+        var enBase = ctx.usuarios.Single(x => x.idUsuario == u.idUsuario);
+        enBase.debeCambiarPassword = true;
+        enBase.passwordTemporalExpira = DateTime.UtcNow.AddHours(24);
+        ctx.SaveChanges();
+        u.debeCambiarPassword = true;
+    }
+
+    [Fact]
+    public async Task ContrasenaTemporal_CualquierOtraAccion_Retorna403ConCodigo()
+    {
+        var u = Sembrar();
+        MarcarContrasenaTemporal(u);
+
+        var r = await Enviar(HttpMethod.Get, $"/api/Usuarios/GetUsuariosById/{u.idUsuario}", Token(u));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await r.Content.ReadAsStringAsync()).Should().Contain("CAMBIO_PASSWORD_OBLIGATORIO");
+    }
+
+    [Fact]
+    public async Task ContrasenaTemporal_AlCambiarla_ElTokenNuevoYaPuedeOperar()
+    {
+        var u = Sembrar(contrasena: "Temporal1234");
+        MarcarContrasenaTemporal(u);
+
+        var r = await Enviar(HttpMethod.Put, $"/api/Usuarios/CambiarPassword/{u.idUsuario}", Token(u),
+            new { passwordActual = "Temporal1234", nuevaPassword = "ClaveNueva123", confirmarPassword = "ClaveNueva123" });
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cuerpo = await r.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var tokenNuevo = cuerpo.GetProperty("token").GetString();
+
+        (await Enviar(HttpMethod.Get, $"/api/Usuarios/GetUsuariosById/{u.idUsuario}", tokenNuevo)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UsuarioSinPermiso_ListarUsuarios_Retorna403()
+    {
+        var mesero = Sembrar();
+
+        (await Enviar(HttpMethod.Get, "/api/Usuarios/GetUsuarios", Token(mesero))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UsuarioSinPermiso_ConsultarOtroUsuario_Retorna403()
+    {
+        var mesero = Sembrar();
+        var otro = Sembrar();
+
+        (await Enviar(HttpMethod.Get, $"/api/Usuarios/GetUsuariosById/{otro.idUsuario}", Token(mesero))).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+    }
 }

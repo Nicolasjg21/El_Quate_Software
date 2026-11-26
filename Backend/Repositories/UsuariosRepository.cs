@@ -91,10 +91,40 @@ namespace ElQuateDePatty.Repositories
                     {
                         idUsuario = u.idUsuario,
                         idRol = u.idRol,
-                        passwordHash = u.passwordHash
+                        passwordHash = u.passwordHash,
+                        debeCambiarPassword = u.debeCambiarPassword
                     })
                     .FirstOrDefaultAsync();
             });
+        }
+
+        // Cada operación auditada usa un único SaveChanges: EF Core lo ejecuta en una transacción,
+        // así el cambio y su auditoría quedan los dos o ninguno, y es compatible con los reintentos
+        // automáticos de la conexión (EnableRetryOnFailure).
+
+        public async Task<bool> CrearConAuditoria(Usuarios usuario, Auditorias auditoria)
+        {
+            context.usuarios.Add(usuario);
+            context.auditorias.Add(auditoria);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> ActualizarConAuditoria(Usuarios usuario, Auditorias auditoria)
+        {
+            context.usuarios.Update(usuario);
+            context.auditorias.Add(auditoria);
+            var guardado = await context.SaveChangesAsync() > 0;
+            cache.Remove(ClaveSesion(usuario.idUsuario));
+            return guardado;
+        }
+
+        public async Task<bool> EliminarConAuditoria(Usuarios usuario, Auditorias auditoria)
+        {
+            context.usuarios.Remove(usuario);
+            context.auditorias.Add(auditoria);
+            var guardado = await context.SaveChangesAsync() > 0;
+            cache.Remove(ClaveSesion(usuario.idUsuario));
+            return guardado;
         }
     }
 }

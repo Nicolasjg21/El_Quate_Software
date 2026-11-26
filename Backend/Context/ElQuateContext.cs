@@ -585,6 +585,17 @@ namespace ElQuateDePatty.Context
                 entity.Property(x => x.email)
                     .HasColumnName("email");
 
+                entity.Property(x => x.debeCambiarPassword)
+                    .HasColumnName("debeCambiarPassword");
+
+                entity.Property(x => x.passwordTemporalExpira)
+                    .HasColumnName("passwordTemporalExpira");
+
+                // Creado en la base por Backend/Database/004_usuarios_fase2.sql
+                entity.HasIndex(x => x.email)
+                    .IsUnique()
+                    .HasDatabaseName("UX_Usuarios_email");
+
                 entity.HasOne(x => x.tipoDocumento)
                     .WithMany(x => x.usuarios)
                     .HasForeignKey(x => x.idTipoDocumento)

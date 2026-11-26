@@ -19,5 +19,14 @@ namespace ElQuateDePatty.Repositories.Interfaces
         Task<bool> ExisteEmail(string email, int? idUsuarioExcluido = null);
 
         Task<Usuarios?> ObtenerUsuarioActivoParaSesion(int idUsuario);
+
+        /// <summary>Crea el usuario y su registro de auditoría en una sola transacción (un solo SaveChanges).</summary>
+        Task<bool> CrearConAuditoria(Usuarios usuario, Auditorias auditoria);
+
+        /// <summary>Guarda los cambios del usuario y su registro de auditoría en una sola transacción.</summary>
+        Task<bool> ActualizarConAuditoria(Usuarios usuario, Auditorias auditoria);
+
+        /// <summary>Elimina el usuario y registra la auditoría en una sola transacción.</summary>
+        Task<bool> EliminarConAuditoria(Usuarios usuario, Auditorias auditoria);
     }
 }

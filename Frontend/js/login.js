@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const motivo = new URLSearchParams(location.search).get("motivo");
   if (motivo === "expirada") mostrar("Su sesión expiró. Inicie sesión nuevamente.");
+  else if (motivo === "password") mostrar("Su contraseña se cambió correctamente. Inicie sesión con la contraseña nueva.");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
