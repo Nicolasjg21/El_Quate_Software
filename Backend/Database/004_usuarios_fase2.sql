@@ -18,7 +18,7 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-DECLARE @Modo varchar(10) = 'DEFINITIVO';   
+DECLARE @Modo varchar(10) = 'ENSAYO';   -- cambie a 'DEFINITIVO' solo cuando el ENSAYO salga bien 
 IF DB_NAME() <> N'ELQUATE'
     THROW 50001, N'Este script solo se ejecuta sobre la base ELQUATE.', 1;
 
