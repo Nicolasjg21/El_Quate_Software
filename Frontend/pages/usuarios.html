@@ -240,6 +240,26 @@
   </div>
 </div>
 
+<!-- Ventana: Contraseña temporal (se muestra una sola vez) -->
+<div class="overlay" id="overlay-temporal">
+  <div class="modal modal--admin modal--corto" role="alertdialog" aria-modal="true" aria-labelledby="titulo-temporal">
+    <div class="modal-header">
+      <p class="modal-titulo" id="titulo-temporal">Contraseña temporal</p>
+      <button class="modal-cerrar" data-cerrar="overlay-temporal" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-cuerpo">
+      <p class="confirmar-texto">Entregue esta contraseña en persona a <strong id="temporal-usuario"></strong>.</p>
+      <p id="temporal-valor" style="margin:14px 0;padding:14px;border-radius:10px;background:#F4F4F2;border:1px dashed #E0DFD5;font:600 22px/1.2 ui-monospace,Consolas,monospace;letter-spacing:2px;text-align:center;color:#313638;user-select:all"></p>
+      <p class="confirmar-texto">Vence: <strong id="temporal-vence"></strong>. Sirve una sola vez: al entrar, el sistema le pedirá definir una contraseña nueva.</p>
+      <p class="confirmar-texto" style="color:#B23A22">No se volverá a mostrar. No la envíe por chat ni la deje escrita.</p>
+    </div>
+    <div class="modal-pie modal-pie--doble">
+      <button class="btn btn--secundario" id="btn-copiar-temporal">Copiar</button>
+      <button class="btn btn--primario" data-cerrar="overlay-temporal">Listo</button>
+    </div>
+  </div>
+</div>
+
 <!-- Ventana: Roles y permisos -->
 <div class="overlay" id="overlay-roles">
   <div class="modal modal--roles" role="dialog" aria-modal="true" aria-labelledby="titulo-roles">

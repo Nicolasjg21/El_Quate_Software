@@ -147,4 +147,22 @@ public class TokenServiceTests
 
         resultado.expiraEn.Should().BeCloseTo(inicio.AddHours(14), TimeSpan.FromSeconds(2));
     }
+
+    [Fact]
+    public void GenerarToken_ConContrasenaTemporal_LlevaLaMarcaDeCambio()
+    {
+        var conTemporal = new Usuarios { idUsuario = 6, idRol = 2, email = "temp@elcuate.com", passwordHash = "HASH-T", debeCambiarPassword = true };
+
+        var principal = Validar(new TokenService(ajustes60).GenerarToken(conTemporal).token, ajustes60.key);
+
+        principal.FindFirst(SelloSeguridad.claimCambioPendiente)!.Value.Should().Be("true");
+    }
+
+    [Fact]
+    public void GenerarToken_SinContrasenaTemporal_NoLlevaLaMarca()
+    {
+        var principal = Validar(new TokenService(ajustes60).GenerarToken(laura).token, ajustes60.key);
+
+        principal.FindFirst(SelloSeguridad.claimCambioPendiente).Should().BeNull();
+    }
 }

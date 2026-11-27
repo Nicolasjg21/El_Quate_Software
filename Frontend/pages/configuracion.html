@@ -165,7 +165,7 @@
         <section class="config-seccion" id="seccion-cuenta" hidden>
           <div class="config-seccion-cabecera">
             <h3 class="config-titulo">Mi información</h3>
-            <p class="modulo-subtitulo">Para modificar estos datos, solicítelo a un administrador.</p>
+            <p class="modulo-subtitulo">Su teléfono lo puede actualizar usted. Para modificar los demás datos, solicítelo a un administrador.</p>
           </div>
           <dl class="config-datos" id="cfg-datos">
             <div><dt>Nombres</dt><dd id="dato-nombres">—</dd></div>
@@ -177,6 +177,17 @@
             <div><dt>Rol</dt><dd id="dato-rol">—</dd></div>
             <div><dt>Estado</dt><dd id="dato-estado">—</dd></div>
           </dl>
+          <form id="form-telefono" novalidate autocomplete="off" hidden>
+            <div class="campo">
+              <label for="cfg-telefono">Teléfono de contacto</label>
+              <input type="tel" id="cfg-telefono" maxlength="20" autocomplete="tel">
+              <span class="campo-mensaje-error"></span>
+            </div>
+            <p class="config-mensaje" id="cfg-mensaje-telefono" role="status" aria-live="polite" hidden></p>
+            <div class="config-acciones">
+              <button type="submit" class="btn btn--primario" id="cfg-guardar-telefono">Guardar teléfono</button>
+            </div>
+          </form>
           <p class="config-mensaje config-mensaje--error" id="cfg-error-cuenta" role="alert" hidden></p>
         </section>
       </section>

@@ -36,7 +36,9 @@
         { p: "Mi acceso quedó bloqueado, ¿qué hago?",
           r: "Después de 5 intentos fallidos en 15 minutos, el acceso se bloquea temporalmente aunque luego escriba la contraseña correcta. Espere unos 15 minutos e intente de nuevo, o comuníquese con soporte." },
         { p: "Olvidé mi contraseña.",
-          r: "El sistema no envía correos de recuperación. Comuníquese con el administrador (sección Soporte) para que le ayude a recuperar el acceso." },
+          r: "Pídale a la administradora o a Soporte técnico que restablezca su contraseña. Le entregarán en persona una contraseña temporal que sirve una sola vez y vence en 24 horas. Al entrar con ella, el sistema le pedirá definir una contraseña nueva antes de poder continuar." },
+        { p: "Me apareció una ventana que pide cambiar la contraseña y no me deja hacer nada.",
+          r: "Su contraseña fue restablecida. Escriba la contraseña temporal que le entregaron y una nueva de entre 8 y 128 caracteres. Hasta que la cambie no podrá usar ninguna otra función. Al guardarla, el sistema cierra la sesión para que entre con la contraseña nueva. Si la temporal venció, solicite un nuevo restablecimiento." },
         { p: "¿Por qué el primer ingreso del día tarda más?",
           r: "Cuando el sistema lleva un tiempo sin uso, la base de datos tarda en reanudarse. Aparece el aviso Conectando con el servidor y puede tardar hasta un minuto. Las siguientes operaciones responden con normalidad." },
         { p: "¿Por qué se cerró mi sesión?",
@@ -48,6 +50,8 @@
       preguntas: [
         { p: "¿Cómo cambio mi contraseña?",
           r: "Vaya a Configuración, sección Cambiar contraseña. Escriba la contraseña actual y la nueva (entre 8 y 128 caracteres) y pulse Guardar contraseña. Las sesiones abiertas con la contraseña anterior dejan de servir." },
+        { p: "¿Puedo cambiar mis datos personales?",
+          r: "Solo su teléfono, en Configuración, sección Mi información. Nombres, documento, correo, rol y estado los cambia la administración." },
         { p: "¿Dónde veo mis datos?",
           r: "En Configuración, sección Mi información." }
       ]
@@ -112,7 +116,11 @@
         { p: "¿Cómo creo un usuario?",
           r: "En Usuarios, pulse + Nuevo usuario, complete los datos, asigne un rol y una contraseña inicial. El correo no puede repetirse." },
         { p: "¿Cómo impido que alguien ingrese?",
-          r: "Edite el usuario y cambie su estado a Inactivo. Un usuario inactivo no puede iniciar sesión." },
+          r: "Edite el usuario y cambie su estado a Inactivo. Un usuario inactivo no puede iniciar sesión y sus sesiones abiertas se cierran. Es la forma recomendada: eliminar solo sirve para usuarios creados por error y sin movimientos." },
+        { p: "¿Quién puede editar, eliminar o restablecer la contraseña de un usuario?",
+          r: "Cualquier administrador edita y desactiva empleados. Solo Soporte técnico y la administradora principal eliminan usuarios, restablecen contraseñas, modifican a otros administradores y asignan el rol de administrador. A la administradora principal solo la modifica Soporte técnico, y la cuenta de Soporte técnico no la modifica nadie. Los botones que no le corresponden no aparecen." },
+        { p: "¿Cómo restablezco la contraseña de un empleado?",
+          r: "En Usuarios, pulse el ícono de llave en la fila del empleado y confirme. El sistema muestra una sola vez una contraseña temporal: entréguesela en persona. Sirve una vez, vence en 24 horas y cierra sus sesiones abiertas." },
         { p: "¿Cómo cambio lo que puede hacer un rol?",
           r: "En Usuarios, pulse Roles y permisos, elija el rol y marque o desmarque sus permisos. Los cambios aplican a todos los usuarios con ese rol." },
         { p: "¿Por qué no puedo eliminar un rol?",

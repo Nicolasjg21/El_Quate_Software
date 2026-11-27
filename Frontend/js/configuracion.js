@@ -4,11 +4,12 @@
  *   - Cambiar contraseña: valida según CambiarPasswordDTO (actual obligatoria; nueva entre 8 y 128
  *     caracteres; confirmación igual a la nueva). El Backend invalida los tokens anteriores y
  *     devuelve uno nuevo, que reemplaza al de la sesión actual.
- *   - Mi información: datos del usuario de la sesión, solo consulta.
+ *   - Mi información: datos del usuario de la sesión. Solo el teléfono es editable (api/Usuarios/MiPerfil);
+ *     nombres, documento, correo, rol y estado los cambia la administración.
  *   La opción visible se conserva en la URL (#password o #cuenta).
  * @requires api-cliente.js, auth.js, data.js, admin-ui.js
  *
- * Endpoints: api/Usuarios/CambiarPassword/{id}, api/Usuarios/GetUsuariosById/{id},
+ * Endpoints: api/Usuarios/CambiarPassword/{id}, api/Usuarios/MiPerfil (GET y PUT),
  *            api/TipoDocumento/GetTipoDocumento, api/Roles/GetRoles
  */
 
@@ -36,6 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
   $("cfg-mostrar").addEventListener("change", (e) => {
     ["cfg-actual", "cfg-nueva", "cfg-confirmar"].forEach((id) => { $(id).type = e.target.checked ? "text" : "password"; });
   });
+
+  $("form-telefono").addEventListener("submit", (e) => { e.preventDefault(); guardarTelefono(); });
+  $("cfg-telefono").addEventListener("input", () => { limpiarErrores($("form-telefono")); mensajeTelefono(""); });
 
   Auth.listo.then(() => mostrarSeccion(opcionDeUrl()));
 });
@@ -147,7 +151,7 @@ async function cargarCuenta() {
   $("cfg-error-cuenta").hidden = true;
   try {
     const [r, tipos, roles] = await Promise.all([
-      Api.get("api/Usuarios/GetUsuariosById/" + u.idUsuario),
+      Api.get("api/Usuarios/MiPerfil"),
       Api.lista("api/TipoDocumento/GetTipoDocumento").catch(() => []),
       Api.lista("api/Roles/GetRoles").catch(() => [])
     ]);
@@ -163,10 +167,51 @@ async function cargarCuenta() {
     poner("dato-email", d.email);
     poner("dato-rol", rol ? rol.nombreRol : d.idRol);
     poner("dato-estado", d.estado === undefined ? "" : d.estado ? "Activo" : "Inactivo");
+    $("form-telefono").hidden = !(r && r.puedeEditarTelefono);
+    $("cfg-telefono").value = d.telefono || "";
     cuentaCargada = true;
   } catch (err) {
     const el = $("cfg-error-cuenta");
     el.textContent = Api.mensajeError(err, "No fue posible cargar la información de la cuenta.");
     el.hidden = false;
+  }
+}
+
+/* ---------- Teléfono propio ---------- */
+
+function mensajeTelefono(texto, error) {
+  const el = $("cfg-mensaje-telefono");
+  el.textContent = texto;
+  el.hidden = !texto;
+  el.classList.toggle("config-mensaje--error", !!error);
+  el.classList.toggle("config-mensaje--ok", !!texto && !error);
+}
+
+let guardandoTelefono = false;
+
+/** Guarda el teléfono del usuario de la sesión (único dato propio editable además de la contraseña). */
+async function guardarTelefono() {
+  if (guardandoTelefono) return;
+  const form = $("form-telefono");
+  limpiarErrores(form);
+  mensajeTelefono("");
+  const telefono = $("cfg-telefono").value.trim();
+  if (!telefono) { marcarError($("cfg-telefono"), "El teléfono es obligatorio."); return; }
+  if (telefono.length > 20) { marcarError($("cfg-telefono"), "El teléfono no puede superar 20 caracteres."); return; }
+
+  guardandoTelefono = true;
+  const btn = $("cfg-guardar-telefono");
+  bloquearBoton(btn, "Guardando...");
+  try {
+    const r = await Api.put("api/Usuarios/MiPerfil", { telefono });
+    const d = (r && r.data) || {};
+    $("dato-telefono").textContent = d.telefono || telefono;
+    $("cfg-telefono").value = d.telefono || telefono;
+    mensajeTelefono("Teléfono actualizado correctamente.");
+  } catch (err) {
+    if (err && err.status !== 401) mensajeTelefono(Api.mensajeError(err, "No fue posible actualizar el teléfono."), true);
+  } finally {
+    guardandoTelefono = false;
+    liberarBoton(btn);
   }
 }

@@ -3,8 +3,12 @@
  * @description Módulo Usuarios (requiere "usuarios.gestionar").
  *   - Alta, edición y eliminación de usuarios según UsuarioCrearDTO y UsuarioActualizarDTO.
  *   - La contraseña solo se define al crear; después se cambia con CambiarPassword.
- *   - El usuario de la sesión no puede eliminarse ni cambiar su propio rol o estado: el Backend
- *     invalidaría su sesión y el sistema podría quedar sin administrador.
+ *   - Las acciones de cada fila (editar, eliminar, restablecer contraseña) las decide el servidor
+ *     (ReglasUsuarios) y llegan en "acciones": Soporte técnico no lo modifica nadie, la administradora
+ *     principal solo Soporte, y solo ellos dos eliminan usuarios, restablecen contraseñas y asignan
+ *     el rol de administrador. Nadie se edita a sí mismo desde aquí (su teléfono y su contraseña
+ *     se cambian en Configuración).
+ *   - Restablecer contraseña muestra una sola vez la clave temporal generada por el servidor.
  *   - Roles y permisos (requiere "seguridad.gestionar"): creación de roles y asignación de permisos por rol.
  * @requires admin-data.js, admin-ui.js, data.js, auth.js
  */
@@ -46,9 +50,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-nuevo-usuario").addEventListener("click", abrirNuevo);
   $("btn-guardar-usuario").addEventListener("click", guardarUsuario);
   $("btn-confirmar-eliminar").addEventListener("click", confirmarEliminacion);
+  $("btn-copiar-temporal").addEventListener("click", copiarTemporal);
+  document.querySelectorAll('[data-cerrar="overlay-temporal"]').forEach(b => b.addEventListener("click", ocultarTemporal));
 
   document.querySelectorAll('[data-cerrar="overlay-usuario"]').forEach(b => b.addEventListener("click", vaciarPassword));
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") vaciarPassword(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { vaciarPassword(); ocultarTemporal(); } });
 
   $("tabla-usuarios").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-accion]");
@@ -56,6 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const id = Number(btn.dataset.id);
     if (btn.dataset.accion === "editar") abrirEdicion(id);
     if (btn.dataset.accion === "eliminar") abrirEliminar(id);
+    if (btn.dataset.accion === "restablecer") restablecerPassword(id);
   });
 
   $("btn-roles-permisos").addEventListener("click", abrirRoles);
@@ -144,8 +151,19 @@ function claseRol(idRol) {
   return { 1: "pill--rol-admin", 2: "pill--rol-caja", 3: "pill--rol-mesero" }[idRol] || "pill--neutro";
 }
 
+/** Ícono de llave para "Restablecer contraseña". */
+const ICONO_LLAVE = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="M16 7l3 3"/><path d="M18.5 4.5l2 2"/></svg>`;
+
 function filaUsuario(u) {
   const nombreCompleto = `${u.nombres} ${u.apellidos}`;
+  const acciones = u.acciones || {};
+  const boton = (accion, clase, icono, titulo) =>
+    `<button class="btn-icono${clase}" data-accion="${accion}" data-id="${u.idUsuario}" aria-label="${titulo} ${esc(nombreCompleto)}" title="${titulo}">${icono}</button>`;
+  const botones = [
+    acciones.editar ? boton("editar", "", ICONO_EDITAR, "Editar usuario") : "",
+    acciones.restablecerPassword ? boton("restablecer", "", ICONO_LLAVE, "Restablecer contraseña") : "",
+    acciones.eliminar ? boton("eliminar", " btn-icono--peligro", ICONO_ELIMINAR, "Eliminar usuario") : ""
+  ].join("");
   return `
     <tr data-id="${u.idUsuario}">
       <td class="col-centro col-id">${u.idUsuario}</td>
@@ -158,10 +176,7 @@ function filaUsuario(u) {
       <td class="col-centro"><span class="pill ${claseRol(u.idRol)}">${esc(nombreRol(u.idRol))}</span></td>
       <td>${esc(u.email)}</td>
       <td class="col-centro">
-        <div class="acciones-fila">
-          <button class="btn-icono" data-accion="editar" data-id="${u.idUsuario}" aria-label="Editar usuario ${esc(nombreCompleto)}" title="Editar usuario">${ICONO_EDITAR}</button>
-          ${u.idUsuario === idPropio() ? "" : `<button class="btn-icono btn-icono--peligro" data-accion="eliminar" data-id="${u.idUsuario}" aria-label="Eliminar usuario ${esc(nombreCompleto)}" title="Eliminar usuario">${ICONO_ELIMINAR}</button>`}
-        </div>
+        <div class="acciones-fila">${botones || `<span class="texto-suave" title="Sin acciones disponibles para su usuario">—</span>`}</div>
       </td>
     </tr>`;
 }
@@ -325,16 +340,11 @@ async function guardarUsuario() {
     : apiUsuarios.crear(datos);
 
   peticion
-    .then(guardado => {
-      if (editando) {
-        const idx = usuarios.findIndex(u => u.idUsuario === guardado.idUsuario);
-        if (idx !== -1) usuarios[idx] = guardado;
-      } else {
-        usuarios.push(guardado);
-      }
+    .then(() => {
       vaciarPassword();
       cerrarModal("overlay-usuario");
-      renderTabla();
+      // Se recarga el listado: las acciones permitidas pueden cambiar con el rol o el estado.
+      cargarUsuarios();
       mostrarToast(editando ? "Usuario actualizado correctamente." : "Usuario creado correctamente.");
     })
     .catch(err => {
@@ -364,7 +374,7 @@ function confirmarEliminacion() {
   const id = usuarioAEliminar;
 
   bloquearBoton(btn, "Eliminando...");
-  apiUsuarios.eliminar(id, usuarios.find(u => u.idUsuario === id))
+  apiUsuarios.eliminar(id)
     .then(() => {
       usuarios = usuarios.filter(u => u.idUsuario !== id);
       cerrarModal("overlay-eliminar");
@@ -549,4 +559,46 @@ async function crearRol() {
     seg.ocupado = false;
     actualizarBotonGuardar();
   }
+}
+
+/* ---------- Restablecer contraseña ----------
+   El servidor genera la clave temporal (aleatoria, de un solo uso, vence en 24 horas), cierra las
+   sesiones del usuario y lo obliga a cambiarla al entrar. Se muestra una sola vez. */
+async function restablecerPassword(id) {
+  const u = usuarios.find(x => x.idUsuario === id);
+  if (!u) return;
+  const nombre = `${esc(u.nombres)} ${esc(u.apellidos)}`;
+  const ok = await Confirmar.pedir({
+    titulo: "Restablecer contraseña",
+    mensaje: `Se generará una contraseña temporal para <strong>${nombre}</strong>. Su contraseña actual dejará de funcionar ` +
+      "y se cerrarán sus sesiones abiertas. Al entrar con la temporal, el sistema le pedirá definir una nueva. ¿Desea continuar?",
+    textoConfirmar: "Sí, restablecer",
+    peligro: true
+  });
+  if (!ok) return;
+  try {
+    const r = await apiUsuarios.restablecerPassword(id);
+    $("temporal-usuario").textContent = `${u.nombres} ${u.apellidos} (${u.email})`;
+    $("temporal-valor").textContent = r.passwordTemporal;
+    const vence = new Date(r.expiraEn);
+    $("temporal-vence").textContent = isNaN(vence) ? "24 horas" :
+      vence.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+    abrirModal("overlay-temporal");
+  } catch (err) {
+    mostrarToast(Api.mensajeError(err, "No fue posible restablecer la contraseña. Intente de nuevo."), "error");
+  }
+}
+
+function copiarTemporal() {
+  const valor = $("temporal-valor").textContent;
+  if (!valor) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(valor) : Promise.reject())
+    .then(() => mostrarToast("Contraseña temporal copiada."))
+    .catch(() => mostrarToast("No se pudo copiar. Selecciónela y cópiela manualmente.", "error"));
+}
+
+/** Al cerrar la ventana se borra la clave de la pantalla: no se vuelve a mostrar. */
+function ocultarTemporal() {
+  $("temporal-valor").textContent = "";
+  $("temporal-usuario").textContent = "";
 }

@@ -11,7 +11,7 @@
  */
 
 /** Códigos de acción almacenados en Auditorias.accion. */
-const AUDITORIA_ACCIONES = ["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT"];
+const AUDITORIA_ACCIONES = ["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "RESTABLECER_PASSWORD", "CAMBIAR_PASSWORD"];
 
 /** Código de acción → verbo mostrado al usuario. */
 const AUDITORIA_VERBOS = {
@@ -19,7 +19,9 @@ const AUDITORIA_VERBOS = {
   UPDATE: "Modificó",
   DELETE: "Eliminó",
   LOGIN: "Inició sesión",
-  LOGOUT: "Cerró sesión"
+  LOGOUT: "Cerró sesión",
+  RESTABLECER_PASSWORD: "Restableció la contraseña",
+  CAMBIAR_PASSWORD: "Cambió la contraseña"
 };
 
 /** Tabla → nombre del módulo y forma de referirse a uno de sus registros. */
@@ -54,7 +56,7 @@ const AUDITORIA_CAMPOS = {
   numeroMesa: "Mesa", idCuenta: "ID de cuenta", idPedido: "ID de pedido",
   total: "Total", idMetodo: "Método de pago (ID)", nombreMetodo: "Método de pago",
   idCompra: "ID de compra", productos: "Productos diferentes",
-  idPermiso: "ID de permiso", nombrePermiso: "Permiso", Datos: "Datos"
+  idPermiso: "ID de permiso", nombrePermiso: "Permiso", Datos: "Datos", detalle: "Detalle"
 };
 
 /** Campos que se muestran como valores en pesos (COP). */

@@ -67,6 +67,7 @@ public class MatrizSeguridadControladoresTests
     [InlineData(typeof(UsuariosController), "PostUsuarios", PermisosSistema.usuariosGestionar)]
     [InlineData(typeof(UsuariosController), "PutUsuarios", PermisosSistema.usuariosGestionar)]
     [InlineData(typeof(UsuariosController), "DeleteUsuarios", PermisosSistema.usuariosGestionar)]
+    [InlineData(typeof(UsuariosController), "RestablecerPassword", PermisosSistema.usuariosGestionar)]
     [InlineData(typeof(RolesController), "PostRoles", PermisosSistema.seguridadGestionar)]
     [InlineData(typeof(RolesController), "PutRoles", PermisosSistema.seguridadGestionar)]
     [InlineData(typeof(RolesController), "DeleteRoles", PermisosSistema.seguridadGestionar)]
@@ -136,5 +137,33 @@ public class MatrizSeguridadControladoresTests
     public void AccionDeAtencion_NoExigePermisoAdicional(Type controlador, string accion)
     {
         controlador.GetMethod(accion)!.GetCustomAttribute<RequierePermisoAttribute>().Should().BeNull();
+    }
+
+    /// <summary>
+    /// Con una contraseña temporal pendiente solo se permiten estas cuatro acciones. Si alguien marca
+    /// otra por error, un usuario con clave temporal podría operar sin haberla cambiado.
+    /// </summary>
+    [Fact]
+    public void ContrasenaTemporal_SoloEstasAccionesSePermitenAntesDeCambiarla()
+    {
+        var permitidas = controladores
+            .SelectMany(c => c.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => m.GetCustomAttribute<PermitidoConCambioPendienteAttribute>() != null)
+                .Select(m => $"{c.Name}.{m.Name}"))
+            .OrderBy(x => x);
+
+        permitidas.Should().Equal(
+            "AuditoriasController.PostAuditoria",
+            "AutenticadorController.Logout",
+            "AutenticadorController.Renovar",
+            "UsuariosController.CambiarPassword");
+    }
+
+    [Theory]
+    [InlineData("GetMiPerfil")]
+    [InlineData("PutMiPerfil")]
+    public void MiPerfil_ExigeSesionPeroNoPermisoAdicional(string accion)
+    {
+        typeof(UsuariosController).GetMethod(accion)!.GetCustomAttribute<RequierePermisoAttribute>().Should().BeNull();
     }
 }

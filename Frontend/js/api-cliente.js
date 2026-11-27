@@ -194,6 +194,12 @@
     // Un 401 indica token vencido, revocado o inválido: se cierra la sesión local.
     if (status === 401 && !op.publico && window.Auth) window.Auth.sesionExpirada();
 
+    // Contraseña temporal sin cambiar: la sesión sigue viva, pero el servidor exige el cambio primero.
+    if (status === 403 && cuerpo && cuerpo.codigo === "CAMBIO_PASSWORD_OBLIGATORIO" &&
+        window.Auth && window.Auth.exigirCambioPassword) {
+      window.Auth.exigirCambioPassword();
+    }
+
     throw { status, mensaje, errores, cuerpo };
   }
 

@@ -4,6 +4,8 @@
  *   - Guarda el JWT exclusivamente en sessionStorage (la sesión termina al cerrar la pestaña).
  *   - Protege cada página según los permisos del rol y oculta las opciones de menú no autorizadas.
  *   - Las páginas de PAGINAS_PUBLICAS (la ayuda) también se abren sin sesión.
+ *   - Con una contraseña temporal (restablecida por la administración) la página queda bloqueada
+ *     por una ventana que no se puede cerrar hasta definir la contraseña nueva.
  *   El cambio de contraseña se realiza en la página Configuración (configuracion.js).
  * @requires config.js, api-cliente.js
  * @exports window.Auth
@@ -316,8 +318,9 @@
   /**
    * Registra LOGOUT, revoca el token en el Backend y limpia la sesión local.
    * Ignora clics repetidos mientras el cierre está en curso.
+   * @param {string} [motivo] Motivo que muestra la pantalla de inicio de sesión (p. ej. "password").
    */
-  async function logout() {
+  async function logout(motivo) {
     if (cerrando) return;
     cerrando = true;
     expirando = true;
@@ -325,7 +328,107 @@
     if (u) await window.Api.auditar("Usuarios", "LOGOUT", null, { Usuario: u.email, idRol: u.idRol });
     try { if (token()) await window.Api.post("api/Autenticador/Logout"); } catch (e) { }
     borrarSesionLocal();
-    irALogin();
+    irALogin(motivo);
+  }
+
+  /* ---------- Contraseña temporal: cambio obligatorio ----------
+     Si la administración restableció la contraseña, el token trae "cambio": "true". La página no
+     carga nada ("listo" no se resuelve) y una ventana que no se puede cerrar exige la contraseña
+     nueva. El servidor también bloquea cualquier otra acción hasta el cambio (403). */
+  const CLAIM_CAMBIO = "cambio";
+  let ventanaCambio = null;
+
+  /** @returns {boolean} true si la sesión tiene una contraseña temporal sin cambiar. */
+  function cambioPendiente() {
+    const t = token();
+    const p = t && decodificar(t);
+    return !!p && String(p[CLAIM_CAMBIO]) === "true";
+  }
+
+  /** Muestra la ventana de cambio obligatorio y deja inerte el resto de la página. */
+  function mostrarCambioObligatorio() {
+    if (ventanaCambio) return;
+    const u = usuario();
+    if (!u) { sesionExpirada(); return; }
+
+    Array.from(document.body.children).forEach((el) => {
+      el.inert = true;
+      el.setAttribute("aria-hidden", "true");
+    });
+    document.documentElement.style.visibility = "";
+
+    const estiloCampo = "width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #E0DFD5;border-radius:8px;font:inherit;font-size:14px;color:#313638;background:#fff";
+    const estiloEtiqueta = "display:block;font-size:13px;font-weight:600;color:#313638;margin:12px 0 6px";
+    ventanaCambio = document.createElement("div");
+    ventanaCambio.id = "cambio-obligatorio";
+    ventanaCambio.setAttribute("role", "dialog");
+    ventanaCambio.setAttribute("aria-modal", "true");
+    ventanaCambio.setAttribute("aria-labelledby", "co-titulo");
+    ventanaCambio.style.cssText = "position:fixed;inset:0;z-index:6000;background:rgba(49,54,56,.9);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
+    ventanaCambio.innerHTML =
+      '<form id="co-form" novalidate autocomplete="off" style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:28px 28px 24px;box-shadow:0 20px 50px rgba(0,0,0,.35);border-top:6px solid #F06543">' +
+      '<h2 id="co-titulo" style="margin:0 0 6px;font-size:20px;color:#313638">Cambie su contraseña temporal</h2>' +
+      '<p style="margin:0 0 4px;font-size:14px;line-height:1.5;color:#5c6366">La administración restableció su contraseña. Escriba la contraseña temporal que le entregaron y defina una nueva que solo usted conozca. Después deberá iniciar sesión con la contraseña nueva.</p>' +
+      '<p id="co-usuario" style="margin:8px 0 0;font-size:13px;color:#313638;font-weight:600"></p>' +
+      '<label for="co-actual" style="' + estiloEtiqueta + '">Contraseña temporal</label>' +
+      '<input type="password" id="co-actual" maxlength="128" autocomplete="current-password" style="' + estiloCampo + '">' +
+      '<label for="co-nueva" style="' + estiloEtiqueta + '">Nueva contraseña (entre 8 y 128 caracteres)</label>' +
+      '<input type="password" id="co-nueva" maxlength="128" autocomplete="new-password" style="' + estiloCampo + '">' +
+      '<label for="co-confirmar" style="' + estiloEtiqueta + '">Confirmar nueva contraseña</label>' +
+      '<input type="password" id="co-confirmar" maxlength="128" autocomplete="new-password" style="' + estiloCampo + '">' +
+      '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:#5c6366"><input type="checkbox" id="co-mostrar"> Mostrar contraseñas</label>' +
+      '<p id="co-error" role="alert" hidden style="margin:14px 0 0;padding:10px 12px;border-radius:8px;background:#FDECE8;color:#B23A22;font-size:13px"></p>' +
+      '<button type="submit" id="co-guardar" style="margin-top:18px;width:100%;padding:12px;border:0;border-radius:10px;background:#F06543;color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer">Guardar contraseña</button>' +
+      '<button type="button" id="co-salir" style="margin-top:10px;width:100%;padding:10px;border:1px solid #E0DFD5;border-radius:10px;background:#fff;color:#313638;font:inherit;font-size:14px;cursor:pointer">Cerrar sesión</button>' +
+      '</form>';
+    document.body.appendChild(ventanaCambio);
+
+    const el = (id) => ventanaCambio.querySelector("#" + id);
+    el("co-usuario").textContent = "Usuario: " + (u.email || "");
+    const campos = ["co-actual", "co-nueva", "co-confirmar"].map(el);
+    const boton = el("co-guardar");
+    const error = el("co-error");
+    const mostrarError = (texto) => { error.textContent = texto; error.hidden = !texto; };
+    let enviando = false;
+
+    // La ventana no se cierra con Escape ni de ninguna otra forma.
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); } }, true);
+    el("co-mostrar").addEventListener("change", (e) => campos.forEach((c) => { c.type = e.target.checked ? "text" : "password"; }));
+    campos.forEach((c) => c.addEventListener("input", () => mostrarError("")));
+    el("co-salir").addEventListener("click", () => logout());
+
+    el("co-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (enviando) return;
+      const [actual, nueva, confirmar] = campos.map((c) => c.value);
+      let falla = "";
+      if (!actual.trim()) falla = "Escriba la contraseña temporal que le entregó la administración.";
+      else if (!nueva.trim() || nueva.length < 8 || nueva.length > 128) falla = "La nueva contraseña debe tener entre 8 y 128 caracteres.";
+      else if (nueva === actual) falla = "La nueva contraseña debe ser distinta de la temporal.";
+      else if (confirmar !== nueva) falla = "La confirmación no coincide con la nueva contraseña.";
+      if (falla) { mostrarError(falla); return; }
+
+      enviando = true;
+      boton.disabled = true;
+      boton.textContent = "Guardando...";
+      try {
+        const r = await window.Api.put("api/Usuarios/CambiarPassword/" + u.idUsuario, {
+          passwordActual: actual, nuevaPassword: nueva, confirmarPassword: confirmar
+        });
+        // Se cierra la sesión y se pide entrar con la contraseña nueva: así se comprueba que el usuario
+        // la recuerda mientras la administración todavía está presente para restablecerla si hiciera falta.
+        if (r && r.token) guardarToken(r.token);
+        await logout("password");
+      } catch (err) {
+        if (err && err.status === 401) return;   // Api ya cerró la sesión y llevó al inicio
+        mostrarError(window.Api.mensajeError(err, "No fue posible cambiar la contraseña. Intente de nuevo."));
+        enviando = false;
+        boton.disabled = false;
+        boton.textContent = "Guardar contraseña";
+      }
+    });
+
+    setTimeout(() => campos[0].focus(), 30);
   }
 
   /* ---------- Interfaz común ---------- */
@@ -415,6 +518,10 @@
     borrarSesionLocal();
     if (enPublica) resolverListo();
     else irALogin(habiaToken ? "expirada" : "");
+  } else if (cambioPendiente()) {
+    // Contraseña temporal: no se cargan permisos ni datos de la página ("listo" no se resuelve).
+    programarExpiracion();
+    document.addEventListener("DOMContentLoaded", mostrarCambioObligatorio);
   } else {
     programarExpiracion();
     ["pointerdown", "keydown", "wheel", "touchstart"].forEach((evento) =>
@@ -445,6 +552,7 @@
   window.Auth = {
     token, usuario, sesionValida, login, logout, sesionExpirada,
     reemplazarToken, tiene, esAdmin, paginaInicio, listo,
+    exigirCambioPassword: mostrarCambioObligatorio,
     get permisosCargados() { return permisosCargados; },
     mostrarAviso
   };

@@ -15,6 +15,9 @@ namespace ElQuateDePatty.Services
 
         public const string claimInicio = "inicio";
 
+        /// <summary>Presente ("true") mientras el usuario tenga una contraseña temporal sin cambiar.</summary>
+        public const string claimCambioPendiente = "cambio";
+
         public static string Calcular(string passwordHash)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));
