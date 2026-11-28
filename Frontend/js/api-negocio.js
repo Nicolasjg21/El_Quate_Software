@@ -481,8 +481,14 @@
   }
  
   /**
-   * Registra el pago: Comprobante → Cuenta cerrada (con fecha de cierre) → Pedidos pagados → Mesa libre.
-   * Es reintentable: si el comprobante ya existe, no se duplica.
+   * Registra el pago con una sola petición: el servidor emite el comprobante (con base e INC),
+   * cierra la cuenta, marca los pedidos como pagados, libera la mesa y escribe la auditoría,
+   * todo en una transacción. Si algo falla, no queda nada a medias.
+   * <ul>
+   * <li>Envía el total que ve la pantalla: si la cuenta cambió mientras tanto, el servidor no cobra (409).</li>
+   * <li>Es reintentable: si la respuesta se pierde y se repite, el servidor responde 409
+   *     CUENTA_YA_COBRADA con el comprobante ya emitido, y se trata como cobro exitoso.</li>
+   * </ul>
    * @param {number} idMetodo Método con el que pagó el cliente.
    * @returns {Promise<{idComprobante:number|null, fechaApertura:string, fechaCierre:string, total:number, base:number, inc:number}>}
    */
@@ -491,38 +497,42 @@
     if (!idMetodo) throw falla(400, "Seleccione un método de pago.");
     const t = totales(detalle.items);
     const c = detalle.cuenta;
-    const fechaCierre = ahora();
- 
-    if (!detalle.comprobantes.length) {
-      const comp = datos(await Api.post("api/Comprobantes/PostComprobante", {
-        idCuenta: c.idCuenta, fecha: ahora(), total: t.total, idMetodo
+
+    let cobro;
+    try {
+      cobro = datos(await Api.solicitar("POST", "api/Cuentas/Cobrar", {
+        cuerpo: { idCuenta: c.idCuenta, idMetodo, totalEsperado: t.total },
+        reintentable: true
       }));
-      detalle.comprobantes.push(comp || {});
-      Api.auditar("Comprobantes", "INSERT", null, { idCuenta: c.idCuenta, numeroMesa: mesa.numero, total: t.total, idMetodo });
+    } catch (e) {
+      const codigo = e && e.cuerpo && e.cuerpo.codigo;
+      if (e && e.status === 409 && codigo === "CUENTA_YA_COBRADA" && e.cuerpo.data) {
+        cobro = e.cuerpo.data;   // ya estaba cobrada (por ejemplo, un reintento): no hay segundo pago
+      } else if (e && e.status === 409 && codigo === "TOTAL_DESACTUALIZADO") {
+        throw falla(409, "La cuenta cambió mientras se cobraba (otro equipo agregó o quitó productos). " +
+          "Cierre este cobro, revise la mesa y vuelva a cobrar.");
+      } else {
+        throw e;
+      }
     }
- 
-    // Cierre de la cuenta y pedidos pagados en paralelo; la mesa se libera al final.
-    await Promise.all([
-      Api.put("api/Cuentas/PutCuenta", {
-        idCuenta: c.idCuenta, idMesa: c.idMesa, estado: ESTADO.cuentaCerrada,
-        fechaApertura: c.fechaApertura, fechaCierre, total: t.total
-      }),
-      ...detalle.pedidos.map((p) => Api.put("api/Pedidos/PutPedidos", {
-        idPedido: p.idPedido, idCuenta: p.idCuenta, idUsuario: p.idUsuario, fecha: p.fecha, estadoPedido: ESTADO.pedidoPagado
-      }))
-    ]);
-    await cambiarEstadoMesa(mesa, ESTADO.mesaLibre);
-    Api.auditar("Cuentas", "UPDATE", { idCuenta: c.idCuenta, estado: ESTADO.cuentaAbierta }, { idCuenta: c.idCuenta, estado: ESTADO.cuentaCerrada, total: t.total });
+    if (!cobro || !cobro.idComprobante) throw falla(500, "El servidor no devolvió el comprobante emitido.");
+
+    // Estado local: la mesa queda libre y sin cuenta, igual que en la base.
+    detalle.comprobantes = [cobro];
     mesa.cuenta = null;
-    const comp = detalle.comprobantes[0] || {};
+    mesa.estado = "libre";
+    mesa.estadoTexto = ESTADO.mesaLibre;
+
     return {
-      idComprobante: comp.idComprobante || null,
-      fechaApertura: c.fechaApertura,
-      fechaCierre,
-      total: t.total, base: t.base, inc: t.inc
+      idComprobante: cobro.idComprobante,
+      fechaApertura: cobro.fechaApertura || c.fechaApertura,
+      fechaCierre: cobro.fechaCierre || cobro.fecha,
+      total: num(cobro.total),
+      base: num(cobro.baseGravable),
+      inc: num(cobro.impuesto)
     };
   }
- 
+
   /**
    * Retira una mesa del salón (estado "Inactiva") sin borrarla. Se usa cuando la mesa tiene cuentas
    * asociadas: la base no permite eliminarla para conservar el historial de ventas.

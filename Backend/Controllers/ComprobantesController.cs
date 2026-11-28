@@ -157,6 +157,7 @@ namespace ElQuateDePatty.Controllers
                 existente.fecha = comprobantes.fecha;
                 existente.total = comprobantes.total;
                 existente.idMetodo = comprobantes.idMetodo;
+                existente.AplicarImpuesto();   // si cambia el total, la base y el INC se recalculan
 
                 var response = await comprobantesRepository
                     .PutComprobantes(existente);

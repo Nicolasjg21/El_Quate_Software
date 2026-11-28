@@ -59,6 +59,28 @@ public class ContextoYModelosTests
     }
 
     [Fact]
+    public void Comprobantes_UnaCuentaTieneUnSoloComprobante()
+    {
+        // La base rechaza un segundo comprobante para la misma cuenta (índice creado por el script 006).
+        var indices = Modelo().FindEntityType(typeof(Comprobantes))!.GetIndexes()
+            .Where(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "idCuenta" }))
+            .ToList();
+
+        indices.Should().ContainSingle();
+        indices[0].IsUnique.Should().BeTrue();
+        indices[0].GetDatabaseName().Should().Be("UX_Comprobantes_idCuenta");
+    }
+
+    [Fact]
+    public void Comprobantes_TasaDelImpuestoConCuatroDecimales()
+    {
+        var p = Modelo().FindEntityType(typeof(Comprobantes))!.FindProperty("tasaImpuesto")!;
+
+        p.GetPrecision().Should().Be(5);
+        p.GetScale().Should().Be(4);
+    }
+
+    [Fact]
     public void Relaciones_NingunaBorraEnCascada()
     {
         // Protege el historial: no se puede borrar un usuario, producto o cuenta y perder sus ventas en cadena.
@@ -73,6 +95,8 @@ public class ContextoYModelosTests
     [InlineData(typeof(Compras), "total")]
     [InlineData(typeof(Cuentas), "total")]
     [InlineData(typeof(Comprobantes), "total")]
+    [InlineData(typeof(Comprobantes), "baseGravable")]
+    [InlineData(typeof(Comprobantes), "impuesto")]
     [InlineData(typeof(DetalleCompras), "precioCompra")]
     [InlineData(typeof(DetallePedidos), "precioUnitario")]
     [InlineData(typeof(Productos), "precioVenta")]

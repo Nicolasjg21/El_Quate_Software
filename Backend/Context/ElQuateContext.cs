@@ -248,6 +248,23 @@ namespace ElQuateDePatty.Context
                 entity.Property(x => x.idMetodo)
                     .HasColumnName("idMetodo");
 
+                entity.Property(x => x.baseGravable)
+                    .HasColumnName("baseGravable")
+                    .HasPrecision(10, 2);
+
+                entity.Property(x => x.impuesto)
+                    .HasColumnName("impuesto")
+                    .HasPrecision(10, 2);
+
+                entity.Property(x => x.tasaImpuesto)
+                    .HasColumnName("tasaImpuesto")
+                    .HasPrecision(5, 4);
+
+                // Una cuenta se cobra una sola vez: la base rechaza un segundo comprobante (script 006).
+                entity.HasIndex(x => x.idCuenta)
+                    .IsUnique()
+                    .HasDatabaseName("UX_Comprobantes_idCuenta");
+
                 entity.HasOne(x => x.cuenta)
                     .WithMany(x => x.comprobantes)
                     .HasForeignKey(x => x.idCuenta)
