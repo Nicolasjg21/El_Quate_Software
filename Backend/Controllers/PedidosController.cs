@@ -37,14 +37,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var pedidos = await pedidosRepository.GetPedidos();
 
-                if (pedidos == null || pedidos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron pedidos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                pedidos ??= [];
 
                 return Ok(new
                 {

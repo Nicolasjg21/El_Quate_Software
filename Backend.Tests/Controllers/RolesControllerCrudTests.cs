@@ -43,13 +43,13 @@ public class RolesControllerCrudTests
     }
 
     [Fact]
-    public async Task GetRoles_ListaVacia_Retorna404()
+    public async Task GetRoles_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetRoles()).ReturnsAsync(new List<Roles>());
 
         var resultado = await sut.GetRoles();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

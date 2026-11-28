@@ -36,14 +36,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var proveedores = await proveedoresRepository.GetProveedores();
 
-                if (proveedores == null || proveedores.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron proveedores."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                proveedores ??= [];
 
                 return Ok(new
                 {

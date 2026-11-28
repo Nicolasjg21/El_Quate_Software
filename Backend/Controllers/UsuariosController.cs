@@ -82,14 +82,8 @@ namespace ElQuateDePatty.Controllers
 
                 var usuarios = await usuariosRepository.GetUsuarios();
 
-                if (usuarios == null || usuarios.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron usuarios."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                usuarios ??= [];
 
                 var data = new List<UsuarioConAccionesDTO>();
                 var rolesAdministrador = new Dictionary<int, bool>();

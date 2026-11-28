@@ -43,11 +43,11 @@ public class RolesPermisosControllerTests
     }
 
     [Fact]
-    public async Task GetRolesPermisos_ListaVacia_Retorna404()
+    public async Task GetRolesPermisos_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetRolesPermisos()).ReturnsAsync(new List<RolesPermisos>());
 
-        (await sut.GetRolesPermisos()).Should().BeOfType<NotFoundObjectResult>();
+        (await sut.GetRolesPermisos()).Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

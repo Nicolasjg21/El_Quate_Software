@@ -42,13 +42,13 @@ public class DetallePedidosControllerCrudTests
     }
 
     [Fact]
-    public async Task GetDetallePedidos_ListaVacia_Retorna404()
+    public async Task GetDetallePedidos_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetDetallePedidos(It.IsAny<int?>())).ReturnsAsync(new List<DetallePedidos>());
 
         var resultado = await sut.GetDetallePedidos();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.DTOs.Productos;
 using ElQuateDePatty.DTOs.Proveedores;
+using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories;
 using FluentAssertions;
 using Xunit;
@@ -249,11 +250,28 @@ public class RepositoriosConsultasTests
         lista.Should().HaveCount(3);
         var aguila = lista.Single(p => p.idProducto == 1);
         aguila.stockActual.Should().Be(16);              // último movimiento del kardex
-        aguila.costoPromedio.Should().Be(3000m);         // promedio de precios de compra
+        aguila.costoPromedio.Should().Be(3000m);         // costo promedio del último movimiento del kardex
         aguila.proveedor.Should().Be("Bavaria");
         aguila.categoria.Should().Be("Cervezas");
         aguila.stockBajo.Should().BeFalse();             // 16 > mínimo 10
         lista.Single(p => p.idProducto == 2).stockBajo.Should().BeTrue();   // 2 <= mínimo 2 (valor límite)
+    }
+
+    [Fact]
+    public async Task FiltrarProductos_CostoEsElPromedioDelUltimoMovimiento()
+    {
+        using var ctx = EscenarioBar.Crear();
+        ctx.kardex.Add(new Kardex
+        {
+            idMovimiento = 50, idProducto = 1, tipoMovimiento = "ENTRADA", cantidad = 24, stockAnterior = 16, stockNuevo = 40,
+            fecha = new DateTime(2026, 11, 20), idUsuario = 1, motivo = "Compra CMP-000009", costoUnitario = 3500m, costoPromedio = 3300m
+        });
+        await ctx.SaveChangesAsync();
+
+        var aguila = (await new ProductosRepository(ctx).FiltrarProductos(new ProductoFiltroDTO())).Single(p => p.idProducto == 1);
+
+        aguila.costoPromedio.Should().Be(3300m);
+        aguila.stockActual.Should().Be(40);
     }
 
     [Fact]

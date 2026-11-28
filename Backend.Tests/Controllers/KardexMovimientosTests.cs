@@ -140,6 +140,49 @@ public class KardexMovimientosTests
         (await sut.PostKardex(Mov("ENTRADA"))).Should().BeOfType<ConflictObjectResult>();
     }
 
+    // ---------- Costo de compra (costo promedio ponderado) ----------
+
+    [Fact]
+    public async Task PostKardex_EntradaConCostoSinPermiso_Retorna403SinRegistrar()
+    {
+        var dto = Mov("ENTRADA");
+        dto.costoUnitario = 3000m;
+
+        (await sut.PostKardex(dto)).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(403);
+        repoMock.Verify(r => r.RegistrarMovimiento(It.IsAny<Kardex>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PostKardex_EntradaConCostoYPermiso_PasaElCostoAlRepositorio()
+    {
+        PuedeAjustar(true);
+        var dto = Mov("ENTRADA");
+        dto.costoUnitario = 3121m;
+
+        (await sut.PostKardex(dto)).Should().BeOfType<OkObjectResult>();
+        repoMock.Verify(r => r.RegistrarMovimiento(It.Is<Kardex>(k => k.costoEntrada == 3121m)), Times.Once);
+    }
+
+    [Fact]
+    public async Task PostKardex_EntradaSinCosto_NoPidePermisoYNoLlevaCosto()
+    {
+        (await sut.PostKardex(Mov("ENTRADA"))).Should().BeOfType<OkObjectResult>();
+        repoMock.Verify(r => r.RegistrarMovimiento(It.Is<Kardex>(k => k.costoEntrada == null)), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("SALIDA")]
+    [InlineData("AJUSTE")]
+    public async Task PostKardex_CostoEnUnMovimientoQueNoEsEntrada_Retorna400(string tipo)
+    {
+        PuedeAjustar(true);
+        var dto = Mov(tipo, stockNuevo: 3);
+        dto.costoUnitario = 3000m;
+
+        (await sut.PostKardex(dto)).Should().BeOfType<BadRequestObjectResult>();
+        repoMock.Verify(r => r.RegistrarMovimiento(It.IsAny<Kardex>()), Times.Never);
+    }
+
     [Fact]
     public async Task PostKardex_ErrorInesperado_Retorna500()
     {

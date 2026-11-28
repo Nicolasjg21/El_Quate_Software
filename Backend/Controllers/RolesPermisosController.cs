@@ -35,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var rolesPermisos = await rolesPermisosRepository.GetRolesPermisos();
 
-                if (rolesPermisos == null || rolesPermisos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron relaciones entre roles y permisos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                rolesPermisos ??= [];
 
                 return Ok(new
                 {

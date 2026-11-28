@@ -446,6 +446,13 @@ namespace ElQuateDePatty.Context
                 entity.Property(x => x.idUsuario)
                     .HasColumnName("idUsuario");
 
+                // Creadas por Backend/Database/005_costo_promedio.sql
+                entity.Property(x => x.costoUnitario)
+                    .HasColumnName("costoUnitario");
+
+                entity.Property(x => x.costoPromedio)
+                    .HasColumnName("costoPromedio");
+
                 entity.HasOne(x => x.producto)
                     .WithMany(x => x.movimientosKardex)
                     .HasForeignKey(x => x.idProducto)

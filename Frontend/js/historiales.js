@@ -375,7 +375,7 @@ function renderOrdenes() {
   $("tabla-ordenes-pie").textContent = `Mostrando ${filtradas.length} de ${todas.length} órdenes · Total cobrado: ${formatoCOP(totalCOP)}`;
 }
 
-/** Muestra el detalle de una orden: datos generales, líneas, subtotal, IVA y total. */
+/** Muestra el detalle de una orden: datos generales, líneas, base, INC incluido y total. */
 function abrirDetalleOrden(id) {
   const orden = histEstado.ordenes.todas.find(o => o.id === id);
   if (!orden) { mostrarToast("No fue posible cargar la orden seleccionada.", true); return; }
@@ -397,8 +397,8 @@ function abrirDetalleOrden(id) {
       <td class="col-derecha">${formatoCOP(item.precioUnitario)}</td>
       <td class="col-derecha">${formatoCOP(item.cantidad * item.precioUnitario)}</td>
     </tr>`).join("") : `<tr><td colspan="4" class="col-centro">Sin productos registrados.</td></tr>`;
-  $("detalle-orden-subtotal").textContent = formatoCOP(orden.subtotal);
-  $("detalle-orden-impuesto").textContent = formatoCOP(orden.iva);
+  $("detalle-orden-subtotal").textContent = formatoCOP(orden.base);
+  $("detalle-orden-impuesto").textContent = formatoCOP(orden.inc);
   $("detalle-orden-total").textContent = formatoCOP(orden.total);
   abrirModal("overlay-detalle-orden");
 }
@@ -409,7 +409,7 @@ function abrirComprobante(orden) {
     numero: orden.idComprobante, borrador: false,
     mesa: orden.mesa, atendio: orden.mesero, cobro: "",
     apertura: orden.apertura, cierre: orden.cierre, metodo: orden.metodoPago,
-    items: orden.items, subtotal: orden.subtotal, iva: orden.iva, total: orden.total, tasaIva: Negocio.IVA
+    items: orden.items, total: orden.total, base: orden.base, inc: orden.inc, tasaInc: Negocio.INC
   };
   $("comprobante-contenido").innerHTML = Comprobante.html(histEstado.comprobanteAbierto);
   abrirModal("overlay-comprobante");
@@ -540,14 +540,14 @@ function lineasFiltradas(docs, f) {
  */
 const REPORTES = {
   ordenes: [
-    { id: "resumen", titulo: "Resumen de órdenes", desc: "Una fila por orden: comprobante, mesa, quién atendió, apertura, cierre, método, subtotal, IVA y total.",
+    { id: "resumen", titulo: "Resumen de órdenes", desc: "Una fila por orden: comprobante, mesa, quién atendió, apertura, cierre, método, base, INC incluido y total.",
       generar(docs) {
         const filas = docs.map(o => [o.id, o.idComprobante ? String(o.idComprobante).padStart(6, "0") : "", o.mesa, o.mesero,
           fechaLarga(o.apertura), fechaLarga(o.fechaHora), o.metodoPago, o.items.reduce((a, i) => a + i.cantidad, 0),
-          pesos(o.subtotal), pesos(o.iva), pesos(o.total)]);
+          pesos(o.base), pesos(o.inc), pesos(o.total)]);
         const s = (k) => docs.reduce((a, o) => a + pesos(o[k]), 0);
-        filas.push(["TOTAL", "", "", "", "", "", `${docs.length} órdenes`, docs.reduce((a, o) => a + o.items.reduce((b, i) => b + i.cantidad, 0), 0), s("subtotal"), s("iva"), s("total")]);
-        return { cab: ["ID Orden", "N.º Comprobante", "Mesa", "Atendió", "Apertura", "Pago (cierre)", "Método de pago", "Unidades", "Subtotal (COP)", "IVA (COP)", "Total (COP)"], filas };
+        filas.push(["TOTAL", "", "", "", "", "", `${docs.length} órdenes`, docs.reduce((a, o) => a + o.items.reduce((b, i) => b + i.cantidad, 0), 0), s("base"), s("inc"), s("total")]);
+        return { cab: ["ID Orden", "N.º Comprobante", "Mesa", "Atendió", "Apertura", "Pago (cierre)", "Método de pago", "Unidades", "Base sin INC (COP)", "INC 8 % (COP)", "Total (COP)"], filas };
       } },
     { id: "detalle", titulo: "Detalle de productos vendidos", desc: "Una fila por producto de cada orden. Si filtró por producto o categoría, solo incluye esas líneas.",
       generar(docs, f) {
@@ -555,9 +555,9 @@ const REPORTES = {
         const filas = lineas.map(({ doc: o, item: i }) => [o.id, fechaLarga(o.fechaHora), o.mesa, o.mesero, o.metodoPago,
           i.nombre, i.categoria, i.cantidad, pesos(i.precioUnitario), pesos(i.cantidad * i.precioUnitario)]);
         filas.push(["TOTAL", "", "", "", "", "", "", lineas.reduce((a, l) => a + l.item.cantidad, 0), "", lineas.reduce((a, l) => a + pesos(l.item.cantidad * l.item.precioUnitario), 0)]);
-        return { cab: ["ID Orden", "Fecha de pago", "Mesa", "Atendió", "Método de pago", "Producto", "Categoría", "Cantidad", "Precio unitario (COP)", "Subtotal sin IVA (COP)"], filas };
+        return { cab: ["ID Orden", "Fecha de pago", "Mesa", "Atendió", "Método de pago", "Producto", "Categoría", "Cantidad", "Precio unitario (COP)", "Subtotal con INC (COP)"], filas };
       } },
-    { id: "producto", titulo: "Ventas por producto", desc: "Unidades vendidas, ventas sin IVA y participación de cada producto.",
+    { id: "producto", titulo: "Ventas por producto", desc: "Unidades vendidas, ventas (INC incluido) y participación de cada producto.",
       generar(docs, f) {
         const g = agrupar(lineasFiltradas(docs, f), l => l.item.idProducto,
           l => ({ n: l.item.nombre, c: l.item.categoria, u: 0, v: 0, o: new Set() }),
@@ -566,9 +566,9 @@ const REPORTES = {
         g.sort((a, b) => b.v - a.v);
         const filas = g.map(x => [x.n, x.c, x.u, pesos(x.v), porcentaje(x.v, total), x.o.size]);
         filas.push(["TOTAL", "", g.reduce((a, x) => a + x.u, 0), pesos(total), "100", ""]);
-        return { cab: ["Producto", "Categoría", "Unidades vendidas", "Ventas sin IVA (COP)", "Participación (%)", "Órdenes en que aparece"], filas };
+        return { cab: ["Producto", "Categoría", "Unidades vendidas", "Ventas con INC (COP)", "Participación (%)", "Órdenes en que aparece"], filas };
       } },
-    { id: "categoria", titulo: "Ventas por categoría", desc: "Unidades y ventas sin IVA agrupadas por categoría del catálogo.",
+    { id: "categoria", titulo: "Ventas por categoría", desc: "Unidades y ventas (INC incluido) agrupadas por categoría del catálogo.",
       generar(docs, f) {
         const g = agrupar(lineasFiltradas(docs, f), l => l.item.categoria, l => ({ c: l.item.categoria, u: 0, v: 0 }),
           (a, l) => { a.u += l.item.cantidad; a.v += l.item.cantidad * l.item.precioUnitario; });
@@ -576,20 +576,20 @@ const REPORTES = {
         g.sort((a, b) => b.v - a.v);
         const filas = g.map(x => [x.c, x.u, pesos(x.v), porcentaje(x.v, total)]);
         filas.push(["TOTAL", g.reduce((a, x) => a + x.u, 0), pesos(total), "100"]);
-        return { cab: ["Categoría", "Unidades vendidas", "Ventas sin IVA (COP)", "Participación (%)"], filas };
+        return { cab: ["Categoría", "Unidades vendidas", "Ventas con INC (COP)", "Participación (%)"], filas };
       } },
     { id: "metodo", titulo: "Ventas por método de pago", desc: "Cuántas órdenes y cuánto dinero entró por cada método (cuadre de caja).", generar: (docs) => porDimension(docs, o => o.metodoPago, "Método de pago") },
     { id: "mesero", titulo: "Ventas por persona que atendió", desc: "Órdenes, total cobrado y ticket promedio por mesero.", generar: (docs) => porDimension(docs, o => o.mesero, "Atendió") },
     { id: "mesa", titulo: "Ventas por mesa", desc: "Órdenes, total y ticket promedio por mesa.", generar: (docs) => porDimension(docs, o => `Mesa ${o.mesa}`, "Mesa") },
-    { id: "dia", titulo: "Ventas por día", desc: "Cierre diario: órdenes, subtotal, IVA, total y ticket promedio.",
+    { id: "dia", titulo: "Ventas por día", desc: "Cierre diario: órdenes, base, INC incluido, total y ticket promedio.",
       generar(docs) {
         const g = agrupar(docs, o => diaISO(o.fechaHora), o => ({ d: fechaCorta(o.fechaHora), k: diaISO(o.fechaHora), n: 0, s: 0, i: 0, t: 0 }),
-          (a, o) => { a.n++; a.s += pesos(o.subtotal); a.i += pesos(o.iva); a.t += pesos(o.total); });
+          (a, o) => { a.n++; a.s += pesos(o.base); a.i += pesos(o.inc); a.t += pesos(o.total); });
         g.sort((a, b) => a.k.localeCompare(b.k));
         const filas = g.map(x => [x.d, x.n, x.s, x.i, x.t, x.n ? Math.round(x.t / x.n) : 0]);
         const T = (k) => g.reduce((a, x) => a + x[k], 0);
         filas.push(["TOTAL", T("n"), T("s"), T("i"), T("t"), T("n") ? Math.round(T("t") / T("n")) : 0]);
-        return { cab: ["Fecha", "Órdenes", "Subtotal (COP)", "IVA (COP)", "Total (COP)", "Ticket promedio (COP)"], filas };
+        return { cab: ["Fecha", "Órdenes", "Base sin INC (COP)", "INC 8 % (COP)", "Total (COP)", "Ticket promedio (COP)"], filas };
       } },
     { id: "hora", titulo: "Ventas por franja horaria", desc: "Órdenes y total por hora del día: muestra las horas de mayor movimiento.",
       generar(docs) {

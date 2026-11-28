@@ -43,13 +43,13 @@ public class MetodosPagoControllerCrudTests
     }
 
     [Fact]
-    public async Task GetMetodosPago_ListaVacia_Retorna404()
+    public async Task GetMetodosPago_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetMetodosPago()).ReturnsAsync(new List<MetodosPago>());
 
         var resultado = await sut.GetMetodosPago();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

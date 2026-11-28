@@ -146,10 +146,10 @@ public class UsuariosControllerTests
     }
 
     [Fact]
-    public async Task GetUsuarios_ListaVacia_Retorna404()
+    public async Task GetUsuarios_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetUsuarios()).ReturnsAsync(new List<Usuarios>());
-        (await sut.GetUsuarios()).Should().BeOfType<NotFoundObjectResult>();
+        (await sut.GetUsuarios()).Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

@@ -43,13 +43,13 @@ public class PermisosControllerCrudTests
     }
 
     [Fact]
-    public async Task GetPermisos_ListaVacia_Retorna404()
+    public async Task GetPermisos_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetPermisos()).ReturnsAsync(new List<Permisos>());
 
         var resultado = await sut.GetPermisos();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

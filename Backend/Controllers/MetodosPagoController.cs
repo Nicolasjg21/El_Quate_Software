@@ -35,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var metodos = await metodosPagoRepository.GetMetodosPago();
 
-                if (metodos == null || metodos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron métodos de pago."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                metodos ??= [];
 
                 return Ok(new
                 {

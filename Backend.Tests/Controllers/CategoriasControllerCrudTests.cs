@@ -43,13 +43,13 @@ public class CategoriasControllerCrudTests
     }
 
     [Fact]
-    public async Task GetCategorias_ListaVacia_Retorna404()
+    public async Task GetCategorias_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetCategorias()).ReturnsAsync(new List<Categorias>());
 
         var resultado = await sut.GetCategorias();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

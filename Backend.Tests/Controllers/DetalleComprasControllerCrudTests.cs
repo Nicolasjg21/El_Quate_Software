@@ -42,13 +42,13 @@ public class DetalleComprasControllerCrudTests
     }
 
     [Fact]
-    public async Task GetDetalleCompras_ListaVacia_Retorna404()
+    public async Task GetDetalleCompras_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetDetalleCompras()).ReturnsAsync(new List<DetalleCompras>());
 
         var resultado = await sut.GetDetalleCompras();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

@@ -81,7 +81,7 @@
         { p: "¿Cómo vuelvo a imprimir un comprobante?",
           r: "En Historiales, pestaña Órdenes Pagadas, busque la orden y ábrala para ver e imprimir su comprobante." },
         { p: "¿El comprobante es una factura electrónica?",
-          r: "No. El comprobante es un documento interno del bar con el detalle, el IVA (19 %), el total y el método de pago." }
+          r: "No. El comprobante es un documento interno del bar con el detalle, el total y el método de pago. Los precios de la carta ya incluyen el impuesto al consumo (INC) del 8 %: el comprobante solo muestra cuánto de ese total corresponde al impuesto." }
       ]
     },
     {

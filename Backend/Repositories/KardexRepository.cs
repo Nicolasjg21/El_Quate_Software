@@ -2,6 +2,7 @@
 using ElQuateDePatty.Repositories.Interfaces;
 using ElQuateDePatty.Context;
 using Microsoft.EntityFrameworkCore;
+using ElQuateDePatty.Services;
 
 namespace ElQuateDePatty.Repositories
 {
@@ -38,6 +39,8 @@ namespace ElQuateDePatty.Repositories
         /// <item>stockAnterior: stockNuevo del último movimiento del producto (0 si no tiene).</item>
         /// <item>ENTRADA suma la cantidad, SALIDA la resta y AJUSTE fija el valor recibido en stockNuevo.</item>
         /// <item>La fecha es la del servidor; los valores de stock y fecha enviados por el cliente se ignoran.</item>
+        /// <item>costoUnitario y costoPromedio se calculan con el promedio ponderado móvil (CostoPromedio):
+        /// una ENTRADA con costo de compra lo recalcula; lo demás se valora al promedio vigente.</item>
         /// </list>
         /// Un bloqueo de aplicación por producto (sp_getapplock) atiende por turnos los movimientos
         /// simultáneos del mismo producto, de modo que cada uno parte del stock confirmado por el anterior.
@@ -62,14 +65,17 @@ namespace ElQuateDePatty.Repositories
                     IF @resultado < 0
                         THROW 50001, 'No fue posible reservar el stock del producto. Intente de nuevo.', 1;");
 
-                // Stock vigente: último movimiento del producto, con el mismo orden que usa Productos/Filtrar.
-                var anterior = await context.kardex
+                // Stock y costo vigentes: último movimiento del producto, con el mismo orden que usa Productos/Filtrar.
+                var ultimo = await context.kardex
                     .AsNoTracking()
                     .Where(k => k.idProducto == kardex.idProducto)
                     .OrderByDescending(k => k.fecha)
                     .ThenByDescending(k => k.idMovimiento)
-                    .Select(k => (int?)k.stockNuevo)
-                    .FirstOrDefaultAsync() ?? 0;
+                    .Select(k => new { k.stockNuevo, k.costoPromedio })
+                    .FirstOrDefaultAsync();
+
+                var anterior = ultimo?.stockNuevo ?? 0;
+                var promedioAnterior = ultimo?.costoPromedio ?? 0m;
 
                 var nuevo = kardex.tipoMovimiento switch
                 {
@@ -92,6 +98,10 @@ namespace ElQuateDePatty.Repositories
                 {
                     kardex.cantidad = Math.Abs(nuevo - anterior);
                 }
+
+                // Bajo el mismo bloqueo del producto: dos compras simultáneas no pueden pisarse el promedio.
+                (kardex.costoUnitario, kardex.costoPromedio) = CostoPromedio.Calcular(
+                    anterior, promedioAnterior, kardex.tipoMovimiento, kardex.cantidad, kardex.costoEntrada);
 
                 context.kardex.Add(kardex);
                 await context.SaveChangesAsync();

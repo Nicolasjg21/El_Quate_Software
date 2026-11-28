@@ -45,8 +45,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await mesasRepository.GetMesas();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de mesas." });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new { statusCode = 200, message = "Consulta de mesas realizada correctamente.", data = response.ToRespuestaDTO() });
             }
@@ -107,14 +107,8 @@ namespace ElQuateDePatty.Controllers
 
                 var response = await mesasRepository.GetMesasByEstado(estado);
 
-                if (response == null || response.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron mesas con el estado indicado."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {

@@ -82,10 +82,11 @@ public static class EscenarioBar
             new DetalleCompras { idDetalleCompra = 3, idCompra = 2, idProducto = 2, cantidad = 5, precioCompra = 40000m });
 
         ctx.kardex.AddRange(
-            Mov(1, 1, "ENTRADA", 24, 0, 24, new DateTime(2026, 11, 1)),
-            Mov(2, 1, "SALIDA", 8, 24, 16, Dia5),
-            Mov(3, 2, "ENTRADA", 5, 0, 5, new DateTime(2026, 11, 4)),
-            Mov(4, 2, "SALIDA", 3, 5, 2, Dia5));
+            // Costo promedio ponderado: el de la compra de cada producto (el producto 3 no tiene movimientos).
+            Mov(1, 1, "ENTRADA", 24, 0, 24, new DateTime(2026, 11, 1), 3000m),
+            Mov(2, 1, "SALIDA", 8, 24, 16, Dia5, 3000m),
+            Mov(3, 2, "ENTRADA", 5, 0, 5, new DateTime(2026, 11, 4), 40000m),
+            Mov(4, 2, "SALIDA", 3, 5, 2, Dia5, 40000m));
 
         ctx.SaveChanges();
         ctx.ChangeTracker.Clear();
@@ -98,9 +99,10 @@ public static class EscenarioBar
         telefono = "300", passwordHash = $"HASH-{id}", estado = activo, idRol = idRol, email = email
     };
 
-    private static Kardex Mov(int id, int idProducto, string tipo, int cantidad, int antes, int despues, DateTime fecha) => new()
+    private static Kardex Mov(int id, int idProducto, string tipo, int cantidad, int antes, int despues, DateTime fecha, decimal costo) => new()
     {
         idMovimiento = id, idProducto = idProducto, tipoMovimiento = tipo, cantidad = cantidad,
-        stockAnterior = antes, stockNuevo = despues, fecha = fecha, idUsuario = 1, motivo = "Prueba"
+        stockAnterior = antes, stockNuevo = despues, fecha = fecha, idUsuario = 1, motivo = "Prueba",
+        costoUnitario = costo, costoPromedio = costo
     };
 }

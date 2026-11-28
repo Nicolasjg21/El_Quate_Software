@@ -9,7 +9,7 @@ namespace Backend.Tests.Mappers;
 /// <summary>KardexMapper: cada campo llega a su destino, sin perder ni cruzar datos.</summary>
 public class KardexMapperTests
 {
-    private static Kardex Entidad() => new() { idMovimiento = 7, idProducto = 1, tipoMovimiento = "SALIDA", cantidad = 8, stockAnterior = 24, stockNuevo = 16, motivo = "Venta", fecha = new DateTime(2026, 11, 5, 21, 0, 0), idUsuario = 3 };
+    private static Kardex Entidad() => new() { idMovimiento = 7, idProducto = 1, tipoMovimiento = "SALIDA", cantidad = 8, stockAnterior = 24, stockNuevo = 16, motivo = "Venta", fecha = new DateTime(2026, 11, 5, 21, 0, 0), idUsuario = 3, costoUnitario = 3121m, costoPromedio = 3121m };
 
     [Fact]
     public void ToEntity_CopiaCadaCampoDelDTO()
@@ -42,6 +42,8 @@ public class KardexMapperTests
         dto.motivo.Should().Be("Venta");
         dto.fecha.Should().Be(new DateTime(2026, 11, 5, 21, 0, 0));
         dto.idUsuario.Should().Be(3);
+        dto.costoUnitario.Should().Be(3121m);
+        dto.costoPromedio.Should().Be(3121m);
     }
 
     [Fact]

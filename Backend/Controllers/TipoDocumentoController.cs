@@ -35,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var tipos = await tipoDocumentoRepository.GetTipoDocumento();
 
-                if (tipos == null || tipos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron tipos de documento."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                tipos ??= [];
 
                 return Ok(new
                 {

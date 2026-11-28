@@ -42,13 +42,13 @@ public class PedidosControllerCrudTests
     }
 
     [Fact]
-    public async Task GetPedidos_ListaVacia_Retorna404()
+    public async Task GetPedidos_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetPedidos()).ReturnsAsync(new List<Pedidos>());
 
         var resultado = await sut.GetPedidos();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

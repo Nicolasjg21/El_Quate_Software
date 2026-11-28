@@ -42,13 +42,13 @@ public class ComprobantesControllerCrudTests
     }
 
     [Fact]
-    public async Task GetComprobantes_ListaVacia_Retorna404()
+    public async Task GetComprobantes_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetComprobantes()).ReturnsAsync(new List<Comprobantes>());
 
         var resultado = await sut.GetComprobantes();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

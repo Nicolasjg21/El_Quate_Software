@@ -42,13 +42,13 @@ public class CuentasControllerCrudTests
     }
 
     [Fact]
-    public async Task GetCuentas_ListaVacia_Retorna404()
+    public async Task GetCuentas_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetCuentas(It.IsAny<string?>())).ReturnsAsync(new List<Cuentas>());
 
         var resultado = await sut.GetCuentas();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

@@ -35,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var permisos = await permisosRepository.GetPermisos();
 
-                if (permisos == null || permisos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron permisos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                permisos ??= [];
 
                 return Ok(new
                 {

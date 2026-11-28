@@ -43,13 +43,13 @@ public class TipoDocumentoControllerCrudTests
     }
 
     [Fact]
-    public async Task GetTipoDocumento_ListaVacia_Retorna404()
+    public async Task GetTipoDocumento_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetTipoDocumento()).ReturnsAsync(new List<TipoDocumento>());
 
         var resultado = await sut.GetTipoDocumento();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
