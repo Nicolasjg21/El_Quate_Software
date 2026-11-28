@@ -19,5 +19,9 @@ namespace ElQuateDePatty.DTOs.Kardex
         public DateTime fecha { get; set; }
 
         public int idUsuario { get; set; }
+
+        public decimal costoUnitario { get; set; }
+
+        public decimal costoPromedio { get; set; }
     }
 }

@@ -42,13 +42,13 @@ public class AuditoriasControllerCrudTests
     }
 
     [Fact]
-    public async Task GetAuditorias_ListaVacia_Retorna404()
+    public async Task GetAuditorias_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetAuditorias()).ReturnsAsync(new List<Auditorias>());
 
         var resultado = await sut.GetAuditorias();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

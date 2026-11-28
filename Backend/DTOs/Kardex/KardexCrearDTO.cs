@@ -21,6 +21,13 @@ namespace ElQuateDePatty.DTOs.Kardex
         [JsonRequired]
         public int stockNuevo { get; set; }
 
+        /// <summary>
+        /// Costo unitario de compra. Solo en una ENTRADA que viene de una compra; exige inventario.gestionar.
+        /// Sin costo, la entrada (por ejemplo, una devolución a bodega) se valora al promedio vigente.
+        /// </summary>
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "El campo costoUnitario debe estar entre 0 y 99999999.99.")]
+        public decimal? costoUnitario { get; set; }
+
         [StringLength(500, ErrorMessage = "El campo motivo no puede superar 500 caracteres.")]
         public string? motivo { get; set; }
 

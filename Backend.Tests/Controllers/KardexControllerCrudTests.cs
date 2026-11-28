@@ -42,13 +42,13 @@ public class KardexControllerCrudTests
     }
 
     [Fact]
-    public async Task GetKardex_ListaVacia_Retorna404()
+    public async Task GetKardex_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetKardex()).ReturnsAsync(new List<Kardex>());
 
         var resultado = await sut.GetKardex();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

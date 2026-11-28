@@ -325,8 +325,8 @@ function renderDetalle() {
       </tr>`).join("");
   }
 
-  $("detalle-subtotal").textContent = formatoCOP(t.subtotal);
-  $("detalle-iva").textContent = formatoCOP(t.iva);
+  $("detalle-base").textContent = formatoCOP(t.base);
+  $("detalle-inc").textContent = formatoCOP(t.inc);
   $("detalle-total").textContent = formatoCOP(t.total);
 
   const puedeCobrar = Auth.tiene("cobros.gestionar");
@@ -498,7 +498,7 @@ function datosComprobante(extra) {
     cierre: null,
     metodo: "",
     items: detalle.items.map(i => ({ nombre: nombreProducto(i.idProducto), cantidad: i.cantidad, precioUnitario: i.precioUnitario })),
-    subtotal: t.subtotal, iva: t.iva, total: t.total, tasaIva: Negocio.IVA
+    total: t.total, base: t.base, inc: t.inc, tasaInc: Negocio.INC
   }, extra || {});
 }
 
@@ -587,9 +587,9 @@ async function confirmarCobro() {
     numero: resultado && resultado.idComprobante,
     apertura: (resultado && resultado.fechaApertura) || previo.apertura,
     cierre: (resultado && resultado.fechaCierre) || new Date(),
-    subtotal: resultado ? resultado.subtotal : previo.subtotal,
-    iva: resultado ? resultado.iva : previo.iva,
-    total: resultado ? resultado.total : previo.total
+    total: resultado ? resultado.total : previo.total,
+    base: resultado ? resultado.base : previo.base,
+    inc: resultado ? resultado.inc : previo.inc
   });
   $("cobro-comprobante").innerHTML = Comprobante.html(comprobanteEmitido);
   modoCobro(true);

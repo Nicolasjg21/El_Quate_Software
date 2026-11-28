@@ -38,12 +38,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await categoriasRepository.GetCategorias();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new
-                    {
-                        statusCode = StatusCodes.Status404NotFound,
-                        message = "No se encontró información de categorías."
-                    });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {

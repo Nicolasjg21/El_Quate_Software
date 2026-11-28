@@ -43,13 +43,13 @@ public class ProductosControllerCrudTests
     }
 
     [Fact]
-    public async Task GetProductos_ListaVacia_Retorna404()
+    public async Task GetProductos_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetProductos()).ReturnsAsync(new List<Productos>());
 
         var resultado = await sut.GetProductos();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

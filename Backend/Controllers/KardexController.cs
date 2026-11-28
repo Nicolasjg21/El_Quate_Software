@@ -41,8 +41,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await kardexRepository.GetKardex();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información del kardex." });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new { statusCode = 200, message = "Consulta de kardex realizada correctamente.", data = response.ToRespuestaDTO() });
             }
@@ -135,9 +135,23 @@ namespace ElQuateDePatty.Controllers
                     return BadRequest(new { statusCode = 400, message = "La cantidad del movimiento debe ser mayor que cero." });
                 }
 
+                if (dto.costoUnitario.HasValue)
+                {
+                    if (tipo != "ENTRADA")
+                        return BadRequest(new { statusCode = 400, message = "El costo unitario solo aplica a una ENTRADA de compra." });
+
+                    // El costo de compra cambia el costo promedio del inventario: es una operación administrativa.
+                    var autorizadoCosto = (await authorizationService.AuthorizeAsync(
+                        User, PoliticasAutorizacion.Permiso(PermisosSistema.inventarioGestionar))).Succeeded;
+
+                    if (!autorizadoCosto)
+                        return StatusCode(403, new { statusCode = 403, message = "No tiene permiso para registrar el costo de una compra." });
+                }
+
                 var kardex = dto.ToEntity();
                 kardex.tipoMovimiento = tipo;
                 kardex.idUsuario = idUsuarioActual.Value;
+                kardex.costoEntrada = dto.costoUnitario;
 
                 // stockAnterior, stockNuevo (salvo en AJUSTE) y fecha se calculan en el servidor.
                 var (registrado, stock) = await kardexRepository.RegistrarMovimiento(kardex);

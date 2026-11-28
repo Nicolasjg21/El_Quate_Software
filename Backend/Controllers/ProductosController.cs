@@ -36,14 +36,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var productos = await productosRepository.GetProductos();
 
-                if (productos == null || productos.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron productos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                productos ??= [];
 
                 return Ok(new
                 {

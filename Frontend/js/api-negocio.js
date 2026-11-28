@@ -14,8 +14,12 @@
 (function () {
   "use strict";
  
-  /** Tarifa de IVA aplicada a las cuentas. Los valores se manejan en pesos colombianos (COP). */
-  const IVA = 0.19;
+  /**
+   * Impuesto Nacional al Consumo (INC) de bares y restaurantes. Los precios de la carta YA lo incluyen:
+   * el cliente paga exactamente la suma de los precios y el comprobante solo desglosa cuánto es impuesto.
+   * Los valores se manejan en pesos colombianos (COP).
+   */
+  const INC = 0.08;
  
   /** Valores de estado tal como se almacenan en Mesas.estado, Cuentas.estado y Pedidos.estadoPedido. */
   const ESTADO = {
@@ -53,14 +57,17 @@
   }
  
   /**
-   * Totales de una cuenta: subtotal, IVA (redondeado al peso) y total.
+   * Totales de una cuenta con el INC incluido en los precios.
+   *   total = suma de los precios de carta (lo que paga el cliente; no se le suma nada)
+   *   base  = total / (1 + INC), redondeada al peso
+   *   inc   = total - base (así base + inc es siempre exactamente el total)
    * @param {Array<{cantidad:number, precioUnitario:number}>} items
-   * @returns {{subtotal:number, iva:number, total:number}}
+   * @returns {{total:number, base:number, inc:number}}
    */
   function totales(items) {
-    const subtotal = items.reduce((a, i) => a + num(i.cantidad) * num(i.precioUnitario), 0);
-    const iva = Math.round(subtotal * IVA);
-    return { subtotal, iva, total: subtotal + iva };
+    const total = items.reduce((a, i) => a + num(i.cantidad) * num(i.precioUnitario), 0);
+    const base = Math.round(total / (1 + INC));
+    return { total, base, inc: total - base };
   }
  
   /* ==================== Catálogos ==================== */
@@ -127,12 +134,17 @@
  
   /* ==================== Kardex ==================== */
  
-  /** Registra un movimiento de inventario (ENTRADA, SALIDA o AJUSTE). El Backend asigna el usuario. */
-  function registrarKardex(idProducto, tipoMovimiento, cantidad, stockAnterior, stockNuevo, motivo) {
+  /**
+   * Registra un movimiento de inventario (ENTRADA, SALIDA o AJUSTE). El Backend asigna el usuario,
+   * calcula el stock y el costo promedio ponderado.
+   * @param {number} [costoUnitario] Solo en una ENTRADA de compra: costo con que se recalcula el promedio.
+   */
+  function registrarKardex(idProducto, tipoMovimiento, cantidad, stockAnterior, stockNuevo, motivo, costoUnitario) {
     return Api.post("api/Kardex/PostKardex", {
       idProducto, tipoMovimiento, cantidad, stockAnterior, stockNuevo,
       motivo: motivo ? String(motivo).slice(0, 500) : null,
-      fecha: ahora()
+      fecha: ahora(),
+      costoUnitario: costoUnitario === undefined || costoUnitario === null ? null : Number(costoUnitario)
     });
   }
  
@@ -174,8 +186,8 @@
    * @returns {Promise<number>} Stock resultante, tomado de la respuesta del Backend.
    * @throws 409 si el stock disponible no alcanza.
    */
-  async function moverStock(idProducto, delta, motivo) {
-    const r = await registrarKardex(idProducto, delta < 0 ? "SALIDA" : "ENTRADA", Math.abs(delta), 0, 0, motivo);
+  async function moverStock(idProducto, delta, motivo, costoUnitario) {
+    const r = await registrarKardex(idProducto, delta < 0 ? "SALIDA" : "ENTRADA", Math.abs(delta), 0, 0, motivo, delta > 0 ? costoUnitario : undefined);
     const movimiento = datos(r);
     return num(movimiento && movimiento.stockNuevo);
   }
@@ -343,7 +355,7 @@
     Api.auditar("Mesas", "UPDATE", { numeroMesa: mesa.numero, estado: anterior }, { numeroMesa: mesa.numero, estado });
   }
  
-  /** Recalcula y guarda el total de la cuenta (con IVA). */
+  /** Recalcula y guarda el total de la cuenta (precios de carta, INC incluido). */
   async function sincronizarCuenta(detalle) {
     const c = detalle.cuenta;
     const t = totales(detalle.items);
@@ -472,7 +484,7 @@
    * Registra el pago: Comprobante → Cuenta cerrada (con fecha de cierre) → Pedidos pagados → Mesa libre.
    * Es reintentable: si el comprobante ya existe, no se duplica.
    * @param {number} idMetodo Método con el que pagó el cliente.
-   * @returns {Promise<{idComprobante:number|null, fechaApertura:string, fechaCierre:string, subtotal:number, iva:number, total:number}>}
+   * @returns {Promise<{idComprobante:number|null, fechaApertura:string, fechaCierre:string, total:number, base:number, inc:number}>}
    */
   async function cobrar(mesa, detalle, idMetodo) {
     if (!detalle.items.length || !detalle.cuenta) throw falla(400, "La mesa no tiene una cuenta con productos para cobrar.");
@@ -507,7 +519,7 @@
       idComprobante: comp.idComprobante || null,
       fechaApertura: c.fechaApertura,
       fechaCierre,
-      subtotal: t.subtotal, iva: t.iva, total: t.total
+      total: t.total, base: t.base, inc: t.inc
     };
   }
  
@@ -573,7 +585,7 @@
   }
  
   /**
-   * Órdenes pagadas con sus líneas (producto, categoría, cantidad y precio), subtotal e IVA.
+   * Órdenes pagadas con sus líneas (producto, categoría, cantidad y precio), base e INC incluido.
    * Base de los filtros y reportes de Historiales.
    * @returns {Promise<{ordenes:Array<object>, productos:Array<object>}>}
    */
@@ -599,9 +611,10 @@
           cantidad: num(d.cantidad), precioUnitario: num(d.precioUnitario)
         });
       }));
-      const t = totales(o.items);
-      o.subtotal = t.subtotal;
-      o.iva = t.iva;
+      // El total cobrado es el del comprobante; base e INC se desglosan a partir de él.
+      const t = totales([{ cantidad: 1, precioUnitario: num(o.total) }]);
+      o.base = t.base;
+      o.inc = t.inc;
     });
     return { ordenes, productos: prods };
   }
@@ -625,7 +638,7 @@
   /** Identificador visible de una compra: CMP-000123. */
   const idCompraTexto = (id) => "CMP-" + String(id).padStart(6, "0");
  
-  /** Compras con proveedor y líneas de detalle. Costos en COP, sin IVA. */
+  /** Compras con proveedor y líneas de detalle. Costos en COP, tal como los factura el proveedor. */
   async function listarCompras() {
     const [compras, provs, detalles, prods] = await Promise.all([
       Api.lista("api/Compras/GetCompras"),
@@ -683,7 +696,8 @@
  
     const aviso = [];
     for (const it of items) {
-      try { await moverStock(it.idProducto, it.cantidad, `Compra ${idCompraTexto(compra.idCompra)}`); }
+      // La entrada lleva el costo de compra: el servidor recalcula el costo promedio ponderado.
+      try { await moverStock(it.idProducto, it.cantidad, `Compra ${idCompraTexto(compra.idCompra)}`, it.costoUnitario); }
       catch (e) { aviso.push(`No se pudo actualizar el stock del producto #${it.idProducto}: ${e && e.mensaje ? e.mensaje : "error"}`); }
     }
     Api.auditar("Compras", "INSERT", null, { idCompra: compra.idCompra, idProveedor, total, productos: items.length });
@@ -704,7 +718,7 @@
       });
   }
  
-  /** Consumo por producto y por categoría de los pedidos pagados del período, antes de IVA. */
+  /** Consumo por producto y por categoría de los pedidos pagados del período (precios de carta, INC incluido). */
   async function consumoPeriodo(desde, hasta) {
     const [hist, detalles, prods] = await Promise.all([
       Api.get("api/Pedidos/Historial", { fechaDesde: desde || undefined, fechaHasta: hasta || undefined }).then((r) => (r && r.data) || []),
@@ -733,7 +747,7 @@
  
   /** API pública de la capa de negocio. */
   window.Negocio = {
-    IVA, ESTADO, norm, totales, claveEstadoMesa,
+    INC, ESTADO, norm, totales, claveEstadoMesa,
     productos, categorias, proveedores, metodosPago, crearCategoria, actualizarCategoria, eliminarCategoria, crearMetodoPago,
     ajustarStock, crearProducto, actualizarProducto, eliminarProducto,
     cargarMesas, sincronizarEstadosMesas, cargarDetalle, agregarProducto, cambiarCantidad, quitarItem,

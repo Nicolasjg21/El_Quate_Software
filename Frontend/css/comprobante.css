@@ -71,3 +71,6 @@
 @media (max-width: 560px) {
   .cpb-datos { grid-template-columns: 1fr; }
 }
+
+/* Desglose del INC, que va incluido en el total (no se suma). */
+.cpb-desglose { font-size: 12px; color: var(--texto-secundario, #5c6366); }

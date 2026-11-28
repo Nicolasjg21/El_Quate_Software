@@ -31,7 +31,9 @@ namespace ElQuateDePatty.Mappers
                 stockNuevo = entidad.stockNuevo,
                 motivo = entidad.motivo,
                 fecha = entidad.fecha,
-                idUsuario = entidad.idUsuario
+                idUsuario = entidad.idUsuario,
+                costoUnitario = entidad.costoUnitario,
+                costoPromedio = entidad.costoPromedio
             };
         }
 

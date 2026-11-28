@@ -43,13 +43,13 @@ public class ProveedoresControllerCrudTests
     }
 
     [Fact]
-    public async Task GetProveedores_ListaVacia_Retorna404()
+    public async Task GetProveedores_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetProveedores()).ReturnsAsync(new List<Proveedores>());
 
         var resultado = await sut.GetProveedores();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

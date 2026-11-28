@@ -44,13 +44,13 @@ public class ConsultasEspecialesTests
     }
 
     [Fact]
-    public async Task GetMesasByEstado_NingunaEnEseEstado_Retorna404()
+    public async Task GetMesasByEstado_NingunaEnEseEstado_Retorna200ConListaVacia()
     {
         var repo = new Mock<IMesasRepository>();
         repo.Setup(r => r.GetMesasByEstado("Ocupada")).ReturnsAsync(new List<Mesas>());
         var sut = new MesasController(repo.Object, new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>().Object, NullLogger<MesasController>.Instance) { ControllerContext = Contexto() };
 
-        (await sut.GetMesasByEstado("Ocupada")).Should().BeOfType<NotFoundObjectResult>();
+        (await sut.GetMesasByEstado("Ocupada")).Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

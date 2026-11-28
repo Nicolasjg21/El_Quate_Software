@@ -50,13 +50,13 @@ public class MesasControllerCrudTests
     }
 
     [Fact]
-    public async Task GetMesas_ListaVacia_Retorna404()
+    public async Task GetMesas_ListaVacia_Retorna200ConListaVacia()
     {
         repoMock.Setup(r => r.GetMesas()).ReturnsAsync(new List<Mesas>());
 
         var resultado = await sut.GetMesas();
 
-        resultado.Should().BeOfType<NotFoundObjectResult>();
+        resultado.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

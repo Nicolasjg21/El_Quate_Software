@@ -4,7 +4,7 @@
  *   Indicadores del período (ventas, órdenes, ticket promedio, productos vendidos) con variación
  *   frente al período anterior equivalente, tendencia, consumo por categoría y producto, horas de
  *   mayor venta, métodos de pago y órdenes recientes. Exporta el resumen a CSV.
- *   Ventas = total cobrado en comprobantes (incluye IVA); consumo = ventas antes de IVA.
+ *   Ventas = total cobrado en comprobantes (INC incluido); consumo = base sin INC.
  * @requires api-negocio.js, data.js, auth.js
  *
  * Endpoints: api/Analiticas/Ventas, api/Pedidos/Historial, api/Pedidos/filtrar,
@@ -198,7 +198,7 @@
       kpi("Órdenes Totales", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18" /><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25" /><circle cx="18" cy="20" r="2" /><circle cx="8" cy="20" r="2" /></svg>', fmtNum(ventas.totalVentas), ventas.totalVentas, p ? p.totalVentas : null) +
       kpi("Valor Promedio de Orden", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></svg>', formatoCOP(ventas.promedioVenta), ventas.promedioVenta, p ? p.promedioVenta : null) +
       kpi("Productos Vendidos", '<svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1" /><path d="M9 12v6" /><path d="M13 12v6" /><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z" /><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" /></svg>', fmtNum(ventas.totalProductosVendidos), ventas.totalProductosVendidos, p ? p.totalProductosVendidos : null) +
-      `</section><p class="nota">Ventas = total cobrado en los comprobantes del período (incluye IVA). Las variaciones comparan contra el tramo equivalente del período anterior.</p>`;
+      `</section><p class="nota">Ventas = total cobrado en los comprobantes del período (INC del 8 % incluido en los precios). Las variaciones comparan contra el tramo equivalente del período anterior.</p>`;
 
     return kpis + panelTendencia(d) +
       `<div class="fila fila--b">${panelCategorias(d)}${panelProductos(d)}</div>` +
@@ -317,7 +317,7 @@
       `<li class="cat ${i === 0 ? "top" : ""}"><div class="cat-linea"><span class="cat-nombre">${esc(c.nombre)}</span><span class="cat-valor">${formatoCOP(c.ingresos)}</span></div>` +
       `<div class="cat-barra"><div class="pista"><i style="width:${pct(c.ingresos, max).toFixed(1)}%"></i></div><span class="cat-pct">${fmtPct(pct(c.ingresos, total))}</span></div></li>`).join("") + `</ul>`
       : `<div class="estado estado--vacio"><p class="estado-titulo">Sin consumo registrado en el período.</p></div>`;
-    return `<article class="panel panel--cat"><div class="panel-cab"><div><h2 class="panel-titulo">Ingresos por Categoría</h2><p class="panel-desc">Consumo por categoría del catálogo (COP, antes de IVA)</p></div><span class="panel-per">${esc(NOMBRE_PERIODO[d.clave])}</span></div>${lista}` +
+    return `<article class="panel panel--cat"><div class="panel-cab"><div><h2 class="panel-titulo">Ingresos por Categoría</h2><p class="panel-desc">Ventas por categoría del catálogo (COP, INC incluido)</p></div><span class="panel-per">${esc(NOMBRE_PERIODO[d.clave])}</span></div>${lista}` +
       `<div class="cats-total"><span>Total consumo</span><strong>${formatoCOP(total)}</strong></div></article>`;
   }
 
@@ -391,13 +391,13 @@
   function panelRecientes(d) {
     const rec = [...d.enPeriodo].sort((a, b) => String(b.fechaHora).localeCompare(String(a.fechaHora))).slice(0, 10);
     const filas = rec.map((o) => {
-      const consumo = Math.round(o.total / (1 + Negocio.IVA));
+      const consumo = Negocio.totales([{ cantidad: 1, precioUnitario: o.total }]).base;
       return `<tr><td class="col-mono">${esc(o.id)}</td><td class="col-fecha">${fmtDiaHora(new Date(o.fechaHora))}</td><td class="col-centro">${esc(o.mesa)}</td><td>${esc(o.mesero)}</td>` +
         `<td class="col-derecha">${formatoCOP(consumo)}</td><td class="col-derecha">${formatoCOP(o.total)}</td>` +
         `<td class="col-centro"><span class="metodo-pago metodo-pago--${claseMetodo(o.metodoPago)}"><span class="metodo-pago-punto"></span>${esc(o.metodoPago)}</span></td>` +
         `<td class="col-centro"><a class="accion-ver" href="historiales.html" aria-label="Ver la orden ${esc(o.id)} en Historiales">${ICONO_OJO}</a></td></tr>`;
     }).join("");
-    return `<article class="panel panel--rec"><div class="panel-cab"><div><h2 class="panel-titulo">Órdenes Pagadas Recientes</h2><p class="panel-desc">Últimas órdenes del período · Consumo = total sin IVA</p></div><a class="btn btn--secundario btn--chico" href="historiales.html">Ver todas en Historiales</a></div>` +
+    return `<article class="panel panel--rec"><div class="panel-cab"><div><h2 class="panel-titulo">Órdenes Pagadas Recientes</h2><p class="panel-desc">Últimas órdenes del período · Consumo = base sin INC</p></div><a class="btn btn--secundario btn--chico" href="historiales.html">Ver todas en Historiales</a></div>` +
       `<div class="tabla-scroll"><table class="tabla tabla--rec"><thead><tr><th>ID Orden</th><th>Fecha y Hora</th><th class="col-centro">Mesa</th><th>Mesero</th><th class="col-derecha">Consumo</th><th class="col-derecha">Total Pagado</th><th class="col-centro">Método de Pago</th><th class="col-centro">Ver</th></tr></thead>` +
       `<tbody>${filas || `<tr><td colspan="8" class="col-centro">Sin órdenes en el período.</td></tr>`}</tbody></table></div><p class="tabla-pie">Mostrando ${rec.length} de ${d.enPeriodo.length} órdenes del período</p></article>`;
   }
