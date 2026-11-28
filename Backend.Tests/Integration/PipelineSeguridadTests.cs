@@ -214,6 +214,7 @@ public class PipelineSeguridadTests : IClassFixture<ApiFactory>
     [Theory]
     [InlineData("/api/Productos/PostProductos")]
     [InlineData("/api/Comprobantes/PostComprobante")]
+    [InlineData("/api/Cuentas/Cobrar")]
     [InlineData("/api/MetodosPago/PostMetodosPago")]
     [InlineData("/api/Mesas/PostMesa")]
     public async Task UsuarioSinPermiso_EscrituraAdministrativa_Retorna403(string ruta)
@@ -241,6 +242,16 @@ public class PipelineSeguridadTests : IClassFixture<ApiFactory>
         var estado = (await Enviar(HttpMethod.Post, "/api/Comprobantes/PostComprobante", Token(cajero), new { })).StatusCode;
 
         estado.Should().NotBe(HttpStatusCode.Forbidden).And.NotBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UsuarioConCobros_CobrarCuentaConDatosVacios_PasaLaAutorizacionYRetorna400()
+    {
+        var cajero = Sembrar(permiso: PermisosSistema.cobrosGestionar);
+
+        // 400 (idCuenta e idMetodo en cero) y no 403: la autorización dejó pasar al cajero.
+        (await Enviar(HttpMethod.Post, "/api/Cuentas/Cobrar", Token(cajero), new { })).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

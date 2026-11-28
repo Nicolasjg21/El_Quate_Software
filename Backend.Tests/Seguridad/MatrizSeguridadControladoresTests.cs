@@ -104,6 +104,7 @@ public class MatrizSeguridadControladoresTests
     [InlineData(typeof(MetodosPagoController), "PostMetodosPago", PermisosSistema.cobrosGestionar)]
     [InlineData(typeof(MetodosPagoController), "PutMetodosPago", PermisosSistema.cobrosGestionar)]
     [InlineData(typeof(MetodosPagoController), "DeleteMetodosPago", PermisosSistema.cobrosGestionar)]
+    [InlineData(typeof(CuentasController), "Cobrar", PermisosSistema.cobrosGestionar)]
     [InlineData(typeof(CuentasController), "DeleteCuenta", PermisosSistema.seguridadGestionar)]
     [InlineData(typeof(PedidosController), "DeletePedidos", PermisosSistema.seguridadGestionar)]
     [InlineData(typeof(TipoDocumentoController), "PostTipoDocumento", PermisosSistema.seguridadGestionar)]
