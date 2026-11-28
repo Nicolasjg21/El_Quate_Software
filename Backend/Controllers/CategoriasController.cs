@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.Categorias;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,12 +38,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await categoriasRepository.GetCategorias();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new
-                    {
-                        statusCode = StatusCodes.Status404NotFound,
-                        message = "No se encontró información de categorías."
-                    });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {
@@ -109,6 +106,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostCategoria")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -168,6 +166,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutCategoria")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -236,6 +235,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteCategoria/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

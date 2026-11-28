@@ -4,6 +4,7 @@ using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Pedidos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,14 +37,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var pedidos = await pedidosRepository.GetPedidos();
 
-                if (pedidos == null || !pedidos.Any())
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron pedidos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                pedidos ??= [];
 
                 return Ok(new
                 {
@@ -260,6 +255,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeletePedidos/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

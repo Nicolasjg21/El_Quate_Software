@@ -12,6 +12,7 @@
   <script src="../js/config.js"></script>
   <script src="../js/api-cliente.js"></script>
   <script src="../js/auth.js"></script>
+<script src="../js/ayuda-contextual.js"></script>
 </head>
 <body>
 
@@ -67,6 +68,10 @@
     </nav>
 
     <div class="sidebar-pie">
+      <a href="ayuda.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></span>
+        Ayuda
+      </a>
       <a href="configuracion.html" class="nav-item">
         <span class="nav-icono" aria-hidden="true"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg></span>
         Configuración
@@ -315,8 +320,8 @@
       </div>
 
       <div class="resumen-financiero">
-        <div class="resumen-fila"><span>Subtotal</span><span id="detalle-orden-subtotal">$ 0</span></div>
-        <div class="resumen-fila"><span>IVA (19 %)</span><span id="detalle-orden-impuesto">$ 0</span></div>
+        <div class="resumen-fila"><span>Base (sin INC)</span><span id="detalle-orden-subtotal">$ 0</span></div>
+        <div class="resumen-fila"><span>INC (8 %) incluido</span><span id="detalle-orden-impuesto">$ 0</span></div>
         <div class="resumen-fila resumen-fila--total"><span>TOTAL PAGADO (COP)</span><span class="resumen-fila-valor" id="detalle-orden-total">$ 0</span></div>
       </div>
 

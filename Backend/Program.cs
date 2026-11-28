@@ -80,37 +80,19 @@ builder.Services.AddSwaggerGen(c =>
 // -------------------------------------------------------------
 // CORS: orígenes permitidos desde configuración (Cors:AllowedOrigins)
 // -------------------------------------------------------------
-var origenesPermitidos = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>()?
-    .Where(o => !string.IsNullOrWhiteSpace(o))
-    .ToArray() ?? Array.Empty<string>();
-
-if (origenesPermitidos.Length == 0 && !builder.Environment.IsDevelopment())
-{
-    throw new InvalidOperationException(
-        "Cors:AllowedOrigins no está configurado. Defina los orígenes del Frontend " +
-        "(variable de entorno Cors__AllowedOrigins__0, etc.).");
-}
+// En Development sin configuración usa los orígenes locales; en otros entornos exige configurarlos.
+var origenesPermitidos = OrigenesCors.Resolver(
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>(),
+    builder.Environment.IsDevelopment());
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", policy =>
     {
-        if (origenesPermitidos.Length > 0)
-        {
-            policy.WithOrigins(origenesPermitidos)
-                .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .WithHeaders("Authorization", "Content-Type")
-                .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
-        }
-        else
-        {
-            // Solo Development: sin orígenes configurados se permite cualquiera.
-            policy.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        }
+        policy.WithOrigins(origenesPermitidos)
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Authorization", "Content-Type")
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
 
@@ -122,12 +104,27 @@ var jwtSettings = new JwtSettings
     key = builder.Configuration["Jwt:Key"] ?? string.Empty,
     issuer = builder.Configuration["Jwt:Issuer"] ?? string.Empty,
     audience = builder.Configuration["Jwt:Audience"] ?? string.Empty,
-    expirationMinutes = builder.Configuration.GetValue("Jwt:ExpirationMinutes", 30)
+    expirationMinutes = builder.Configuration.GetValue("Jwt:ExpirationMinutes", 60),
+    sesionMaximaHoras = builder.Configuration.GetValue("Jwt:SesionMaximaHoras", 14)
 };
 
 jwtSettings.Validar();
 
 builder.Services.AddSingleton(jwtSettings);
+
+// -------------------------------------------------------------
+// Usuarios protegidos (Soporte técnico y administradora principal)
+// -------------------------------------------------------------
+var usuariosProtegidos = new UsuariosProtegidosSettings
+{
+    idSoporte = builder.Configuration.GetValue("UsuariosProtegidos:IdSoporte", 0),
+    idAdministradora = builder.Configuration.GetValue("UsuariosProtegidos:IdAdministradora", 0)
+};
+
+usuariosProtegidos.Validar();
+
+builder.Services.AddSingleton(usuariosProtegidos);
+builder.Services.AddSingleton<ReglasUsuarios>();
 
 builder.Services.AddAuthentication(x =>
 {
@@ -201,6 +198,21 @@ builder.Services.AddAuthentication(x =>
                     .GetRequiredService<IRevocacionTokenService>().EstaRevocada(idSesion))
             {
                 contexto.Fail("La sesión fue cerrada.");
+                return;
+            }
+
+            // Contraseña temporal pendiente: la fuente de verdad es la base, no el token.
+            if (contexto.Principal?.Identity is ClaimsIdentity identidad)
+            {
+                foreach (var claim in identidad.FindAll(SelloSeguridad.claimCambioPendiente).ToList())
+                {
+                    identidad.RemoveClaim(claim);
+                }
+
+                if (usuario.debeCambiarPassword)
+                {
+                    identidad.AddClaim(new Claim(SelloSeguridad.claimCambioPendiente, "true"));
+                }
             }
         }
     };
@@ -221,12 +233,10 @@ builder.Services.AddSingleton(new AutorizacionSettings { rolesAdministrador = ro
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermisoAuthorizationHandler>();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .Build();
-});
+        .Build());
 
 // -------------------------------------------------------------
 // Proxy inverso (opcional): solo se confía en X-Forwarded-* si se habilita por configuración
@@ -284,14 +294,14 @@ app.UseHttpsRedirection();
 
 app.Use(async (context, next) =>
 {
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
-    context.Response.Headers["Cache-Control"] = "no-store";
+    context.Response.Headers.CacheControl = "no-store";
 
     if (!context.Request.Path.StartsWithSegments("/swagger"))
     {
-        context.Response.Headers["X-Frame-Options"] = "DENY";
-        context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+        context.Response.Headers.XFrameOptions = "DENY";
+        context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
     }
 
     await next();
@@ -302,6 +312,27 @@ app.UseCors("AllowSpecificOrigin");
 app.UseRateLimiter();
 
 app.UseAuthentication();
+
+// Con una contraseña temporal sin cambiar solo se permiten las acciones marcadas con
+// [PermitidoConCambioPendiente]; el resto responde 403 aunque el usuario tenga el permiso.
+app.Use(async (contexto, siguiente) =>
+{
+    if (contexto.User.HasClaim(SelloSeguridad.claimCambioPendiente, "true") &&
+        contexto.GetEndpoint()?.Metadata.GetMetadata<PermitidoConCambioPendienteAttribute>() == null)
+    {
+        contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await contexto.Response.WriteAsJsonAsync(new
+        {
+            statusCode = 403,
+            codigo = PermitidoConCambioPendienteAttribute.codigoError,
+            message = "Debe cambiar su contraseña temporal antes de continuar."
+        });
+        return;
+    }
+
+    await siguiente();
+});
+
 app.UseAuthorization();
 
 app.MapControllers();
@@ -340,4 +371,6 @@ app.Lifetime.ApplicationStarted.Register(() =>
     });
 });
 
-app.Run();
+await app.RunAsync();
+
+public partial class Program { }

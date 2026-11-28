@@ -95,24 +95,26 @@ namespace ElQuateDePatty.Repositories
 
             // -----------------------------------------
             // 4. FILTRO POR COSTO
-            // Costo = promedio del precio de compra
+            // Costo = costo promedio ponderado del último movimiento del Kardex (0 si no tiene)
             // -----------------------------------------
             if (filtro.costoMinimo.HasValue)
             {
                 query = query.Where(p =>
-                    context.detalleCompras
-                        .Where(dc => dc.idProducto == p.idProducto)
-                        .Select(dc => (decimal?)dc.precioCompra)
-                        .Average() >= filtro.costoMinimo.Value);
+                    (context.kardex
+                        .Where(k => k.idProducto == p.idProducto)
+                        .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
+                        .Select(k => (decimal?)k.costoPromedio)
+                        .FirstOrDefault() ?? 0) >= filtro.costoMinimo.Value);
             }
 
             if (filtro.costoMaximo.HasValue)
             {
                 query = query.Where(p =>
-                    context.detalleCompras
-                        .Where(dc => dc.idProducto == p.idProducto)
-                        .Select(dc => (decimal?)dc.precioCompra)
-                        .Average() <= filtro.costoMaximo.Value);
+                    (context.kardex
+                        .Where(k => k.idProducto == p.idProducto)
+                        .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
+                        .Select(k => (decimal?)k.costoPromedio)
+                        .FirstOrDefault() ?? 0) <= filtro.costoMaximo.Value);
             }
 
             // -----------------------------------------
@@ -201,10 +203,12 @@ namespace ElQuateDePatty.Repositories
                         ? p.categoria.nombreCategoria
                         : null,
 
-                    costoPromedio = context.detalleCompras
-                        .Where(dc => dc.idProducto == p.idProducto)
-                        .Select(dc => (decimal?)dc.precioCompra)
-                        .Average() ?? 0,
+                    // Promedio ponderado móvil vigente: el del último movimiento del Kardex.
+                    costoPromedio = context.kardex
+                        .Where(k => k.idProducto == p.idProducto)
+                        .OrderByDescending(k => k.fecha).ThenByDescending(k => k.idMovimiento)
+                        .Select(k => (decimal?)k.costoPromedio)
+                        .FirstOrDefault() ?? 0,
 
                     stockActual = context.kardex
                         .Where(k => k.idProducto == p.idProducto)

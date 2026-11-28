@@ -3,6 +3,7 @@ using ElQuateDePatty.Mappers;
 using ElQuateDePatty.DTOs.Mesas;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,20 @@ namespace ElQuateDePatty.Controllers
 
     public class MesasController : ControllerBase
     {
+        /// <summary>Estado de una mesa retirada del salón (se conserva por su historial de ventas).</summary>
+        private const string estadoInactiva = "Inactiva";
+
         private readonly IMesasRepository mesasRepository;
+        private readonly IAuthorizationService authorizationService;
         private readonly ILogger<MesasController> logger;
 
         public MesasController(
             IMesasRepository mesasRepository,
+            IAuthorizationService authorizationService,
             ILogger<MesasController> logger)
         {
             this.mesasRepository = mesasRepository;
+            this.authorizationService = authorizationService;
             this.logger = logger;
         }
 
@@ -38,8 +45,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await mesasRepository.GetMesas();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de mesas." });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new { statusCode = 200, message = "Consulta de mesas realizada correctamente.", data = response.ToRespuestaDTO() });
             }
@@ -100,14 +107,8 @@ namespace ElQuateDePatty.Controllers
 
                 var response = await mesasRepository.GetMesasByEstado(estado);
 
-                if (response == null || response.Count == 0)
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron mesas con el estado indicado."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {
@@ -129,6 +130,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostMesa")]
+        [RequierePermiso(PermisosSistema.mesasGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -189,10 +191,16 @@ namespace ElQuateDePatty.Controllers
             }
         }
 
+        /// <summary>
+        /// Ocupar y liberar una mesa es parte de la atención y lo hace cualquier rol.
+        /// Cambiar su número, retirarla (Inactiva) o reactivarla es administración del salón
+        /// y exige mesas.gestionar.
+        /// </summary>
         [HttpPut("PutMesa")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> PutMesa([FromBody] MesaActualizarDTO mesas)
@@ -217,6 +225,19 @@ namespace ElQuateDePatty.Controllers
                     {
                         statusCode = 404,
                         message = "La mesa que se desea actualizar no existe."
+                    });
+                }
+
+                var esAdministracion = existente.numeroMesa != mesas.numeroMesa ||
+                    EsInactiva(existente.estado) || EsInactiva(mesas.estado);
+
+                if (esAdministracion && !(await authorizationService.AuthorizeAsync(
+                        User, PoliticasAutorizacion.Permiso(PermisosSistema.mesasGestionar))).Succeeded)
+                {
+                    return StatusCode(403, new
+                    {
+                        statusCode = 403,
+                        message = "No tiene permiso para cambiar el número de la mesa, retirarla o reactivarla."
                     });
                 }
 
@@ -264,6 +285,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteMesa/{id}")]
+        [RequierePermiso(PermisosSistema.mesasGestionar)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -317,6 +339,12 @@ namespace ElQuateDePatty.Controllers
                 message = "Mesas filtradas correctamente",
                 data = data.ToRespuestaDTO()
             });
+        }
+    
+
+        private static bool EsInactiva(string? estado)
+        {
+            return string.Equals(estado?.Trim(), estadoInactiva, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

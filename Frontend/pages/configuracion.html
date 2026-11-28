@@ -12,6 +12,7 @@
   <script src="../js/config.js"></script>
   <script src="../js/api-cliente.js"></script>
   <script src="../js/auth.js"></script>
+<script src="../js/ayuda-contextual.js"></script>
 </head>
 <body>
 
@@ -67,6 +68,10 @@
     </nav>
 
     <div class="sidebar-pie">
+      <a href="ayuda.html" class="nav-item">
+        <span class="nav-icono" aria-hidden="true"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></span>
+        Ayuda
+      </a>
       <a href="configuracion.html" class="nav-item nav-item--activo" aria-current="page">
         <span class="nav-icono" aria-hidden="true"><svg width="16" height="16" style="display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg></span>
         Configuración
@@ -160,7 +165,7 @@
         <section class="config-seccion" id="seccion-cuenta" hidden>
           <div class="config-seccion-cabecera">
             <h3 class="config-titulo">Mi información</h3>
-            <p class="modulo-subtitulo">Para modificar estos datos, solicítelo a un administrador.</p>
+            <p class="modulo-subtitulo">Su teléfono lo puede actualizar usted. Para modificar los demás datos, solicítelo a un administrador.</p>
           </div>
           <dl class="config-datos" id="cfg-datos">
             <div><dt>Nombres</dt><dd id="dato-nombres">—</dd></div>
@@ -172,6 +177,17 @@
             <div><dt>Rol</dt><dd id="dato-rol">—</dd></div>
             <div><dt>Estado</dt><dd id="dato-estado">—</dd></div>
           </dl>
+          <form id="form-telefono" novalidate autocomplete="off" hidden>
+            <div class="campo">
+              <label for="cfg-telefono">Teléfono de contacto</label>
+              <input type="tel" id="cfg-telefono" maxlength="20" autocomplete="tel">
+              <span class="campo-mensaje-error"></span>
+            </div>
+            <p class="config-mensaje" id="cfg-mensaje-telefono" role="status" aria-live="polite" hidden></p>
+            <div class="config-acciones">
+              <button type="submit" class="btn btn--primario" id="cfg-guardar-telefono">Guardar teléfono</button>
+            </div>
+          </form>
           <p class="config-mensaje config-mensaje--error" id="cfg-error-cuenta" role="alert" hidden></p>
         </section>
       </section>

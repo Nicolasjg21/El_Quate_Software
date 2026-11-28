@@ -115,6 +115,17 @@ namespace ElQuateDePatty.Controllers
                     });
                 }
 
+                // Contraseña temporal vencida: deja de servir aunque sea correcta.
+                if (usuario.debeCambiarPassword &&
+                    (usuario.passwordTemporalExpira == null || usuario.passwordTemporalExpira <= DateTime.UtcNow))
+                {
+                    return Unauthorized(new
+                    {
+                        statusCode = 401,
+                        message = "La contraseña temporal venció. Solicite a la administración un nuevo restablecimiento."
+                    });
+                }
+
                 if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
                 {
                     usuario.passwordHash = passwordHasher.HashPassword(usuario, login.password);
@@ -128,7 +139,8 @@ namespace ElQuateDePatty.Controllers
                     statusCode = 200,
                     message = "Inicio de sesión exitoso.",
                     token = token.token,
-                    expiraEn = token.expiraEn
+                    expiraEn = token.expiraEn,
+                    debeCambiarPassword = usuario.debeCambiarPassword
                 });
             }
             catch (Exception ex)
@@ -144,6 +156,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("Logout")]
+        [PermitidoConCambioPendiente]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -173,5 +186,73 @@ namespace ElQuateDePatty.Controllers
                 message = mensajeCredencialesInvalidas
             });
         }
+
+        /// <summary>
+        /// Renueva el token de una sesión activa: entrega uno nuevo con la misma sesión y el mismo
+        /// inicio, válido otros Jwt:ExpirationMinutes sin pasar de Jwt:SesionMaximaHoras.
+        /// Antes de llegar aquí, el middleware ya validó el token actual: usuario activo, rol,
+        /// contraseña y sesión no revocada.
+        /// </summary>
+        [HttpPost("Renovar")]
+        [PermitidoConCambioPendiente]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> Renovar()
+        {
+            try
+            {
+                var idUsuario = User.ObtenerIdUsuario();
+                var idSesion = User.FindFirst(SelloSeguridad.claimSesion)?.Value;
+                var inicio = User.FindFirst(SelloSeguridad.claimInicio)?.Value;
+
+                // Los tokens emitidos antes de este cambio no traen "inicio": se pide un login nuevo.
+                if (idUsuario == null || string.IsNullOrEmpty(idSesion) ||
+                    !long.TryParse(inicio, NumberStyles.Integer, CultureInfo.InvariantCulture, out var inicioUnix))
+                {
+                    return SesionNoRenovable("La sesión no se puede renovar. Inicie sesión nuevamente.");
+                }
+
+                var usuario = await usuariosRepository.GetUsuariosById(idUsuario.Value);
+
+                if (usuario == null || !usuario.estado)
+                {
+                    return SesionNoRenovable("El usuario se encuentra inactivo.");
+                }
+
+                var token = tokenService.RenovarToken(
+                    usuario, idSesion, DateTimeOffset.FromUnixTimeSeconds(inicioUnix).UtcDateTime);
+
+                if (token == null)
+                {
+                    return SesionNoRenovable("La sesión alcanzó su duración máxima. Inicie sesión nuevamente.");
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message = "Sesión renovada.",
+                    token = token.token,
+                    expiraEn = token.expiraEn
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", Request.Method, Request.Path);
+
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "Ocurrió un error interno al renovar la sesión."
+                });
+            }
+        }
+
+        private IActionResult SesionNoRenovable(string mensaje)
+        {
+            return Unauthorized(new { statusCode = 401, message = mensaje });
+        }
+
+
     }
 }

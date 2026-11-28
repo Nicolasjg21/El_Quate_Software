@@ -35,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var roles = await rolesRepository.GetRoles();
 
-                if (roles == null || !roles.Any())
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron roles."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                roles ??= [];
 
                 return Ok(new
                 {

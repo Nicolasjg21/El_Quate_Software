@@ -14,7 +14,7 @@
  *     apertura, cierre,       fechas (ISO o Date); cierre es null en la vista previa
  *     metodo,                 método con el que pagó el cliente
  *     items,                  [{ nombre, cantidad, precioUnitario }]
- *     subtotal, iva, total, tasaIva
+ *     total, base, inc, tasaInc   total = suma de precios de carta (INC incluido); base + inc = total
  *   }
  */
 
@@ -46,7 +46,7 @@
         <td class="cpb-derecha">${formatoCOP(i.precioUnitario)}</td>
         <td class="cpb-derecha">${formatoCOP(i.cantidad * i.precioUnitario)}</td>
       </tr>`).join("");
-    const tasa = Math.round((d.tasaIva === undefined ? 0.19 : d.tasaIva) * 100);
+    const tasa = Math.round((d.tasaInc === undefined ? 0.08 : d.tasaInc) * 100);
 
     return `
       <article class="cpb${d.borrador ? " cpb--borrador" : ""}">
@@ -78,9 +78,9 @@
         </table>
 
         <div class="cpb-totales">
-          <div><span>Subtotal</span><span>${formatoCOP(d.subtotal)}</span></div>
-          <div><span>IVA (${tasa} %)</span><span>${formatoCOP(d.iva)}</span></div>
           <div class="cpb-total"><span>Total pagado (COP)</span><span>${formatoCOP(d.total)}</span></div>
+          <div class="cpb-desglose"><span>Incluye INC (${tasa} %)</span><span>${formatoCOP(d.inc)}</span></div>
+          <div class="cpb-desglose"><span>Base gravable</span><span>${formatoCOP(d.base)}</span></div>
         </div>
 
         <p class="cpb-nota">Documento interno de control. No es factura electrónica de venta.</p>
@@ -104,6 +104,7 @@
     .cpb-centro{text-align:center!important}.cpb-derecha{text-align:right!important;white-space:nowrap}
     .cpb-totales div{display:flex;justify-content:space-between;padding:2px 0}
     .cpb-total{font-size:15px;font-weight:800;border-top:2px solid #1F2426;margin-top:4px;padding-top:6px!important}
+    .cpb-desglose{font-size:11px;color:#555}
     .cpb-nota{margin-top:12px;font-size:10px;color:#555;text-align:center}
     @page{margin:10mm}`;
 

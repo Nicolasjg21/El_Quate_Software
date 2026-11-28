@@ -31,3 +31,7 @@ publish/
 
 # Configuración local / secretos
 appsettings.Development.json
+# Pruebas y analisis
+TestResults/
+coverage/
+.sonarqube/

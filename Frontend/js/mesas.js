@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   Auth.listo.then(() => {
     // Solo la administración crea o elimina mesas.
-    $("btn-nueva-mesa").hidden = !Auth.esAdmin();
+    $("btn-nueva-mesa").hidden = !Auth.tiene("mesas.gestionar");
     cargarMesas();
   });
 });
@@ -199,7 +199,7 @@ function mesaCardEl(mesa) {
 function renderMesasRetiradas() {
   const retiradas = mesas.filter(m => m.estado === "inactiva");
   const bloque = $("bloque-mesas-retiradas");
-  bloque.hidden = !(Auth.esAdmin() && retiradas.length);
+  bloque.hidden = !(Auth.tiene("mesas.gestionar") && retiradas.length);
   $("lista-mesas-retiradas").innerHTML = retiradas.map(m => `
     <div class="mesa-retirada">
       <span>Mesa ${esc(m.numero)}</span>
@@ -325,8 +325,8 @@ function renderDetalle() {
       </tr>`).join("");
   }
 
-  $("detalle-subtotal").textContent = formatoCOP(t.subtotal);
-  $("detalle-iva").textContent = formatoCOP(t.iva);
+  $("detalle-base").textContent = formatoCOP(t.base);
+  $("detalle-inc").textContent = formatoCOP(t.inc);
   $("detalle-total").textContent = formatoCOP(t.total);
 
   const puedeCobrar = Auth.tiene("cobros.gestionar");
@@ -341,7 +341,7 @@ function renderDetalle() {
   $("btn-agregar-productos").style.opacity = cerrando ? "0.5" : "1";
 
   // Una mesa solo puede eliminarse estando libre y sin consumo.
-  $("btn-eliminar-mesa").hidden = !(Auth.esAdmin() && mesa.estado === "libre" && !conConsumo);
+  $("btn-eliminar-mesa").hidden = !(Auth.tiene("mesas.gestionar") && mesa.estado === "libre" && !conConsumo);
 }
 
 /** Acciones de cada línea: sumar, restar o quitar (esta última pide confirmación). */
@@ -498,7 +498,7 @@ function datosComprobante(extra) {
     cierre: null,
     metodo: "",
     items: detalle.items.map(i => ({ nombre: nombreProducto(i.idProducto), cantidad: i.cantidad, precioUnitario: i.precioUnitario })),
-    subtotal: t.subtotal, iva: t.iva, total: t.total, tasaIva: Negocio.IVA
+    total: t.total, base: t.base, inc: t.inc, tasaInc: Negocio.INC
   }, extra || {});
 }
 
@@ -587,9 +587,9 @@ async function confirmarCobro() {
     numero: resultado && resultado.idComprobante,
     apertura: (resultado && resultado.fechaApertura) || previo.apertura,
     cierre: (resultado && resultado.fechaCierre) || new Date(),
-    subtotal: resultado ? resultado.subtotal : previo.subtotal,
-    iva: resultado ? resultado.iva : previo.iva,
-    total: resultado ? resultado.total : previo.total
+    total: resultado ? resultado.total : previo.total,
+    base: resultado ? resultado.base : previo.base,
+    inc: resultado ? resultado.inc : previo.inc
   });
   $("cobro-comprobante").innerHTML = Comprobante.html(comprobanteEmitido);
   modoCobro(true);

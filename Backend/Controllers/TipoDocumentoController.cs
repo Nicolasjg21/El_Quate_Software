@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.TipoDocumento;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,14 +35,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var tipos = await tipoDocumentoRepository.GetTipoDocumento();
 
-                if (tipos == null || !tipos.Any())
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron tipos de documento."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                tipos ??= [];
 
                 return Ok(new
                 {
@@ -112,6 +107,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostTipoDocumento")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -173,6 +169,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutTipoDocumento")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -255,6 +252,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteTipoDocumento/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

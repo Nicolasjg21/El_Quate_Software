@@ -44,8 +44,8 @@ namespace ElQuateDePatty.Controllers
 
                 var response = await detallePedidosRepository.GetDetallePedidos(idCuenta);
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de detalles de pedidos." });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new { statusCode = 200, message = "Consulta realizada correctamente.", data = response.ToRespuestaDTO() });
             }

@@ -446,6 +446,13 @@ namespace ElQuateDePatty.Context
                 entity.Property(x => x.idUsuario)
                     .HasColumnName("idUsuario");
 
+                // Creadas por Backend/Database/005_costo_promedio.sql
+                entity.Property(x => x.costoUnitario)
+                    .HasColumnName("costoUnitario");
+
+                entity.Property(x => x.costoPromedio)
+                    .HasColumnName("costoPromedio");
+
                 entity.HasOne(x => x.producto)
                     .WithMany(x => x.movimientosKardex)
                     .HasForeignKey(x => x.idProducto)
@@ -584,6 +591,17 @@ namespace ElQuateDePatty.Context
 
                 entity.Property(x => x.email)
                     .HasColumnName("email");
+
+                entity.Property(x => x.debeCambiarPassword)
+                    .HasColumnName("debeCambiarPassword");
+
+                entity.Property(x => x.passwordTemporalExpira)
+                    .HasColumnName("passwordTemporalExpira");
+
+                // Creado en la base por Backend/Database/004_usuarios_fase2.sql
+                entity.HasIndex(x => x.email)
+                    .IsUnique()
+                    .HasDatabaseName("UX_Usuarios_email");
 
                 entity.HasOne(x => x.tipoDocumento)
                     .WithMany(x => x.usuarios)

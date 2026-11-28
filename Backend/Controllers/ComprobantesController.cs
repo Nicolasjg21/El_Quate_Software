@@ -2,6 +2,7 @@
 using ElQuateDePatty.DTOs.Comprobantes;
 using ElQuateDePatty.Mappers;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,8 +38,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await comprobantesRepository.GetComprobantes();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new { statusCode = 404, message = "No se encontró información de comprobantes." });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {
@@ -84,6 +85,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostComprobante")]
+        [RequierePermiso(PermisosSistema.cobrosGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -124,6 +126,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutComprobante")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -194,6 +197,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteComprobante/{id}")]
+        [RequierePermiso(PermisosSistema.seguridadGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

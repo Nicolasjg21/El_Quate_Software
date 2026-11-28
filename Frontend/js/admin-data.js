@@ -5,7 +5,8 @@
  * @requires api-cliente.js
  *
  * Endpoints:
- *   Usuarios      GetUsuarios, PostUsuarios, PutUsuarios/{id}, DeleteUsuarios/{id}
+ *   Usuarios      GetUsuarios, PostUsuarios, PutUsuarios/{id}, DeleteUsuarios/{id}, RestablecerPassword/{id}
+ *                 (la auditoría de usuarios la escribe el servidor en la misma transacción)
  *   Proveedores   GetProveedores, PostProveedores, PutProveedores (id en el cuerpo), DeleteProveedores/{id}
  *   Catálogos     TipoDocumento/GetTipoDocumento, Roles/GetRoles
  *   Seguridad     Roles/PostRoles, RolesPermisos/PostRolesPermisos, RolesPermisos/DeleteRolesPermisos/{idRol}/{idPermiso}
@@ -31,29 +32,29 @@ function cargarCatalogos() {
 /** Extrae "data" de una respuesta de la API. */
 const datosDe = (respuesta) => (respuesta && respuesta.data) || null;
 
-/** Usuarios. La contraseña solo se envía al crear; se cambia con CambiarPassword. */
+/**
+ * Usuarios. La contraseña solo se envía al crear; después cada usuario la cambia con CambiarPassword
+ * y Soporte o la administradora la restablecen con una clave temporal. El servidor registra la
+ * auditoría de cada operación en la misma transacción, por eso aquí no se llama a Api.auditar.
+ * Cada usuario del listado trae "acciones" { editar, eliminar, restablecerPassword } calculadas por el servidor.
+ */
 const apiUsuarios = {
   listar() {
     return Api.lista("api/Usuarios/GetUsuarios");
   },
   crear(datos) {
-    return Api.post("api/Usuarios/PostUsuarios", datos).then(datosDe).then((u) => {
-      Api.auditar("Usuarios", "INSERT", null, u || datos);
-      return u;
-    });
+    return Api.post("api/Usuarios/PostUsuarios", datos).then(datosDe);
   },
-  actualizar(id, datos, anterior) {
+  actualizar(id, datos) {
     const { idUsuario, password, ...cuerpo } = datos;
-    return Api.put("api/Usuarios/PutUsuarios/" + id, cuerpo).then(datosDe).then((u) => {
-      Api.auditar("Usuarios", "UPDATE", anterior || { idUsuario: id }, u || { idUsuario: id, ...cuerpo });
-      return u;
-    });
+    return Api.put("api/Usuarios/PutUsuarios/" + id, cuerpo).then(datosDe);
   },
-  eliminar(id, anterior) {
-    return Api.del("api/Usuarios/DeleteUsuarios/" + id).then(() => {
-      Api.auditar("Usuarios", "DELETE", anterior || { idUsuario: id }, null);
-      return true;
-    });
+  eliminar(id) {
+    return Api.del("api/Usuarios/DeleteUsuarios/" + id).then(() => true);
+  },
+  /** @returns {Promise<{passwordTemporal:string, expiraEn:string}>} */
+  restablecerPassword(id) {
+    return Api.post("api/Usuarios/RestablecerPassword/" + id);
   }
 };
 

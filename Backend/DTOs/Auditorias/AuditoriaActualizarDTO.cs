@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 
 namespace ElQuateDePatty.DTOs.Auditorias
 {
     public class AuditoriaActualizarDTO : AuditoriaCrearDTO
     {
+        [JsonRequired]
         public int idAuditoria { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "El campo idUsuario debe ser mayor que cero.")]

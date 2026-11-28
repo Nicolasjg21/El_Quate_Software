@@ -4,6 +4,7 @@ using ElQuateDePatty.DTOs.Analiticas;
 using ElQuateDePatty.DTOs.Compras;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,12 +40,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var response = await comprasRepository.GetCompras();
 
-                if (response == null || response.Count == 0)
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontró información de compras."
-                    });
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                response ??= [];
 
                 return Ok(new
                 {
@@ -99,6 +96,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -158,6 +156,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutCompra")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -225,6 +224,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteCompra/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -195,3 +195,14 @@ body {
   line-height: 1.4;
 }
 .login-error[hidden] { display: none; }
+
+/* Enlace a la página de ayuda (RF15), disponible sin sesión. */
+.login-ayuda {
+  margin-top: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--coral);
+  text-decoration: none;
+}
+.login-ayuda:hover,
+.login-ayuda:focus-visible { text-decoration: underline; }

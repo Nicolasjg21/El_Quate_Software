@@ -3,6 +3,7 @@ using ElQuateDePatty.Mappers;
 using ElQuateDePatty.DTOs.Productos;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,14 +36,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var productos = await productosRepository.GetProductos();
 
-                if (productos == null || !productos.Any())
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron productos."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                productos ??= [];
 
                 return Ok(new
                 {
@@ -113,6 +108,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostProductos")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -174,6 +170,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutProductos")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -260,6 +257,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteProductos/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

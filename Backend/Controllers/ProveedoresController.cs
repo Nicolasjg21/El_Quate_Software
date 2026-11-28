@@ -3,6 +3,7 @@ using ElQuateDePatty.Mappers;
 using ElQuateDePatty.DTOs.Proveedores;
 using ElQuateDePatty.Models;
 using ElQuateDePatty.Repositories.Interfaces;
+using ElQuateDePatty.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,14 +36,8 @@ namespace ElQuateDePatty.Controllers
             {
                 var proveedores = await proveedoresRepository.GetProveedores();
 
-                if (proveedores == null || !proveedores.Any())
-                {
-                    return NotFound(new
-                    {
-                        statusCode = 404,
-                        message = "No se encontraron proveedores."
-                    });
-                }
+                // Sin registros es un resultado válido: 200 con lista vacía (no 404).
+                proveedores ??= [];
 
                 return Ok(new
                 {
@@ -113,6 +108,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPost("PostProveedores")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -174,6 +170,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpPut("PutProveedores")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -258,6 +255,7 @@ namespace ElQuateDePatty.Controllers
         }
 
         [HttpDelete("DeleteProveedores/{id}")]
+        [RequierePermiso(PermisosSistema.inventarioGestionar)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
